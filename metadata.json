@@ -1,0 +1,6 @@
+{
+  "name": "Fundo La Cabaña - Cuaderno de Campo Kiwis",
+  "description": "Cuaderno de campo digital para Fundo La Cabaña especializado en kiwis: control de inventario de fitosanitarios con descuento automático, alertas de stock, registro de litros del pozo profundo y estación meteorológica.",
+  "requestFramePermissions": ["geolocation"],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
