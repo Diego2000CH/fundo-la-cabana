@@ -380,7 +380,6 @@ export const PozoView: React.FC<PozoViewProps> = ({
                   className="w-full px-3 py-1.5 border border-stone-300 rounded-lg text-xs"
                 />
               </div>
-
               <div className="pt-3 border-t border-stone-200 flex justify-end gap-2">
                 <button
                   type="button"
