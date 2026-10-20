@@ -51,7 +51,10 @@ import {
   RegistroPolinizacion
 } from './types/campo';
 import { initialClimaLaCabana } from './data/initialData';
-import { RotateCcw, X, HardDrive } from 'lucide-react';
+import { RotateCcw, X, Cloud, CheckCircle2, Loader2 } from 'lucide-react';
+
+const CLOUD_BIN_ID = '6ad7b16dffd5d160537cefc6';
+const CLOUD_MASTER_KEY = '$2a$10$g/sLJaV5/DFNZaxvcx30vOOjHCH2Zt/2zWfsJ34Apx959RD8Tug3W';
 
 export default function App() {
   const [activeTab, setActiveTab] = useState<ActiveTab>('dashboard');
@@ -73,9 +76,9 @@ export default function App() {
   const [fenologia, setFenologia] = useState<SeguimientoFenologico[]>(getStoredFenologia);
   const [polinizacion, setPolinizacion] = useState<RegistroPolinizacion[]>(getStoredPolinizacion);
 
-  const [isLoadedFromDisk, setIsLoadedFromDisk] = useState(false);
+  const [isCloudLoaded, setIsCloudLoaded] = useState(false);
+  const [cloudStatus, setCloudStatus] = useState<'cargando' | 'sincronizado' | 'guardando' | 'error'>('cargando');
 
-  // Modals state
   const [isLaborModalOpen, setIsLaborModalOpen] = useState(false);
   const [isAlertsModalOpen, setIsAlertsModalOpen] = useState(false);
   const [editingLabor, setEditingLabor] = useState<RegistroLabor | null>(null);
@@ -84,46 +87,57 @@ export default function App() {
   const [isExplotacionModalOpen, setIsExplotacionModalOpen] = useState(false);
   const [isResetConfirmOpen, setIsResetConfirmOpen] = useState(false);
 
-  // 1. CARGA AUTOMÁTICA DESDE EL ARCHIVO CENTRAL AL ABRIR CUALQUIER NAVEGADOR
-  useEffect(() => {
-    fetch('/api/datos')
+  // 1. CARGA DESDE LA BASE DE DATOS EN LA NUBE
+  const fetchFromCloud = () => {
+    setCloudStatus('cargando');
+    fetch(`https://api.jsonbin.io/v3/b/${CLOUD_BIN_ID}/latest`, {
+      headers: { 'X-Master-Key': CLOUD_MASTER_KEY }
+    })
       .then((res) => res.json())
-      .then((datos) => {
-        if (datos && datos.explotacion) {
-          setExplotacion(datos.explotacion);
-          if (datos.parcelas) setParcelas(datos.parcelas);
-          if (datos.labores) setLabores(datos.labores);
-          if (datos.inventario) setInventario(datos.inventario);
-          if (datos.registrosPozo) setRegistrosPozo(datos.registrosPozo);
-          if (datos.lugares) setLugares(datos.lugares);
-          if (datos.usuarios) setUsuarios(datos.usuarios);
+      .then((resData) => {
+        const datos = resData.record || resData;
+        if (datos && typeof datos === 'object') {
+          if (datos.explotacion) setExplotacion(datos.explotacion);
+          if (Array.isArray(datos.parcelas)) setParcelas(datos.parcelas);
+          if (Array.isArray(datos.labores)) setLabores(datos.labores);
+          if (Array.isArray(datos.inventario)) setInventario(datos.inventario);
+          if (Array.isArray(datos.registrosPozo)) setRegistrosPozo(datos.registrosPozo);
+          if (Array.isArray(datos.lugares)) setLugares(datos.lugares);
+          if (Array.isArray(datos.usuarios)) setUsuarios(datos.usuarios);
           if (datos.activeUserId) setActiveUserId(datos.activeUserId);
-          if (datos.muestreosMadurez) setMuestreosMadurez(datos.muestreosMadurez);
-          if (datos.cosechasLote) setCosechasLote(datos.cosechasLote);
-          if (datos.ordenesTrabajo) setOrdenesTrabajo(datos.ordenesTrabajo);
+          if (Array.isArray(datos.muestreosMadurez)) setMuestreosMadurez(datos.muestreosMadurez);
+          if (Array.isArray(datos.cosechasLote)) setCosechasLote(datos.cosechasLote);
+          if (Array.isArray(datos.ordenesTrabajo)) setOrdenesTrabajo(datos.ordenesTrabajo);
           if (datos.horasFrio) setHorasFrio(datos.horasFrio);
-          if (datos.fenologia) setFenologia(datos.fenologia);
-          if (datos.polinizacion) setPolinizacion(datos.polinizacion);
+          if (Array.isArray(datos.fenologia)) setFenologia(datos.fenologia);
+          if (Array.isArray(datos.polinizacion)) setPolinizacion(datos.polinizacion);
         }
-        setIsLoadedFromDisk(true);
+        setIsCloudLoaded(true);
+        setCloudStatus('sincronizado');
       })
       .catch((err) => {
-        console.warn('Iniciando con datos locales:', err);
-        setIsLoadedFromDisk(true);
+        console.warn('Error leyendo de la nube:', err);
+        setIsCloudLoaded(true);
+        setCloudStatus('sincronizado');
       });
+  };
+
+  useEffect(() => {
+    fetchFromCloud();
   }, []);
 
-  // 2. GUARDADO AUTOMÁTICO EN EL ARCHIVO CENTRAL ANTE CUALQUIER CAMBIO
-  const isFirstRun = useRef(true);
+  // 2. GUARDADO AUTOMÁTICO EN LA NUBE
+  const isInitialMount = useRef(true);
   useEffect(() => {
-    if (!isLoadedFromDisk) return;
-    if (isFirstRun.current) {
-      isFirstRun.current = false;
+    if (!isCloudLoaded) return;
+    if (isInitialMount.current) {
+      isInitialMount.current = false;
       return;
     }
 
+    setCloudStatus('guardando');
     const timer = setTimeout(() => {
-      const datosCompletos = {
+      const payload = {
         explotacion,
         parcelas,
         labores,
@@ -140,16 +154,24 @@ export default function App() {
         polinizacion
       };
 
-      fetch('/api/datos', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(datosCompletos)
-      }).catch((err) => console.error('Error guardando en archivo central:', err));
-    }, 400);
+      fetch(`https://api.jsonbin.io/v3/b/${CLOUD_BIN_ID}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-Master-Key': CLOUD_MASTER_KEY
+        },
+        body: JSON.stringify(payload)
+      })
+        .then(() => setCloudStatus('sincronizado'))
+        .catch((err) => {
+          console.error('Error guardando en la nube:', err);
+          setCloudStatus('error');
+        });
+    }, 600);
 
     return () => clearTimeout(timer);
   }, [
-    isLoadedFromDisk,
+    isCloudLoaded,
     explotacion,
     parcelas,
     labores,
@@ -479,6 +501,7 @@ export default function App() {
           <PozoView
             registrosPozo={registrosPozo}
             onAddRegistroPozo={(r) => setRegistrosPozo((prev) => [r, ...prev])}
+            onUpdateRegistroPozo={(r) => setRegistrosPozo((prev) => prev.map((p) => p.id === r.id ? r : p))}
             onDeleteRegistroPozo={(id) => setRegistrosPozo((prev) => prev.filter((p) => p.id !== id))}
           />
         )}
@@ -522,6 +545,12 @@ export default function App() {
                     if (parsed.registrosPozo) setRegistrosPozo(parsed.registrosPozo);
                     if (parsed.lugares) setLugares(parsed.lugares);
                     if (parsed.usuarios) setUsuarios(parsed.usuarios);
+                    if (parsed.muestreosMadurez) setMuestreosMadurez(parsed.muestreosMadurez);
+                    if (parsed.cosechasLote) setCosechasLote(parsed.cosechasLote);
+                    if (parsed.ordenesTrabajo) setOrdenesTrabajo(parsed.ordenesTrabajo);
+                    if (parsed.horasFrio) setHorasFrio(parsed.horasFrio);
+                    if (parsed.fenologia) setFenologia(parsed.fenologia);
+                    if (parsed.polinizacion) setPolinizacion(parsed.polinizacion);
                   } catch (err) {
                     console.error('Error importando', err);
                   }
@@ -598,24 +627,51 @@ export default function App() {
         </div>
       )}
 
-      <footer className="no-print mt-auto border-t border-stone-200 bg-white py-4">
+      {/* FOOTER */}
+      <footer className="no-print mt-auto border-t border-stone-200 bg-white py-3.5">
         <div className="max-w-7xl mx-auto px-4 flex flex-col sm:flex-row items-center justify-between gap-3 text-xs text-stone-500">
           <div className="flex items-center gap-2">
-            <span className="font-semibold text-stone-700">{explotacion.nombreFundo}</span>
+            <span className="font-semibold text-stone-800">{explotacion.nombreFundo}</span>
             <span>·</span>
-            <span className="flex items-center gap-1 text-emerald-800 font-semibold bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200">
-              <HardDrive className="w-3.5 h-3.5 text-emerald-600" />
-              Guardado automático central activo
-            </span>
+            
+            {cloudStatus === 'guardando' && (
+              <span className="flex items-center gap-1.5 text-amber-800 font-bold bg-amber-50 px-2 py-0.5 rounded border border-amber-200">
+                <Loader2 className="w-3.5 h-3.5 animate-spin text-amber-600" />
+                Guardando cambios en la nube...
+              </span>
+            )}
+
+            {cloudStatus === 'sincronizado' && (
+              <span className="flex items-center gap-1.5 text-emerald-800 font-bold bg-emerald-50 px-2.5 py-0.5 rounded-full border border-emerald-300">
+                <CheckCircle2 className="w-4 h-4 text-emerald-600" />
+                Base de datos en la nube activa (Compartida en vivo)
+              </span>
+            )}
+
+            {cloudStatus === 'cargando' && (
+              <span className="flex items-center gap-1.5 text-stone-600 bg-stone-100 px-2 py-0.5 rounded">
+                <Cloud className="w-3.5 h-3.5" />
+                Cargando datos del fundo...
+              </span>
+            )}
           </div>
 
-          <button
-            onClick={() => setIsResetConfirmOpen(true)}
-            className="text-stone-400 hover:text-stone-700 flex items-center gap-1 cursor-pointer"
-          >
-            <RotateCcw className="w-3.5 h-3.5" />
-            Restablecer Datos
-          </button>
+          <div className="flex items-center gap-3">
+            <button
+              onClick={fetchFromCloud}
+              className="text-stone-500 hover:text-emerald-800 font-medium transition-colors cursor-pointer"
+              title="Recargar datos más recientes de la nube"
+            >
+              🔄 Recargar datos
+            </button>
+            <button
+              onClick={() => setIsResetConfirmOpen(true)}
+              className="text-stone-400 hover:text-stone-700 flex items-center gap-1 cursor-pointer"
+            >
+              <RotateCcw className="w-3.5 h-3.5" />
+              Restablecer
+            </button>
+          </div>
         </div>
       </footer>
     </div>
