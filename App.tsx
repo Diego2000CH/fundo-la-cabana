@@ -65,9 +65,8 @@ import {
   RegistroPolinizacion
 } from './types/campo';
 import { initialClimaLaCabana } from './data/initialData';
-import { RotateCcw, X, Cloud, CheckCircle2, Loader2 } from 'lucide-react';
+import { RotateCcw, X, Cloud, CheckCircle2, Loader2, Save, AlertTriangle, RefreshCw } from 'lucide-react';
 
-// BASE DE DATOS EN LA NUBE JSONBIN CONFIGURADA
 const CLOUD_BIN_ID = '6ad7b16dffd5d160537cefc6';
 const CLOUD_MASTER_KEY = '$2a$10$g/sLJaV5/DFNZaxvcx30vOOjHCH2Zt/2zWfsJ34Apx959RD8Tug3W';
 
@@ -91,9 +90,12 @@ export default function App() {
   const [fenologia, setFenologia] = useState<SeguimientoFenologico[]>(getStoredFenologia);
   const [polinizacion, setPolinizacion] = useState<RegistroPolinizacion[]>(getStoredPolinizacion);
 
+  // Estados de sincronización
   const [isCloudLoaded, setIsCloudLoaded] = useState(false);
   const [cloudStatus, setCloudStatus] = useState<'cargando' | 'sincronizado' | 'guardando' | 'error'>('cargando');
+  const [cloudMessage, setCloudMessage] = useState<string>('Conectando a la nube...');
 
+  // Modals state
   const [isLaborModalOpen, setIsLaborModalOpen] = useState(false);
   const [isAlertsModalOpen, setIsAlertsModalOpen] = useState(false);
   const [editingLabor, setEditingLabor] = useState<RegistroLabor | null>(null);
@@ -102,9 +104,10 @@ export default function App() {
   const [isExplotacionModalOpen, setIsExplotacionModalOpen] = useState(false);
   const [isResetConfirmOpen, setIsResetConfirmOpen] = useState(false);
 
-  // 1. CARGA DE DATOS EN LA NUBE AL ABRIR LA APP
+  // 1. CARGA INICIAL DESDE LA NUBE
   const fetchFromCloud = () => {
     setCloudStatus('cargando');
+    setCloudMessage('Cargando datos del fundo desde la nube...');
     fetch(`https://api.jsonbin.io/v3/b/${CLOUD_BIN_ID}/latest`, {
       headers: { 'X-Master-Key': CLOUD_MASTER_KEY }
     })
@@ -112,6 +115,7 @@ export default function App() {
       .then((resData) => {
         const datos = resData.record || resData;
         if (datos && typeof datos === 'object') {
+          // Si la nube tiene datos reales guardados, los cargamos
           if (datos.explotacion) setExplotacion(datos.explotacion);
           if (Array.isArray(datos.parcelas)) setParcelas(datos.parcelas);
           if (Array.isArray(datos.labores)) setLabores(datos.labores);
@@ -129,11 +133,13 @@ export default function App() {
         }
         setIsCloudLoaded(true);
         setCloudStatus('sincronizado');
+        setCloudMessage('Conectado y sincronizado en vivo');
       })
       .catch((err) => {
-        console.warn('Iniciando con memoria local:', err);
+        console.warn('Error leyendo nube, usando respaldo:', err);
         setIsCloudLoaded(true);
         setCloudStatus('sincronizado');
+        setCloudMessage('Modo local (Sin conexión a nube temporalmente)');
       });
   };
 
@@ -141,62 +147,78 @@ export default function App() {
     fetchFromCloud();
   }, []);
 
-  // 2. GUARDADO AUTOMÁTICO EN LA NUBE ANTE CUALQUIER CAMBIO O ELIMINACIÓN
-  const isFirstLoad = useRef(true);
+  // 2. FUNCIÓN PARA GUARDAR EN LA NUBE (MANUAL Y AUTOMÁTICA)
+  const saveToCloudNow = (overridePayload?: any) => {
+    setCloudStatus('guardando');
+    setCloudMessage('Guardando en la nube...');
+
+    const payload = overridePayload || {
+      explotacion,
+      parcelas,
+      labores,
+      inventario,
+      registrosPozo,
+      lugares,
+      usuarios,
+      activeUserId,
+      muestreosMadurez,
+      cosechasLote,
+      ordenesTrabajo,
+      horasFrio,
+      fenologia,
+      polinizacion,
+      ultimaActualizacion: new Date().toISOString()
+    };
+
+    // Guardado inmediato en memoria local de respaldo
+    saveStoredExplotacion(payload.explotacion);
+    saveStoredParcelas(payload.parcelas);
+    saveStoredLabores(payload.labores);
+    saveStoredInventario(payload.inventario);
+    saveStoredRegistrosPozo(payload.registrosPozo);
+    saveStoredLugares(payload.lugares);
+    saveStoredUsuarios(payload.usuarios);
+    saveStoredActiveUserId(payload.activeUserId);
+    saveStoredMuestreosMadurez(payload.muestreosMadurez);
+    saveStoredCosechasLote(payload.cosechasLote);
+    saveStoredOrdenesTrabajo(payload.ordenesTrabajo);
+    saveStoredCondicionHorasFrio(payload.horasFrio);
+    saveStoredFenologia(payload.fenologia);
+    saveStoredPolinizacion(payload.polinizacion);
+
+    // Enviar a la nube JSONBin
+    fetch(`https://api.jsonbin.io/v3/b/${CLOUD_BIN_ID}`, {
+      method: 'PUT',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-Master-Key': CLOUD_MASTER_KEY
+      },
+      body: JSON.stringify(payload)
+    })
+      .then((res) => res.json())
+      .then(() => {
+        setCloudStatus('sincronizado');
+        setCloudMessage(`Guardado confirmado en la nube (${new Date().toLocaleTimeString('es-CL')})`);
+      })
+      .catch((err) => {
+        console.error('Error guardando en la nube:', err);
+        setCloudStatus('error');
+        setCloudMessage('Error de red al guardar en la nube');
+      });
+  };
+
+  // Guardado automático debounced ante cualquier cambio
+  const isFirstRun = useRef(true);
   useEffect(() => {
     if (!isCloudLoaded) return;
-    if (isFirstLoad.current) {
-      isFirstLoad.current = false;
+    if (isFirstRun.current) {
+      isFirstRun.current = false;
       return;
     }
 
-    setCloudStatus('guardando');
     const timer = setTimeout(() => {
-      const payload = {
-        explotacion,
-        parcelas,
-        labores,
-        inventario,
-        registrosPozo,
-        lugares,
-        usuarios,
-        activeUserId,
-        muestreosMadurez,
-        cosechasLote,
-        ordenesTrabajo,
-        horasFrio,
-        fenologia,
-        polinizacion
-      };
-
-      // Guardar en la nube JSONBin
-      fetch(`https://api.jsonbin.io/v3/b/${CLOUD_BIN_ID}`, {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-          'X-Master-Key': CLOUD_MASTER_KEY
-        },
-        body: JSON.stringify(payload)
-      })
-        .then(() => setCloudStatus('sincronizado'))
-        .catch(() => setCloudStatus('error'));
-
-      // Respaldo en memoria local del navegador
-      saveStoredExplotacion(explotacion);
-      saveStoredParcelas(parcelas);
-      saveStoredLabores(labores);
-      saveStoredInventario(inventario);
-      saveStoredRegistrosPozo(registrosPozo);
-      saveStoredLugares(lugares);
-      saveStoredUsuarios(usuarios);
-      saveStoredActiveUserId(activeUserId);
-      saveStoredMuestreosMadurez(muestreosMadurez);
-      saveStoredCosechasLote(cosechasLote);
-      saveStoredOrdenesTrabajo(ordenesTrabajo);
-      saveStoredCondicionHorasFrio(horasFrio);
-      saveStoredFenologia(fenologia);
-      saveStoredPolinizacion(polinizacion);
-    }, 400);
+      saveToCloudNow();
+    }, 800);
 
     return () => clearTimeout(timer);
   }, [
@@ -386,12 +408,62 @@ export default function App() {
     setPolinizacion(defaults.polinizacion);
     setActiveUserId(defaults.usuarios[0]?.id || 'usr-1');
     setIsResetConfirmOpen(false);
+    saveToCloudNow(defaults);
   };
 
   const lowStockCount = inventario.filter((i) => i.stockActual <= i.stockMinimo).length;
 
   return (
     <div className="min-h-screen bg-stone-50 flex flex-col font-sans text-stone-900 pb-16 sm:pb-0">
+      {/* BARRA SUPERIOR DE SINCRONIZACIÓN Y GUARDADO EN LA NUBE */}
+      <div className="bg-stone-900 text-white px-4 py-2 border-b border-stone-800 text-xs flex flex-wrap items-center justify-between gap-3 sticky top-0 z-50">
+        <div className="flex items-center gap-2">
+          {cloudStatus === 'guardando' && (
+            <span className="flex items-center gap-1.5 text-amber-300 font-bold">
+              <Loader2 className="w-3.5 h-3.5 animate-spin" />
+              {cloudMessage}
+            </span>
+          )}
+          {cloudStatus === 'sincronizado' && (
+            <span className="flex items-center gap-1.5 text-emerald-400 font-bold">
+              <CheckCircle2 className="w-4 h-4 text-emerald-400" />
+              {cloudMessage}
+            </span>
+          )}
+          {cloudStatus === 'cargando' && (
+            <span className="flex items-center gap-1.5 text-stone-300">
+              <Cloud className="w-3.5 h-3.5" />
+              {cloudMessage}
+            </span>
+          )}
+          {cloudStatus === 'error' && (
+            <span className="flex items-center gap-1.5 text-red-400 font-bold">
+              <AlertTriangle className="w-3.5 h-3.5 text-red-400" />
+              {cloudMessage}
+            </span>
+          )}
+        </div>
+
+        <div className="flex items-center gap-2">
+          <button
+            onClick={() => saveToCloudNow()}
+            className="px-3 py-1 bg-emerald-600 hover:bg-emerald-500 text-white font-bold rounded-lg transition-all flex items-center gap-1.5 active:scale-95 cursor-pointer shadow-xs"
+            title="Guardar todos los cambios inmediatamente en la nube"
+          >
+            <Save className="w-3.5 h-3.5" />
+            Guardar en la Nube Ahora
+          </button>
+          <button
+            onClick={fetchFromCloud}
+            className="px-2.5 py-1 bg-stone-800 hover:bg-stone-700 text-stone-300 rounded-lg transition-colors flex items-center gap-1 cursor-pointer"
+            title="Recargar datos más recientes"
+          >
+            <RefreshCw className="w-3 h-3" />
+            Refrescar
+          </button>
+        </div>
+      </div>
+
       <Navbar
         activeTab={activeTab}
         setActiveTab={setActiveTab}
@@ -529,9 +601,15 @@ export default function App() {
         {activeTab === 'pozo' && (
           <PozoView
             registrosPozo={registrosPozo}
-            onAddRegistroPozo={(r) => setRegistrosPozo((prev) => [r, ...prev])}
-            onUpdateRegistroPozo={(r) => setRegistrosPozo((prev) => prev.map((p) => p.id === r.id ? r : p))}
-            onDeleteRegistroPozo={(id) => setRegistrosPozo((prev) => prev.filter((p) => p.id !== id))}
+            onAddRegistroPozo={(r) => {
+              setRegistrosPozo((prev) => [r, ...prev]);
+            }}
+            onUpdateRegistroPozo={(r) => {
+              setRegistrosPozo((prev) => prev.map((p) => p.id === r.id ? r : p));
+            }}
+            onDeleteRegistroPozo={(id) => {
+              setRegistrosPozo((prev) => prev.filter((p) => p.id !== id));
+            }}
           />
         )}
 
@@ -580,6 +658,9 @@ export default function App() {
                     if (parsed.horasFrio) setHorasFrio(parsed.horasFrio);
                     if (parsed.fenologia) setFenologia(parsed.fenologia);
                     if (parsed.polinizacion) setPolinizacion(parsed.polinizacion);
+                    
+                    // Guardar de inmediato en la nube tras importar
+                    saveToCloudNow(parsed);
                   } catch (err) {
                     console.error('Error importando', err);
                   }
@@ -659,39 +740,19 @@ export default function App() {
       {/* FOOTER */}
       <footer className="no-print mt-auto border-t border-stone-200 bg-white py-3.5">
         <div className="max-w-7xl mx-auto px-4 flex flex-col sm:flex-row items-center justify-between gap-3 text-xs text-stone-500">
-          <div className="flex items-center gap-2">
+          <div>
             <span className="font-semibold text-stone-800">{explotacion.nombreFundo}</span>
-            <span>·</span>
-            
-            {cloudStatus === 'guardando' && (
-              <span className="flex items-center gap-1.5 text-amber-800 font-bold bg-amber-50 px-2 py-0.5 rounded border border-amber-200">
-                <Loader2 className="w-3.5 h-3.5 animate-spin text-amber-600" />
-                Guardando cambios en la nube...
-              </span>
-            )}
-
-            {cloudStatus === 'sincronizado' && (
-              <span className="flex items-center gap-1.5 text-emerald-800 font-bold bg-emerald-50 px-2.5 py-0.5 rounded-full border border-emerald-300">
-                <CheckCircle2 className="w-4 h-4 text-emerald-600" />
-                Base de datos en la nube activa (Compartida en vivo)
-              </span>
-            )}
-
-            {cloudStatus === 'cargando' && (
-              <span className="flex items-center gap-1.5 text-stone-600 bg-stone-100 px-2 py-0.5 rounded">
-                <Cloud className="w-3.5 h-3.5" />
-                Cargando datos del fundo...
-              </span>
-            )}
+            <span className="mx-2">·</span>
+            <span>Cuaderno Oficial SAG</span>
           </div>
 
           <div className="flex items-center gap-3">
             <button
-              onClick={fetchFromCloud}
-              className="text-stone-500 hover:text-emerald-800 font-medium transition-colors cursor-pointer"
-              title="Recargar datos más recientes de la nube"
+              onClick={() => saveToCloudNow()}
+              className="text-emerald-800 font-bold hover:underline cursor-pointer flex items-center gap-1"
             >
-              🔄 Recargar datos
+              <Save className="w-3.5 h-3.5" />
+              Guardar Nube
             </button>
             <button
               onClick={() => setIsResetConfirmOpen(true)}
