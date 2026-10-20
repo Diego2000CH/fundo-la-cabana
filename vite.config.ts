@@ -14,12 +14,11 @@ export default defineConfig(() => {
     server: {
       port: 3000,
       host: '0.0.0.0',
-      hmr: process.env.DISABLE_HMR !== 'true',
-      watch: process.env.DISABLE_HMR === 'true' ? null : {},
+      allowedHosts: ['fundo-la-cabana.onrender.com', '.onrender.com'],
     },
     preview: {
       host: '0.0.0.0',
-      allowedHosts: true,
+      allowedHosts: ['fundo-la-cabana.onrender.com', '.onrender.com'],
     },
   };
 });
