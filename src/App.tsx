@@ -597,7 +597,6 @@ export default function App() {
           </div>
         </div>
       )}
-
       <footer className="no-print mt-auto border-t border-stone-200 bg-white py-4">
         <div className="max-w-7xl mx-auto px-4 flex flex-col sm:flex-row items-center justify-between gap-3 text-xs text-stone-500">
           <div className="flex items-center gap-2">
