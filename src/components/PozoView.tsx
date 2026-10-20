@@ -1,16 +1,11 @@
 import React, { useState } from 'react';
 import { 
   Droplet, 
-  Activity, 
   Plus, 
   Gauge, 
-  Clock, 
-  Calendar, 
-  User, 
+  Edit2, 
   Trash2, 
-  ShieldCheck, 
-  AlertCircle,
-  CheckCircle2,
+  CheckCircle2, 
   X
 } from 'lucide-react';
 import { RegistroExtraccionPozo } from '../types/campo';
@@ -18,15 +13,18 @@ import { RegistroExtraccionPozo } from '../types/campo';
 interface PozoViewProps {
   registrosPozo: RegistroExtraccionPozo[];
   onAddRegistroPozo: (reg: RegistroExtraccionPozo) => void;
+  onUpdateRegistroPozo?: (reg: RegistroExtraccionPozo) => void;
   onDeleteRegistroPozo: (id: string) => void;
 }
 
 export const PozoView: React.FC<PozoViewProps> = ({
   registrosPozo,
   onAddRegistroPozo,
+  onUpdateRegistroPozo,
   onDeleteRegistroPozo
 }) => {
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [editingRegistro, setEditingRegistro] = useState<RegistroExtraccionPozo | null>(null);
   const [registroToDelete, setRegistroToDelete] = useState<RegistroExtraccionPozo | null>(null);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
 
@@ -35,13 +33,11 @@ export const PozoView: React.FC<PozoViewProps> = ({
     setTimeout(() => setToastMessage(null), 3500);
   };
 
-  // Form states
   const [fecha, setFecha] = useState(new Date().toISOString().slice(0, 10));
   const [hora, setHora] = useState('07:00');
   
-  // Calculate latest flujometer reading as default initial reading
   const latestReading = registrosPozo.length > 0 
-    ? Math.max(...registrosPozo.map(r => r.lecturaFinalM3)) 
+    ? Math.max(...registrosPozo.map((r) => r.lecturaFinalM3)) 
     : 41630;
 
   const [lecturaInicialM3, setLecturaInicialM3] = useState<number | ''>(latestReading);
@@ -53,15 +49,42 @@ export const PozoView: React.FC<PozoViewProps> = ({
   const [operadorBomba, setOperadorBomba] = useState('Carlos Morales Vega');
   const [observaciones, setObservaciones] = useState('Bomba 30 HP operando a 3.2 bar constante');
 
-  // Aggregated totals
   const totalM3 = registrosPozo.reduce((acc, r) => acc + r.metrosCubicosExtraidos, 0);
   const totalLitros = totalM3 * 1000;
   const totalHoras = registrosPozo.reduce((acc, r) => acc + r.horasBombeo, 0);
   const caudalPromedio = totalHoras > 0 ? (totalLitros / (totalHoras * 3600)) : 0;
-
-  // Cuota anual de extracción autorizada DGA (ej: 120.000 m3 anuales)
   const cuotaAutorizadaM3 = 85000;
   const porcentajeCuotaUtilizada = (totalM3 / cuotaAutorizadaM3) * 100;
+
+  const openNewModal = () => {
+    setEditingRegistro(null);
+    setFecha(new Date().toISOString().slice(0, 10));
+    setHora('07:00');
+    setLecturaInicialM3(latestReading);
+    setLecturaFinalM3(latestReading + 350);
+    setHorasBombeo(4.0);
+    setNivelEstaticoMetros(14.1);
+    setNivelDinamicoMetros(22.5);
+    setSectorDestino('Cuartel 1 y 2 - Kiwis Hayward');
+    setOperadorBomba('Carlos Morales Vega');
+    setObservaciones('Bomba 30 HP operando a 3.2 bar constante');
+    setIsModalOpen(true);
+  };
+
+  const openEditModal = (r: RegistroExtraccionPozo) => {
+    setEditingRegistro(r);
+    setFecha(r.fecha);
+    setHora(r.hora);
+    setLecturaInicialM3(r.lecturaInicialM3);
+    setLecturaFinalM3(r.lecturaFinalM3);
+    setHorasBombeo(r.horasBombeo);
+    setNivelEstaticoMetros(r.nivelEstaticoMetros ?? '');
+    setNivelDinamicoMetros(r.nivelDinamicoMetros ?? '');
+    setSectorDestino(r.sectorDestino);
+    setOperadorBomba(r.operadorBomba);
+    setObservaciones(r.observaciones || '');
+    setIsModalOpen(true);
+  };
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -72,30 +95,63 @@ export const PozoView: React.FC<PozoViewProps> = ({
     const hrs = Number(horasBombeo) || 1;
     const caudal = hrs > 0 ? lts / (hrs * 3600) : 0;
 
-    const nuevo: RegistroExtraccionPozo = {
-      id: `pz-${Date.now()}`,
-      fecha,
-      hora,
-      lecturaInicialM3: ini,
-      lecturaFinalM3: fin,
-      metrosCubicosExtraidos: m3,
-      litrosTotales: lts,
-      horasBombeo: hrs,
-      caudalPromedioLs: Number(caudal.toFixed(1)),
-      nivelEstaticoMetros: nivelEstaticoMetros !== '' ? Number(nivelEstaticoMetros) : undefined,
-      nivelDinamicoMetros: nivelDinamicoMetros !== '' ? Number(nivelDinamicoMetros) : undefined,
-      sectorDestino,
-      operadorBomba,
-      observaciones
-    };
+    if (editingRegistro) {
+      const actualizado: RegistroExtraccionPozo = {
+        ...editingRegistro,
+        fecha,
+        hora,
+        lecturaInicialM3: ini,
+        lecturaFinalM3: fin,
+        metrosCubicosExtraidos: m3,
+        litrosTotales: lts,
+        horasBombeo: hrs,
+        caudalPromedioLs: Number(caudal.toFixed(1)),
+        nivelEstaticoMetros: nivelEstaticoMetros !== '' ? Number(nivelEstaticoMetros) : undefined,
+        nivelDinamicoMetros: nivelDinamicoMetros !== '' ? Number(nivelDinamicoMetros) : undefined,
+        sectorDestino,
+        operadorBomba,
+        observaciones
+      };
 
-    onAddRegistroPozo(nuevo);
+      if (onUpdateRegistroPozo) {
+        onUpdateRegistroPozo(actualizado);
+      } else {
+        onDeleteRegistroPozo(editingRegistro.id);
+        onAddRegistroPozo(actualizado);
+      }
+      showToast('Registro de pozo actualizado');
+    } else {
+      const nuevo: RegistroExtraccionPozo = {
+        id: `pz-${Date.now()}`,
+        fecha,
+        hora,
+        lecturaInicialM3: ini,
+        lecturaFinalM3: fin,
+        metrosCubicosExtraidos: m3,
+        litrosTotales: lts,
+        horasBombeo: hrs,
+        caudalPromedioLs: Number(caudal.toFixed(1)),
+        nivelEstaticoMetros: nivelEstaticoMetros !== '' ? Number(nivelEstaticoMetros) : undefined,
+        nivelDinamicoMetros: nivelDinamicoMetros !== '' ? Number(nivelDinamicoMetros) : undefined,
+        sectorDestino,
+        operadorBomba,
+        observaciones
+      };
+      onAddRegistroPozo(nuevo);
+      showToast('Nueva extracción registrada');
+    }
     setIsModalOpen(false);
   };
 
   return (
     <div className="space-y-6">
-      {/* Header */}
+      {toastMessage && (
+        <div className="fixed bottom-5 right-5 z-50 bg-emerald-950 text-white px-4 py-3 rounded-2xl shadow-xl border border-emerald-600 flex items-center gap-2.5 text-xs font-semibold animate-in fade-in slide-in-from-bottom-2">
+          <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
+          <span>{toastMessage}</span>
+        </div>
+      )}
+
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-2 border-b border-stone-200">
         <div>
           <h1 className="text-xl font-bold tracking-tight text-stone-900">
@@ -107,15 +163,14 @@ export const PozoView: React.FC<PozoViewProps> = ({
         </div>
 
         <button
-          onClick={() => setIsModalOpen(true)}
-          className="px-3.5 py-2 text-xs font-semibold text-white bg-sky-800 rounded-lg hover:bg-sky-900 shadow-sm transition-colors flex items-center gap-1.5 whitespace-nowrap self-start sm:self-auto"
+          onClick={openNewModal}
+          className="px-3.5 py-2 text-xs font-semibold text-white bg-sky-800 rounded-lg hover:bg-sky-900 shadow-sm transition-colors flex items-center gap-1.5 whitespace-nowrap self-start sm:self-auto cursor-pointer"
         >
           <Plus className="w-4 h-4" />
           Registrar Lectura de Bombeo
         </button>
       </div>
 
-      {/* KPI Cards: Water Extraction Metrics */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         <div className="p-4 bg-white border border-stone-200 rounded-xl shadow-xs">
           <div className="text-xs text-stone-500 font-medium">Volumen Total Extraído</div>
@@ -170,7 +225,6 @@ export const PozoView: React.FC<PozoViewProps> = ({
         </div>
       </div>
 
-      {/* Well Technical Specification Banner */}
       <div className="p-4 bg-sky-50/70 border border-sky-200 rounded-xl flex flex-col sm:flex-row sm:items-center justify-between gap-4 text-xs">
         <div className="space-y-1">
           <div className="font-bold text-sky-950 flex items-center gap-1.5">
@@ -178,7 +232,7 @@ export const PozoView: React.FC<PozoViewProps> = ({
             Pozo Profundo N°1 - Fundo La Cabaña (Resolución DGA N° 412/2016)
           </div>
           <p className="text-sky-900">
-            Profundidad total: 64 metros · Diámetro entubado: 12 pulgadas · Bomba sumergible Franklin 30 HP · Medidor electromagnético tipo flujómetro homologado.
+            Profundidad: 64 metros · Diámetro: 12 pulgadas · Bomba 30 HP · Medidor homologado DGA.
           </p>
         </div>
         <div className="shrink-0 font-mono text-[11px] text-sky-900 bg-white/80 p-2 rounded border border-sky-200">
@@ -186,7 +240,6 @@ export const PozoView: React.FC<PozoViewProps> = ({
         </div>
       </div>
 
-      {/* Table of Well Extractions */}
       <div className="bg-white border border-stone-200 rounded-xl shadow-xs overflow-hidden">
         <div className="overflow-x-auto">
           <table className="w-full text-left text-xs">
@@ -199,14 +252,14 @@ export const PozoView: React.FC<PozoViewProps> = ({
                 <th className="py-3 px-4">Horas / Caudal</th>
                 <th className="py-3 px-4">Sector Huerto Kiwi</th>
                 <th className="py-3 px-4">Operador</th>
-                <th className="py-3 px-4 text-right">Acciones</th>
+                <th className="py-3 px-4 text-center">Acciones</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-stone-100">
               {registrosPozo.map((r) => (
                 <tr key={r.id} className="hover:bg-stone-50/70 transition-colors">
                   <td className="py-3 px-4 font-mono tabular-nums whitespace-nowrap text-stone-800">
-                    <div>{r.fecha}</div>
+                    <div className="font-semibold">{r.fecha}</div>
                     <div className="text-[10px] text-stone-400">{r.hora}</div>
                   </td>
 
@@ -236,15 +289,27 @@ export const PozoView: React.FC<PozoViewProps> = ({
                     {r.operadorBomba}
                   </td>
 
-                  <td className="py-3 px-4 text-right whitespace-nowrap">
-                    <button
-                      type="button"
-                      onClick={() => setRegistroToDelete(r)}
-                      className="p-1.5 text-stone-400 hover:text-red-700 hover:bg-red-50 rounded-lg transition-colors"
-                      title="Eliminar registro de extracción"
-                    >
-                      <Trash2 className="w-4 h-4" />
-                    </button>
+                  <td className="py-3 px-4 text-center whitespace-nowrap">
+                    <div className="inline-flex items-center gap-1 bg-stone-50 border border-stone-200 p-1 rounded-xl shadow-2xs">
+                      <button
+                        type="button"
+                        onClick={() => openEditModal(r)}
+                        className="px-2 py-1 text-xs font-semibold text-sky-800 hover:text-white hover:bg-sky-800 rounded-lg transition-all flex items-center gap-1 cursor-pointer"
+                        title="Editar extracción"
+                      >
+                        <Edit2 className="w-3.5 h-3.5" />
+                        <span>Editar</span>
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setRegistroToDelete(r)}
+                        className="px-2 py-1 text-xs font-semibold text-red-700 hover:text-white hover:bg-red-700 rounded-lg transition-all flex items-center gap-1 cursor-pointer"
+                        title="Eliminar extracción"
+                      >
+                        <Trash2 className="w-3.5 h-3.5" />
+                        <span>Eliminar</span>
+                      </button>
+                    </div>
                   </td>
                 </tr>
               ))}
@@ -253,16 +318,17 @@ export const PozoView: React.FC<PozoViewProps> = ({
         </div>
       </div>
 
-      {/* Modal Add Flujometer Reading */}
       {isModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-stone-900/60 backdrop-blur-sm overflow-y-auto">
-          <div className="relative w-full max-w-lg bg-white rounded-xl shadow-xl border border-stone-200 overflow-hidden">
-            <div className="flex items-center justify-between px-6 py-4 border-b border-stone-200 bg-stone-50">
-              <h3 className="text-sm font-bold text-stone-900 flex items-center gap-2">
-                <Droplet className="w-4 h-4 text-sky-700" />
-                Registrar Lectura y Bombeo de Pozo Profundo
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-stone-900/60 backdrop-blur-xs overflow-y-auto">
+          <div className="relative w-full max-w-lg bg-white rounded-2xl shadow-xl border border-stone-200 overflow-hidden">
+            <div className="flex items-center justify-between px-6 py-4 border-b border-stone-200 bg-sky-950 text-white">
+              <h3 className="text-sm font-bold flex items-center gap-2">
+                <Droplet className="w-4 h-4 text-sky-300" />
+                {editingRegistro ? 'Editar Registro de Bombeo' : 'Registrar Lectura y Bombeo de Pozo Profundo'}
               </h3>
-              <button onClick={() => setIsModalOpen(false)} className="text-stone-400 hover:text-stone-700">✕</button>
+              <button onClick={() => setIsModalOpen(false)} className="text-sky-200 hover:text-white cursor-pointer">
+                <X className="w-5 h-5" />
+              </button>
             </div>
 
             <form onSubmit={handleSubmit} className="p-6 space-y-4 text-xs">
@@ -320,7 +386,7 @@ export const PozoView: React.FC<PozoViewProps> = ({
 
               <div className="grid grid-cols-3 gap-3">
                 <div>
-                  <label className="block text-stone-700 font-medium mb-1">Horas de Bombeo</label>
+                  <label className="block text-stone-700 font-medium mb-1">Horas Bombeo</label>
                   <input
                     type="number"
                     step="0.1"
@@ -380,22 +446,74 @@ export const PozoView: React.FC<PozoViewProps> = ({
                   className="w-full px-3 py-1.5 border border-stone-300 rounded-lg text-xs"
                 />
               </div>
+
               <div className="pt-3 border-t border-stone-200 flex justify-end gap-2">
                 <button
                   type="button"
                   onClick={() => setIsModalOpen(false)}
-                  className="px-3 py-1.5 text-stone-600 hover:bg-stone-100 rounded-lg"
+                  className="px-4 py-2 text-stone-600 hover:bg-stone-100 rounded-xl"
                 >
                   Cancelar
                 </button>
                 <button
                   type="submit"
-                  className="px-4 py-1.5 bg-sky-800 text-white rounded-lg font-semibold hover:bg-sky-900"
+                  className="px-4 py-2 bg-sky-800 text-white rounded-xl font-bold hover:bg-sky-900 cursor-pointer"
                 >
-                  Guardar Registro de Pozo
+                  {editingRegistro ? 'Guardar Cambios' : 'Guardar Registro de Pozo'}
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {registroToDelete && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-3 bg-stone-900/60 backdrop-blur-xs">
+          <div className="bg-white rounded-2xl shadow-xl w-full max-w-md border border-stone-200 overflow-hidden animate-in fade-in zoom-in-95 duration-150">
+            <div className="px-5 py-4 border-b border-stone-200 bg-red-950 text-white flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <Trash2 className="w-5 h-5 text-red-400" />
+                <h3 className="font-bold text-sm">Eliminar Registro de Extracción</h3>
+              </div>
+              <button onClick={() => setRegistroToDelete(null)} className="p-1 text-red-200 hover:text-white rounded-lg cursor-pointer">
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <div className="p-5 space-y-3.5 text-xs">
+              <p className="text-stone-800 text-sm font-medium">
+                ¿Estás seguro de que deseas eliminar este registro de extracción de agua?
+              </p>
+
+              <div className="p-3 bg-stone-50 rounded-xl border border-stone-200 space-y-1.5 text-stone-700">
+                <div><strong>Fecha:</strong> {registroToDelete.fecha} ({registroToDelete.hora})</div>
+                <div><strong>Volumen:</strong> {registroToDelete.metrosCubicosExtraidos.toLocaleString()} m³ ({registroToDelete.litrosTotales.toLocaleString()} Litros)</div>
+                <div><strong>Sector:</strong> {registroToDelete.sectorDestino}</div>
+                <div><strong>Operador:</strong> {registroToDelete.operadorBomba}</div>
+              </div>
+
+              <div className="pt-3 border-t border-stone-200 flex justify-end gap-2">
+                <button
+                  type="button"
+                  onClick={() => setRegistroToDelete(null)}
+                  className="px-4 py-2 border border-stone-300 rounded-xl text-stone-700 font-semibold hover:bg-stone-50 cursor-pointer"
+                >
+                  Cancelar
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    onDeleteRegistroPozo(registroToDelete.id);
+                    showToast('Registro de extracción eliminado');
+                    setRegistroToDelete(null);
+                  }}
+                  className="px-4 py-2 bg-red-700 hover:bg-red-800 text-white font-bold rounded-xl shadow-sm flex items-center gap-1.5 cursor-pointer"
+                >
+                  <Trash2 className="w-4 h-4" />
+                  Eliminar Definitivamente
+                </button>
+              </div>
+            </div>
           </div>
         </div>
       )}
