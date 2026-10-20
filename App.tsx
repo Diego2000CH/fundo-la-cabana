@@ -18,19 +18,33 @@ import { ModalLabor } from './components/ModalLabor';
 import { ModalExplotacion } from './components/ModalExplotacion';
 import { 
   getStoredExplotacion, 
+  saveStoredExplotacion,
   getStoredParcelas, 
+  saveStoredParcelas,
   getStoredLabores, 
+  saveStoredLabores,
   getStoredInventario, 
+  saveStoredInventario,
   getStoredRegistrosPozo, 
+  saveStoredRegistrosPozo,
   getStoredLugares, 
+  saveStoredLugares,
   getStoredUsuarios, 
+  saveStoredUsuarios,
   getStoredActiveUserId, 
+  saveStoredActiveUserId,
   getStoredMuestreosMadurez, 
+  saveStoredMuestreosMadurez,
   getStoredCosechasLote, 
+  saveStoredCosechasLote,
   getStoredOrdenesTrabajo, 
+  saveStoredOrdenesTrabajo,
   getStoredCondicionHorasFrio, 
+  saveStoredCondicionHorasFrio,
   getStoredFenologia, 
+  saveStoredFenologia,
   getStoredPolinizacion, 
+  saveStoredPolinizacion,
   resetStorageToDefaults 
 } from './utils/storage';
 import { 
@@ -53,6 +67,7 @@ import {
 import { initialClimaLaCabana } from './data/initialData';
 import { RotateCcw, X, Cloud, CheckCircle2, Loader2 } from 'lucide-react';
 
+// BASE DE DATOS EN LA NUBE JSONBIN CONFIGURADA
 const CLOUD_BIN_ID = '6ad7b16dffd5d160537cefc6';
 const CLOUD_MASTER_KEY = '$2a$10$g/sLJaV5/DFNZaxvcx30vOOjHCH2Zt/2zWfsJ34Apx959RD8Tug3W';
 
@@ -87,7 +102,7 @@ export default function App() {
   const [isExplotacionModalOpen, setIsExplotacionModalOpen] = useState(false);
   const [isResetConfirmOpen, setIsResetConfirmOpen] = useState(false);
 
-  // 1. CARGA DESDE LA BASE DE DATOS EN LA NUBE
+  // 1. CARGA DE DATOS EN LA NUBE AL ABRIR LA APP
   const fetchFromCloud = () => {
     setCloudStatus('cargando');
     fetch(`https://api.jsonbin.io/v3/b/${CLOUD_BIN_ID}/latest`, {
@@ -116,7 +131,7 @@ export default function App() {
         setCloudStatus('sincronizado');
       })
       .catch((err) => {
-        console.warn('Error leyendo de la nube:', err);
+        console.warn('Iniciando con memoria local:', err);
         setIsCloudLoaded(true);
         setCloudStatus('sincronizado');
       });
@@ -126,12 +141,12 @@ export default function App() {
     fetchFromCloud();
   }, []);
 
-  // 2. GUARDADO AUTOMÁTICO EN LA NUBE
-  const isInitialMount = useRef(true);
+  // 2. GUARDADO AUTOMÁTICO EN LA NUBE ANTE CUALQUIER CAMBIO O ELIMINACIÓN
+  const isFirstLoad = useRef(true);
   useEffect(() => {
     if (!isCloudLoaded) return;
-    if (isInitialMount.current) {
-      isInitialMount.current = false;
+    if (isFirstLoad.current) {
+      isFirstLoad.current = false;
       return;
     }
 
@@ -154,6 +169,7 @@ export default function App() {
         polinizacion
       };
 
+      // Guardar en la nube JSONBin
       fetch(`https://api.jsonbin.io/v3/b/${CLOUD_BIN_ID}`, {
         method: 'PUT',
         headers: {
@@ -163,11 +179,24 @@ export default function App() {
         body: JSON.stringify(payload)
       })
         .then(() => setCloudStatus('sincronizado'))
-        .catch((err) => {
-          console.error('Error guardando en la nube:', err);
-          setCloudStatus('error');
-        });
-    }, 600);
+        .catch(() => setCloudStatus('error'));
+
+      // Respaldo en memoria local del navegador
+      saveStoredExplotacion(explotacion);
+      saveStoredParcelas(parcelas);
+      saveStoredLabores(labores);
+      saveStoredInventario(inventario);
+      saveStoredRegistrosPozo(registrosPozo);
+      saveStoredLugares(lugares);
+      saveStoredUsuarios(usuarios);
+      saveStoredActiveUserId(activeUserId);
+      saveStoredMuestreosMadurez(muestreosMadurez);
+      saveStoredCosechasLote(cosechasLote);
+      saveStoredOrdenesTrabajo(ordenesTrabajo);
+      saveStoredCondicionHorasFrio(horasFrio);
+      saveStoredFenologia(fenologia);
+      saveStoredPolinizacion(polinizacion);
+    }, 400);
 
     return () => clearTimeout(timer);
   }, [
