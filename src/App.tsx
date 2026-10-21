@@ -70,10 +70,11 @@ import { RotateCcw, X, CheckCircle2, Loader2, Save, RefreshCw, Database, Lock, L
 const SUPABASE_URL = 'https://zvtolionewlulqmtdaty.supabase.co';
 const SUPABASE_ANON_KEY = 'sb_publishable_s1vQx_x3_f3fDHHkdjVxZw_GTMkiU8I';
 
+// TU USUARIO ADMINISTRADOR REAL
 const USUARIO_INICIAL_ADMIN: UsuarioPredio & { clave?: string } = {
   id: 'usr-admin-diego',
-  nombre: 'Diego Administrador',
-  email: 'diego@fundolacabana.cl',
+  nombre: 'Diego Pereira',
+  email: 'diegopereiraramirez@gmail.com',
   telefono: '+56 9 ',
   rol: 'administrador',
   rutIdentificacion: '',
@@ -111,15 +112,15 @@ export default function App() {
 
   // SISTEMA DE SESIÓN
   const [loggedInUser, setLoggedInUser] = useState<(UsuarioPredio & { clave?: string }) | null>(null);
-  const [loginEmail, setLoginEmail] = useState('diego@fundolacabana.cl');
+  const [loginEmail, setLoginEmail] = useState('diegopereiraramirez@gmail.com');
   const [loginPassword, setLoginPassword] = useState('');
   const [loginError, setLoginError] = useState('');
 
   // MODAL PARA CAMBIAR CLAVE Y CORREO
   const [isProfileModalOpen, setIsProfileModalOpen] = useState(false);
-  const [myNewName, setMyNewName] = useState('');
-  const [myNewEmail, setMyNewEmail] = useState('');
-  const [myNewPassword, setMyNewPassword] = useState('');
+  const [myNewName, setMyNewName] = useState('Diego Pereira');
+  const [myNewEmail, setMyNewEmail] = useState('diegopereiraramirez@gmail.com');
+  const [myNewPassword, setMyNewPassword] = useState('1234');
   const [profileSuccessMsg, setProfileSuccessMsg] = useState('');
 
   // Modales
@@ -156,6 +157,12 @@ export default function App() {
           if (Array.isArray(datos.lugares)) setLugares(datos.lugares);
           if (Array.isArray(datos.usuarios) && datos.usuarios.length > 0) {
             setUsuarios(datos.usuarios);
+            const adminUser = datos.usuarios.find((u: any) => u.email === 'diegopereiraramirez@gmail.com');
+            if (adminUser) {
+              setMyNewEmail(adminUser.email);
+              setMyNewName(adminUser.nombre);
+              if (adminUser.clave) setMyNewPassword(adminUser.clave);
+            }
           }
           if (Array.isArray(datos.muestreosMadurez)) setMuestreosMadurez(datos.muestreosMadurez);
           if (Array.isArray(datos.cosechasLote)) setCosechasLote(datos.cosechasLote);
@@ -181,7 +188,7 @@ export default function App() {
 
     const savedUserId = localStorage.getItem('fundo_sesion_id');
     if (savedUserId) {
-      const u = usuarios.find((item) => item.id === savedUserId);
+      const u = usuarios.find((item) => item.id === savedUserId) || usuarios[0];
       if (u) {
         setLoggedInUser(u);
         setActiveUserId(u.id);
@@ -189,7 +196,7 @@ export default function App() {
     }
   }, []);
 
-  // 2. GUARDAR EN SUPABASE (CON ENLACE POSTGREST BLINDADO)
+  // 2. GUARDAR EN SUPABASE CON POSTGREST BLINDADO
   const guardarEnSupabase = (datosPersonalizados?: any) => {
     setDbStatus('guardando');
     setDbMessage('Guardando en Supabase...');
@@ -226,7 +233,6 @@ export default function App() {
     saveStoredFenologia(payload.fenologia);
     saveStoredPolinizacion(payload.polinizacion);
 
-    // LLAMADA EXACTA QUE SUPABASE ESPERA: ?on_conflict=id y cuerpo en array [{ ... }]
     fetch(`${SUPABASE_URL}/rest/v1/fundo_datos?on_conflict=id`, {
       method: 'POST',
       headers: {
@@ -314,25 +320,57 @@ export default function App() {
     setLoginPassword('');
   };
 
-  // GUARDAR MI PERFIL, CORREO Y CONTRASEÑA
+  // GUARDADO DIRECTO E INMEDIATO DE MI PERFIL, CORREO Y CLAVE
   const handleSaveMyProfile = (e: React.FormEvent) => {
     e.preventDefault();
     if (!loggedInUser) return;
 
+    const emailLimpio = myNewEmail.trim().toLowerCase();
+    const claveLimpia = myNewPassword.trim() || '1234';
+    const nombreLimpio = myNewName.trim() || loggedInUser.nombre;
+
     const updatedUser = {
       ...loggedInUser,
-      nombre: myNewName.trim() || loggedInUser.nombre,
-      email: myNewEmail.trim().toLowerCase() || loggedInUser.email,
-      clave: myNewPassword.trim() || loggedInUser.clave || '1234'
+      nombre: nombreLimpio,
+      email: emailLimpio,
+      clave: claveLimpia
     };
 
+    const nuevosUsuarios = usuarios.map((u) =>
+      u.id === updatedUser.id ? updatedUser : u
+    );
+
+    if (!nuevosUsuarios.some(u => u.id === updatedUser.id)) {
+      nuevosUsuarios.push(updatedUser);
+    }
+
     setLoggedInUser(updatedUser);
-    setUsuarios((prev) => prev.map((u) => u.id === updatedUser.id ? updatedUser : u));
+    setUsuarios(nuevosUsuarios);
+    setLoginEmail(emailLimpio);
 
-    // Guardado inmediato en Supabase
-    guardarEnSupabase();
+    localStorage.setItem('fundo_sesion_id', updatedUser.id);
 
-    setProfileSuccessMsg('¡Datos actualizados con éxito!');
+    // ENVIAR DE INMEDIATO A SUPABASE SIN ESPERAR
+    const payloadActualizado = {
+      explotacion,
+      parcelas,
+      labores,
+      inventario,
+      registrosPozo,
+      lugares,
+      usuarios: nuevosUsuarios,
+      activeUserId: updatedUser.id,
+      muestreosMadurez,
+      cosechasLote,
+      ordenesTrabajo,
+      horasFrio,
+      fenologia,
+      polinizacion
+    };
+
+    guardarEnSupabase(payloadActualizado);
+
+    setProfileSuccessMsg('¡Correo y contraseña guardados con éxito!');
     setTimeout(() => {
       setIsProfileModalOpen(false);
       setProfileSuccessMsg('');
@@ -537,27 +575,15 @@ export default function App() {
 
             <div>
               <label className="block text-stone-700 font-bold mb-1">
-                Selecciona tu Usuario o Escribe tu Correo *
+                Correo Electrónico *
               </label>
-              <select
-                value={loginEmail}
-                onChange={(e) => setLoginEmail(e.target.value)}
-                className="w-full p-2.5 rounded-lg border border-stone-300 font-medium bg-white text-stone-900 mb-2"
-              >
-                {usuarios.map((u) => (
-                  <option key={u.id} value={u.email}>
-                    {u.nombre} ({u.email})
-                  </option>
-                ))}
-              </select>
-
               <input
                 type="email"
                 required
                 value={loginEmail}
                 onChange={(e) => setLoginEmail(e.target.value)}
-                placeholder="correo@fundolacabana.cl"
-                className="w-full p-2.5 rounded-lg border border-stone-300"
+                placeholder="diegopereiraramirez@gmail.com"
+                className="w-full p-2.5 rounded-lg border border-stone-300 font-medium"
               />
             </div>
 
@@ -574,7 +600,7 @@ export default function App() {
                 className="w-full p-2.5 rounded-lg border border-stone-300 text-sm"
               />
               <span className="text-[10px] text-stone-400 mt-1 block">
-                *(Clave por defecto: <strong>1234</strong>)*
+                *(Clave inicial por defecto: <strong>1234</strong>)*
               </span>
             </div>
 
@@ -894,7 +920,7 @@ export default function App() {
               </div>
 
               <div>
-                <label className="block text-stone-700 font-bold mb-1">Correo Electrónico (Para iniciar sesión) *</label>
+                <label className="block text-stone-700 font-bold mb-1">Correo Electrónico (Tu usuario de ingreso) *</label>
                 <input
                   type="email"
                   required
@@ -911,7 +937,7 @@ export default function App() {
                   required
                   value={myNewPassword}
                   onChange={(e) => setMyNewPassword(e.target.value)}
-                  placeholder="Escribe tu nueva clave"
+                  placeholder="Escribe tu nueva clave secreta"
                   className="w-full p-2.5 rounded-lg border border-stone-300 text-sm font-mono"
                 />
               </div>
@@ -926,7 +952,7 @@ export default function App() {
                 </button>
                 <button
                   type="submit"
-                  className="px-5 py-2 bg-emerald-800 hover:bg-emerald-700 text-white font-bold rounded-lg shadow-sm"
+                  className="px-5 py-2 bg-emerald-800 hover:bg-emerald-700 text-white font-bold rounded-lg shadow-sm cursor-pointer"
                 >
                   Guardar Cambios
                 </button>
