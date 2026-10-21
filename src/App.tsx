@@ -65,12 +65,11 @@ import {
   RegistroPolinizacion
 } from './types/campo';
 import { initialClimaLaCabana } from './data/initialData';
-import { RotateCcw, X, CheckCircle2, Loader2, Save, RefreshCw, Database, Lock, LogIn, AlertCircle, LogOut, UserCog } from 'lucide-react';
+import { RotateCcw, X, CheckCircle2, Loader2, Save, RefreshCw, Database, Lock, LogIn, AlertCircle, LogOut, UserCog, KeyRound } from 'lucide-react';
 
 const SUPABASE_URL = 'https://zvtolionewlulqmtdaty.supabase.co';
 const SUPABASE_ANON_KEY = 'sb_publishable_s1vQx_x3_f3fDHHkdjVxZw_GTMkiU8I';
 
-// TU USUARIO PRINCIPAL OFICIAL
 const USUARIO_INICIAL_ADMIN: UsuarioPredio & { clave?: string } = {
   id: 'usr-admin-diego',
   nombre: 'Diego Pereira',
@@ -106,15 +105,17 @@ export default function App() {
   const [fenologia, setFenologia] = useState<SeguimientoFenologico[]>(getStoredFenologia);
   const [polinizacion, setPolinizacion] = useState<RegistroPolinizacion[]>(getStoredPolinizacion);
 
+  // Estados de conexión con Supabase
   const [isDbLoaded, setIsDbLoaded] = useState(false);
   const [dbStatus, setDbStatus] = useState<'sincronizado' | 'guardando' | 'cargando' | 'error'>('cargando');
   const [dbMessage, setDbMessage] = useState('Conectando a Supabase...');
 
-  // SESIÓN
+  // SESIÓN Y LOGIN
   const [loggedInUser, setLoggedInUser] = useState<(UsuarioPredio & { clave?: string }) | null>(null);
   const [loginEmail, setLoginEmail] = useState('diegopereiraramirez@gmail.com');
   const [loginPassword, setLoginPassword] = useState('');
   const [loginError, setLoginError] = useState('');
+  const [isLoggingIn, setIsLoggingIn] = useState(false);
 
   // MODAL MI PERFIL
   const [isProfileModalOpen, setIsProfileModalOpen] = useState(false);
@@ -133,55 +134,54 @@ export default function App() {
   const [isResetConfirmOpen, setIsResetConfirmOpen] = useState(false);
 
   // 1. CARGA AUTOMÁTICA DESDE SUPABASE
-  const cargarDesdeSupabase = () => {
+  const cargarDesdeSupabase = async () => {
     setDbStatus('cargando');
     setDbMessage('Descargando datos de Supabase...');
 
-    fetch(`${SUPABASE_URL}/rest/v1/fundo_datos?id=eq.fundo_la_cabana&select=datos`, {
-      headers: {
-        'apikey': SUPABASE_ANON_KEY,
-        'Authorization': `Bearer ${SUPABASE_ANON_KEY}`
-      }
-    })
-      .then((res) => {
-        if (!res.ok) throw new Error(`HTTP ${res.status}`);
-        return res.json();
-      })
-      .then((filas) => {
-        if (Array.isArray(filas) && filas.length > 0 && filas[0].datos) {
-          const datos = filas[0].datos;
-          if (datos.explotacion) setExplotacion(datos.explotacion);
-          if (Array.isArray(datos.parcelas)) setParcelas(datos.parcelas);
-          if (Array.isArray(datos.labores)) setLabores(datos.labores);
-          if (Array.isArray(datos.inventario)) setInventario(datos.inventario);
-          if (Array.isArray(datos.registrosPozo)) setRegistrosPozo(datos.registrosPozo);
-          if (Array.isArray(datos.lugares)) setLugares(datos.lugares);
-          if (Array.isArray(datos.usuarios) && datos.usuarios.length > 0) {
-            setUsuarios(datos.usuarios);
-            const adminUser = datos.usuarios.find((u: any) => u.email === 'diegopereiraramirez@gmail.com');
-            if (adminUser) {
-              setMyNewEmail(adminUser.email);
-              setMyNewName(adminUser.nombre);
-              if (adminUser.clave) setMyNewPassword(adminUser.clave);
-            }
-          }
-          if (Array.isArray(datos.muestreosMadurez)) setMuestreosMadurez(datos.muestreosMadurez);
-          if (Array.isArray(datos.cosechasLote)) setCosechasLote(datos.cosechasLote);
-          if (Array.isArray(datos.ordenesTrabajo)) setOrdenesTrabajo(datos.ordenesTrabajo);
-          if (datos.horasFrio) setHorasFrio(datos.horasFrio);
-          if (Array.isArray(datos.fenologia)) setFenologia(datos.fenologia);
-          if (Array.isArray(datos.polinizacion)) setPolinizacion(datos.polinizacion);
+    try {
+      const res = await fetch(`${SUPABASE_URL}/rest/v1/fundo_datos?id=eq.fundo_la_cabana&select=datos`, {
+        headers: {
+          'apikey': SUPABASE_ANON_KEY,
+          'Authorization': `Bearer ${SUPABASE_ANON_KEY}`
         }
-        setIsDbLoaded(true);
-        setDbStatus('sincronizado');
-        setDbMessage('Supabase conectado en vivo');
-      })
-      .catch((err) => {
-        console.warn('Iniciando con memoria local:', err);
-        setIsDbLoaded(true);
-        setDbStatus('sincronizado');
-        setDbMessage('Modo local activo');
       });
+
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const filas = await res.json();
+
+      if (Array.isArray(filas) && filas.length > 0 && filas[0].datos) {
+        const datos = filas[0].datos;
+        if (datos.explotacion) setExplotacion(datos.explotacion);
+        if (Array.isArray(datos.parcelas)) setParcelas(datos.parcelas);
+        if (Array.isArray(datos.labores)) setLabores(datos.labores);
+        if (Array.isArray(datos.inventario)) setInventario(datos.inventario);
+        if (Array.isArray(datos.registrosPozo)) setRegistrosPozo(datos.registrosPozo);
+        if (Array.isArray(datos.lugares)) setLugares(datos.lugares);
+        if (Array.isArray(datos.usuarios) && datos.usuarios.length > 0) {
+          setUsuarios(datos.usuarios);
+          const adminUser = datos.usuarios.find((u: any) => u.email === 'diegopereiraramirez@gmail.com');
+          if (adminUser) {
+            setMyNewEmail(adminUser.email);
+            setMyNewName(adminUser.nombre);
+            if (adminUser.clave) setMyNewPassword(adminUser.clave);
+          }
+        }
+        if (Array.isArray(datos.muestreosMadurez)) setMuestreosMadurez(datos.muestreosMadurez);
+        if (Array.isArray(datos.cosechasLote)) setCosechasLote(datos.cosechasLote);
+        if (Array.isArray(datos.ordenesTrabajo)) setOrdenesTrabajo(datos.ordenesTrabajo);
+        if (datos.horasFrio) setHorasFrio(datos.horasFrio);
+        if (Array.isArray(datos.fenologia)) setFenologia(datos.fenologia);
+        if (Array.isArray(datos.polinizacion)) setPolinizacion(datos.polinizacion);
+      }
+      setIsDbLoaded(true);
+      setDbStatus('sincronizado');
+      setDbMessage('Supabase conectado en vivo');
+    } catch (err: any) {
+      console.warn('Iniciando con memoria local:', err);
+      setIsDbLoaded(true);
+      setDbStatus('sincronizado');
+      setDbMessage('Modo local activo');
+    }
   };
 
   useEffect(() => {
@@ -197,7 +197,7 @@ export default function App() {
     }
   }, []);
 
-  // 2. SISTEMA DE TRIPLE GUARDADO BLINDADO EN SUPABASE
+  // 2. GUARDAR EN SUPABASE (CON ENLACE BLINDADO)
   const guardarEnSupabase = async (datosPersonalizados?: any) => {
     setDbStatus('guardando');
     setDbMessage('Guardando en Supabase...');
@@ -219,6 +219,7 @@ export default function App() {
       polinizacion
     };
 
+    // Guardado de respaldo local
     saveStoredExplotacion(payload.explotacion);
     saveStoredParcelas(payload.parcelas);
     saveStoredLabores(payload.labores);
@@ -242,7 +243,6 @@ export default function App() {
     };
 
     try {
-      // Intento 1: Upsert PostgREST con ?on_conflict=id
       const res = await fetch(`${SUPABASE_URL}/rest/v1/fundo_datos?on_conflict=id`, {
         method: 'POST',
         headers,
@@ -254,41 +254,8 @@ export default function App() {
       });
 
       if (!res.ok) {
-        // Intento 2: Si la fila ya existe, actualizarla directamente con PATCH
-        const patchRes = await fetch(`${SUPABASE_URL}/rest/v1/fundo_datos?id=eq.fundo_la_cabana`, {
-          method: 'PATCH',
-          headers: {
-            'Content-Type': 'application/json',
-            'apikey': SUPABASE_ANON_KEY,
-            'Authorization': `Bearer ${SUPABASE_ANON_KEY}`
-          },
-          body: JSON.stringify({
-            datos: payload,
-            updated_at: new Date().toISOString()
-          })
-        });
-
-        if (!patchRes.ok) {
-          // Intento 3: Insertar como fila nueva
-          const insertRes = await fetch(`${SUPABASE_URL}/rest/v1/fundo_datos`, {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-              'apikey': SUPABASE_ANON_KEY,
-              'Authorization': `Bearer ${SUPABASE_ANON_KEY}`
-            },
-            body: JSON.stringify({
-              id: 'fundo_la_cabana',
-              datos: payload,
-              updated_at: new Date().toISOString()
-            })
-          });
-
-          if (!insertRes.ok) {
-            const errDetail = await insertRes.text();
-            throw new Error(`Error ${insertRes.status}: ${errDetail.slice(0, 40)}`);
-          }
-        }
+        const errDetail = await res.text();
+        throw new Error(`HTTP ${res.status}: ${errDetail}`);
       }
 
       setDbStatus('sincronizado');
@@ -296,10 +263,11 @@ export default function App() {
     } catch (err: any) {
       console.error('Error guardando en Supabase:', err);
       setDbStatus('error');
-      setDbMessage(err.message || 'Error al conectar con Supabase');
+      setDbMessage('Error al enviar a Supabase');
     }
   };
 
+  // Guardado debounced
   const primerCarga = useRef(true);
   useEffect(() => {
     if (!isDbLoaded) return;
@@ -331,29 +299,72 @@ export default function App() {
     polinizacion
   ]);
 
-  const handleLogin = (e: React.FormEvent) => {
+  // 3. INICIO DE SESIÓN EN VIVO DIRECTO DESDE SUPABASE
+  const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoginError('');
+    setIsLoggingIn(true);
 
-    const user = usuarios.find(
-      (u) => u.email.trim().toLowerCase() === loginEmail.trim().toLowerCase()
-    );
+    try {
+      // Descargar usuarios más recientes de Supabase al momento de hacer clic
+      let listaFresca = usuarios;
+      const res = await fetch(`${SUPABASE_URL}/rest/v1/fundo_datos?id=eq.fundo_la_cabana&select=datos`, {
+        headers: {
+          'apikey': SUPABASE_ANON_KEY,
+          'Authorization': `Bearer ${SUPABASE_ANON_KEY}`
+        }
+      });
 
-    if (!user) {
-      setLoginError('No existe ningún usuario con este correo electrónico.');
-      return;
+      if (res.ok) {
+        const filas = await res.json();
+        if (Array.isArray(filas) && filas.length > 0 && filas[0].datos?.usuarios) {
+          listaFresca = filas[0].datos.usuarios;
+          setUsuarios(listaFresca);
+
+          // Cargar todo el fundo
+          const datos = filas[0].datos;
+          if (datos.explotacion) setExplotacion(datos.explotacion);
+          if (Array.isArray(datos.parcelas)) setParcelas(datos.parcelas);
+          if (Array.isArray(datos.labores)) setLabores(datos.labores);
+          if (Array.isArray(datos.inventario)) setInventario(datos.inventario);
+          if (Array.isArray(datos.registrosPozo)) setRegistrosPozo(datos.registrosPozo);
+          if (Array.isArray(datos.lugares)) setLugares(datos.lugares);
+          if (Array.isArray(datos.muestreosMadurez)) setMuestreosMadurez(datos.muestreosMadurez);
+          if (Array.isArray(datos.cosechasLote)) setCosechasLote(datos.cosechasLote);
+          if (Array.isArray(datos.ordenesTrabajo)) setOrdenesTrabajo(datos.ordenesTrabajo);
+          if (datos.horasFrio) setHorasFrio(datos.horasFrio);
+          if (Array.isArray(datos.fenologia)) setFenologia(datos.fenologia);
+          if (Array.isArray(datos.polinizacion)) setPolinizacion(datos.polinizacion);
+        }
+      }
+
+      const inputEmail = loginEmail.trim().toLowerCase();
+      const user = listaFresca.find(
+        (u) => u.email.trim().toLowerCase() === inputEmail
+      );
+
+      if (!user) {
+        setLoginError(`El correo "${loginEmail}" no está registrado. Usuarios disponibles: ${listaFresca.map(u => u.email).join(', ')}`);
+        setIsLoggingIn(false);
+        return;
+      }
+
+      const userPass = user.clave || '1234';
+
+      if (loginPassword.trim() !== userPass.trim()) {
+        setLoginError('Contraseña incorrecta.');
+        setIsLoggingIn(false);
+        return;
+      }
+
+      setLoggedInUser(user);
+      setActiveUserId(user.id);
+      localStorage.setItem('fundo_sesion_id', user.id);
+    } catch (err: any) {
+      setLoginError('Error de red al comprobar usuario: ' + err.message);
+    } finally {
+      setIsLoggingIn(false);
     }
-
-    const userPass = user.clave || '1234';
-
-    if (loginPassword !== userPass) {
-      setLoginError('Contraseña incorrecta.');
-      return;
-    }
-
-    setLoggedInUser(user);
-    setActiveUserId(user.id);
-    localStorage.setItem('fundo_sesion_id', user.id);
   };
 
   const handleLogout = () => {
@@ -362,7 +373,7 @@ export default function App() {
     setLoginPassword('');
   };
 
-  // GUARDADO DIRECTO DE PERFIL, CORREO Y CLAVE
+  // GUARDAR MI PERFIL, CORREO Y CLAVE
   const handleSaveMyProfile = (e: React.FormEvent) => {
     e.preventDefault();
     if (!loggedInUser) return;
@@ -592,6 +603,7 @@ export default function App() {
 
   const lowStockCount = inventario.filter((i) => i.stockActual <= i.stockMinimo).length;
 
+  // PANTALLA DE BLOQUEO / LOGIN CON CONSULTA DIRECTA A SUPABASE
   if (!loggedInUser) {
     return (
       <div className="min-h-screen bg-stone-900 flex items-center justify-center p-4">
@@ -616,15 +628,27 @@ export default function App() {
 
             <div>
               <label className="block text-stone-700 font-bold mb-1">
-                Correo Electrónico *
+                Selecciona tu Nombre de Usuario *
               </label>
+              <select
+                value={loginEmail}
+                onChange={(e) => setLoginEmail(e.target.value)}
+                className="w-full p-2.5 rounded-lg border border-stone-300 font-medium bg-white text-stone-900 mb-2 cursor-pointer"
+              >
+                {usuarios.map((u) => (
+                  <option key={u.id} value={u.email}>
+                    {u.nombre} ({u.email})
+                  </option>
+                ))}
+              </select>
+
               <input
                 type="email"
                 required
                 value={loginEmail}
                 onChange={(e) => setLoginEmail(e.target.value)}
-                placeholder="diegopereiraramirez@gmail.com"
-                className="w-full p-2.5 rounded-lg border border-stone-300 font-medium"
+                placeholder="correo@ejemplo.com"
+                className="w-full p-2.5 rounded-lg border border-stone-300"
               />
             </div>
 
@@ -638,20 +662,31 @@ export default function App() {
                 value={loginPassword}
                 onChange={(e) => setLoginPassword(e.target.value)}
                 placeholder="Escribe tu clave aquí"
-                className="w-full p-2.5 rounded-lg border border-stone-300 text-sm"
+                className="w-full p-2.5 rounded-lg border border-stone-300 text-sm font-mono"
               />
-              <span className="text-[10px] text-stone-400 mt-1 block">
-                *(Clave inicial por defecto: <strong>1234</strong>)*
-              </span>
             </div>
 
             <button
               type="submit"
-              className="w-full py-3 bg-emerald-800 hover:bg-emerald-700 text-white font-bold rounded-xl text-sm transition-all flex items-center justify-center gap-2 shadow-sm cursor-pointer active:scale-95"
+              disabled={isLoggingIn}
+              className="w-full py-3 bg-emerald-800 hover:bg-emerald-700 disabled:opacity-50 text-white font-bold rounded-xl text-sm transition-all flex items-center justify-center gap-2 shadow-sm cursor-pointer active:scale-95"
             >
-              <LogIn className="w-4 h-4" />
-              Ingresar al Cuaderno
+              {isLoggingIn ? (
+                <>
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                  <span>Comprobando en Supabase...</span>
+                </>
+              ) : (
+                <>
+                  <LogIn className="w-4 h-4" />
+                  <span>Ingresar al Cuaderno</span>
+                </>
+              )}
             </button>
+
+            <div className="pt-2 text-center text-[11px] text-stone-400">
+              Base de datos segura conectada en la nube (Supabase)
+            </div>
           </form>
         </div>
       </div>
@@ -660,7 +695,7 @@ export default function App() {
 
   return (
     <div className="min-h-screen bg-stone-50 flex flex-col font-sans text-stone-900 pb-16 sm:pb-0">
-      {/* BARRA SUPERIOR DE CONEXIÓN CON SUPABASE & BOTÓN MI PERFIL */}
+      {/* BARRA SUPERIOR DE CONEXIÓN */}
       <div className="bg-stone-900 text-white px-4 py-2 border-b border-stone-800 text-xs flex flex-wrap items-center justify-between gap-3 sticky top-0 z-50">
         <div className="flex items-center gap-2">
           <Database className="w-4 h-4 text-emerald-400" />
@@ -690,7 +725,7 @@ export default function App() {
         </div>
 
         <div className="flex items-center gap-2">
-          {/* BOTÓN PARA CAMBIAR NOMBRE, CORREO Y CLAVE */}
+          {/* BOTÓN MI PERFIL */}
           <button
             onClick={() => {
               setMyNewName(activeUser.nombre);
@@ -774,10 +809,66 @@ export default function App() {
             onSetActiveUser={setActiveUserId}
             onAddUsuario={(u) => {
               const userWithPass = { ...u, clave: (u as any).clave || '1234' };
-              setUsuarios((prev) => [...prev, userWithPass]);
+              const nuevaLista = [...usuarios, userWithPass];
+              setUsuarios(nuevaLista);
+              // Guardado inmediato en Supabase
+              guardarEnSupabase({
+                explotacion,
+                parcelas,
+                labores,
+                inventario,
+                registrosPozo,
+                lugares,
+                usuarios: nuevaLista,
+                activeUserId,
+                muestreosMadurez,
+                cosechasLote,
+                ordenesTrabajo,
+                horasFrio,
+                fenologia,
+                polinizacion
+              });
             }}
-            onUpdateUsuario={(u) => setUsuarios((prev) => prev.map((item) => item.id === u.id ? { ...u, clave: (item as any).clave || '1234' } : item))}
-            onDeleteUsuario={(id) => setUsuarios((prev) => prev.filter((item) => item.id !== id))}
+            onUpdateUsuario={(u) => {
+              const nuevaLista = usuarios.map((item) => item.id === u.id ? { ...u, clave: (u as any).clave || (item as any).clave || '1234' } : item);
+              setUsuarios(nuevaLista);
+              guardarEnSupabase({
+                explotacion,
+                parcelas,
+                labores,
+                inventario,
+                registrosPozo,
+                lugares,
+                usuarios: nuevaLista,
+                activeUserId,
+                muestreosMadurez,
+                cosechasLote,
+                ordenesTrabajo,
+                horasFrio,
+                fenologia,
+                polinizacion
+              });
+            }}
+            onDeleteUsuario={(id) => {
+              const nuevaLista = usuarios.filter((item) => item.id !== id);
+              setUsuarios(nuevaLista);
+              guardarEnSupabase({
+                explotacion,
+                parcelas,
+                labores,
+                inventario,
+                registrosPozo,
+                lugares,
+                usuarios: nuevaLista,
+                activeUserId,
+                muestreosMadurez,
+                cosechasLote,
+                ordenesTrabajo,
+                horasFrio,
+                fenologia,
+                polinizacion
+              });
+            }}
           />
         )}
 
@@ -927,7 +1018,7 @@ export default function App() {
         )}
       </main>
 
-      {/* MODAL CAMBIAR NOMBRE, CORREO Y CONTRASEÑA */}
+      {/* MODAL MI PERFIL */}
       {isProfileModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-3 bg-stone-900/60 backdrop-blur-xs">
           <div className="bg-white rounded-2xl shadow-xl w-full max-w-md border border-stone-200 overflow-hidden text-xs">
@@ -987,7 +1078,7 @@ export default function App() {
                 <button
                   type="button"
                   onClick={() => setIsProfileModalOpen(false)}
-                  className="px-4 py-2 border rounded-lg text-stone-600 hover:bg-stone-50"
+                  className="px-4 py-2 border rounded-lg text-stone-600 hover:bg-stone-50 cursor-pointer"
                 >
                   Cancelar
                 </button>
