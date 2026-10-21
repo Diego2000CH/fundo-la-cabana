@@ -29,6 +29,19 @@ export type CategoriaInsumo =
   | 'Desinfectante'
   | 'Otro';
 
+export type TipoRiego = 
+  | 'Solo Riego por Goteo'
+  | 'Fertirriego'
+  | 'Microaspersión'
+  | 'Surco / Gravedad';
+
+export type FuenteAguaRiego = 
+  | 'Tranque acumulador'
+  | 'Canal de regadío'
+  | 'Pozo profundo'
+  | 'Red presurizada'
+  | 'Otra fuente';
+
 export interface ExplotacionAgricola {
   nombreFundo: string;
   titular: string;
@@ -96,6 +109,7 @@ export interface InsumoInventario {
   consumoHistoricoAcumulado: number;
 }
 
+// CONTROL EXCLUSIVO DE POZO PROFUNDO (EXTRACCIONES DGA)
 export interface RegistroExtraccionPozo {
   id: string;
   fecha: string;
@@ -112,17 +126,23 @@ export interface RegistroExtraccionPozo {
   observaciones?: string;
 }
 
+// NUEVA ESTRUCTURA EXCLUSIVA PARA REGISTRO DE RIEGO Y FERTIRRIEGO
 export interface RegistroRiegoSector {
   id: string;
   fecha: string;
   horaInicio: string;
   sectorDestino: string;
+  tipoRiego: TipoRiego;
+  fuenteAgua: FuenteAguaRiego;
   duracionHoras: number;
   volumenM3: number;
   litrosTotales: number;
-  laminaAguaMm: number;
-  fuenteAgua: string;
-  metodoRiego: string;
+  laminaMm?: number;
+  // Campos exclusivos para Fertirriego
+  productoFertilizante?: string;
+  dosisKgHa?: number;
+  conductividadElectrica?: number;
+  phSolucion?: number;
   operador: string;
   observaciones?: string;
 }
