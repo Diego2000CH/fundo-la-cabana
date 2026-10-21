@@ -70,7 +70,7 @@ import { RotateCcw, X, CheckCircle2, Loader2, Save, RefreshCw, Database, Lock, L
 const SUPABASE_URL = 'https://zvtolionewlulqmtdaty.supabase.co';
 const SUPABASE_ANON_KEY = 'sb_publishable_s1vQx_x3_f3fDHHkdjVxZw_GTMkiU8I';
 
-// TU USUARIO ADMINISTRADOR REAL
+// TU USUARIO OFICIAL CONFIGURADO DIRECTAMENTE
 const USUARIO_INICIAL_ADMIN: UsuarioPredio & { clave?: string } = {
   id: 'usr-admin-diego',
   nombre: 'Diego Pereira',
@@ -110,7 +110,7 @@ export default function App() {
   const [dbStatus, setDbStatus] = useState<'sincronizado' | 'guardando' | 'cargando' | 'error'>('cargando');
   const [dbMessage, setDbMessage] = useState('Conectando a Supabase...');
 
-  // SISTEMA DE SESIÓN
+  // SESIÓN Y USUARIO CONECTADO
   const [loggedInUser, setLoggedInUser] = useState<(UsuarioPredio & { clave?: string }) | null>(null);
   const [loginEmail, setLoginEmail] = useState('diegopereiraramirez@gmail.com');
   const [loginPassword, setLoginPassword] = useState('');
@@ -132,14 +132,15 @@ export default function App() {
   const [isExplotacionModalOpen, setIsExplotacionModalOpen] = useState(false);
   const [isResetConfirmOpen, setIsResetConfirmOpen] = useState(false);
 
-  // 1. CARGA DESDE SUPABASE AL ABRIR LA APP
+  // 1. CARGA DESDE SUPABASE
   const cargarDesdeSupabase = () => {
     setDbStatus('cargando');
     setDbMessage('Descargando datos de Supabase...');
 
     fetch(`${SUPABASE_URL}/rest/v1/fundo_datos?id=eq.fundo_la_cabana&select=datos`, {
       headers: {
-        'apikey': SUPABASE_ANON_KEY
+        'apikey': SUPABASE_ANON_KEY,
+        'Authorization': `Bearer ${SUPABASE_ANON_KEY}`
       }
     })
       .then((res) => {
@@ -196,7 +197,7 @@ export default function App() {
     }
   }, []);
 
-  // 2. GUARDAR EN SUPABASE CON POSTGREST BLINDADO
+  // 2. GUARDAR EN SUPABASE (SOLUCIÓN AL ERROR: ?on_conflict=id Y ARRAY [{ ... }])
   const guardarEnSupabase = (datosPersonalizados?: any) => {
     setDbStatus('guardando');
     setDbMessage('Guardando en Supabase...');
@@ -238,6 +239,7 @@ export default function App() {
       headers: {
         'Content-Type': 'application/json',
         'apikey': SUPABASE_ANON_KEY,
+        'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
         'Prefer': 'resolution=merge-duplicates'
       },
       body: JSON.stringify([{
@@ -247,7 +249,7 @@ export default function App() {
       }])
     })
       .then((res) => {
-        if (!res.ok) throw new Error('Error al guardar');
+        if (!res.ok) throw new Error('Error al guardar en Supabase');
         setDbStatus('sincronizado');
         setDbMessage(`Guardado en Supabase (${new Date().toLocaleTimeString('es-CL')})`);
       })
@@ -350,7 +352,7 @@ export default function App() {
 
     localStorage.setItem('fundo_sesion_id', updatedUser.id);
 
-    // ENVIAR DE INMEDIATO A SUPABASE SIN ESPERAR
+    // ENVIAR DE INMEDIATO A SUPABASE
     const payloadActualizado = {
       explotacion,
       parcelas,
