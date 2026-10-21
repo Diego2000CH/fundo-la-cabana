@@ -4,6 +4,7 @@ import { DashboardView } from './components/DashboardView';
 import { LaboresView } from './components/LaboresView';
 import { InventarioView } from './components/InventarioView';
 import { PozoView } from './components/PozoView';
+import { RiegoView } from './components/RiegoView';
 import { ClimaView } from './components/ClimaView';
 import { ParcelasView } from './components/ParcelasView';
 import { MonitoreoView } from './components/MonitoreoView';
@@ -54,6 +55,7 @@ import {
   TipoLabor, 
   InsumoInventario, 
   RegistroExtraccionPozo,
+  RegistroRiegoSector,
   ClimaCondiciones,
   LugarPredio,
   UsuarioPredio,
@@ -91,6 +93,7 @@ export default function App() {
   const [labores, setLabores] = useState<RegistroLabor[]>(getStoredLabores);
   const [inventario, setInventario] = useState<InsumoInventario[]>(getStoredInventario);
   const [registrosPozo, setRegistrosPozo] = useState<RegistroExtraccionPozo[]>(getStoredRegistrosPozo);
+  const [riegosSector, setRiegosSector] = useState<RegistroRiegoSector[]>([]);
   const [lugares, setLugares] = useState<LugarPredio[]>(getStoredLugares);
   const [usuarios, setUsuarios] = useState<(UsuarioPredio & { clave?: string })[]>([
     { ...USUARIO_INICIAL_ADMIN, clave: '1234' }
@@ -105,19 +108,18 @@ export default function App() {
   const [fenologia, setFenologia] = useState<SeguimientoFenologico[]>(getStoredFenologia);
   const [polinizacion, setPolinizacion] = useState<RegistroPolinizacion[]>(getStoredPolinizacion);
 
-  // Estados de conexión con Supabase
   const [isDbLoaded, setIsDbLoaded] = useState(false);
   const [dbStatus, setDbStatus] = useState<'sincronizado' | 'guardando' | 'cargando' | 'error'>('cargando');
   const [dbMessage, setDbMessage] = useState('Conectando a Supabase...');
 
-  // SESIÓN Y LOGIN
+  // Sesión
   const [loggedInUser, setLoggedInUser] = useState<(UsuarioPredio & { clave?: string }) | null>(null);
   const [loginEmail, setLoginEmail] = useState('diegopereiraramirez@gmail.com');
   const [loginPassword, setLoginPassword] = useState('');
   const [loginError, setLoginError] = useState('');
   const [isLoggingIn, setIsLoggingIn] = useState(false);
 
-  // MODAL MI PERFIL
+  // Modal Mi Perfil
   const [isProfileModalOpen, setIsProfileModalOpen] = useState(false);
   const [myNewName, setMyNewName] = useState('Diego Pereira');
   const [myNewEmail, setMyNewEmail] = useState('diegopereiraramirez@gmail.com');
@@ -133,7 +135,7 @@ export default function App() {
   const [isExplotacionModalOpen, setIsExplotacionModalOpen] = useState(false);
   const [isResetConfirmOpen, setIsResetConfirmOpen] = useState(false);
 
-  // 1. CARGA AUTOMÁTICA DESDE SUPABASE (SOLO CABECERA 'apikey')
+  // 1. CARGA DESDE SUPABASE
   const cargarDesdeSupabase = async () => {
     setDbStatus('cargando');
     setDbMessage('Descargando datos de Supabase...');
@@ -155,6 +157,7 @@ export default function App() {
         if (Array.isArray(datos.labores)) setLabores(datos.labores);
         if (Array.isArray(datos.inventario)) setInventario(datos.inventario);
         if (Array.isArray(datos.registrosPozo)) setRegistrosPozo(datos.registrosPozo);
+        if (Array.isArray(datos.riegosSector)) setRiegosSector(datos.riegosSector);
         if (Array.isArray(datos.lugares)) setLugares(datos.lugares);
         if (Array.isArray(datos.usuarios) && datos.usuarios.length > 0) {
           setUsuarios(datos.usuarios);
@@ -196,7 +199,7 @@ export default function App() {
     }
   }, []);
 
-  // 2. GUARDAR EN SUPABASE (SOLO CABECERA 'apikey' - SIN BEARER)
+  // 2. GUARDAR EN SUPABASE
   const guardarEnSupabase = async (datosPersonalizados?: any) => {
     setDbStatus('guardando');
     setDbMessage('Guardando en Supabase...');
@@ -207,6 +210,7 @@ export default function App() {
       labores,
       inventario,
       registrosPozo,
+      riegosSector,
       lugares,
       usuarios,
       activeUserId,
@@ -258,7 +262,7 @@ export default function App() {
     } catch (err: any) {
       console.error('Error guardando en Supabase:', err);
       setDbStatus('error');
-      setDbMessage(err.message || 'Error al conectar');
+      setDbMessage('Error al conectar');
     }
   };
 
@@ -282,6 +286,7 @@ export default function App() {
     labores,
     inventario,
     registrosPozo,
+    riegosSector,
     lugares,
     usuarios,
     activeUserId,
@@ -293,7 +298,7 @@ export default function App() {
     polinizacion
   ]);
 
-  // 3. INICIO DE SESIÓN DIRECTO
+  // LOGIN
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoginError('');
@@ -302,9 +307,7 @@ export default function App() {
     try {
       let listaFresca = usuarios;
       const res = await fetch(`${SUPABASE_URL}/rest/v1/fundo_datos?id=eq.fundo_la_cabana&select=datos`, {
-        headers: {
-          'apikey': SUPABASE_ANON_KEY
-        }
+        headers: { 'apikey': SUPABASE_ANON_KEY }
       });
 
       if (res.ok) {
@@ -312,20 +315,6 @@ export default function App() {
         if (Array.isArray(filas) && filas.length > 0 && filas[0].datos?.usuarios) {
           listaFresca = filas[0].datos.usuarios;
           setUsuarios(listaFresca);
-
-          const datos = filas[0].datos;
-          if (datos.explotacion) setExplotacion(datos.explotacion);
-          if (Array.isArray(datos.parcelas)) setParcelas(datos.parcelas);
-          if (Array.isArray(datos.labores)) setLabores(datos.labores);
-          if (Array.isArray(datos.inventario)) setInventario(datos.inventario);
-          if (Array.isArray(datos.registrosPozo)) setRegistrosPozo(datos.registrosPozo);
-          if (Array.isArray(datos.lugares)) setLugares(datos.lugares);
-          if (Array.isArray(datos.muestreosMadurez)) setMuestreosMadurez(datos.muestreosMadurez);
-          if (Array.isArray(datos.cosechasLote)) setCosechasLote(datos.cosechasLote);
-          if (Array.isArray(datos.ordenesTrabajo)) setOrdenesTrabajo(datos.ordenesTrabajo);
-          if (datos.horasFrio) setHorasFrio(datos.horasFrio);
-          if (Array.isArray(datos.fenologia)) setFenologia(datos.fenologia);
-          if (Array.isArray(datos.polinizacion)) setPolinizacion(datos.polinizacion);
         }
       }
 
@@ -335,7 +324,7 @@ export default function App() {
       );
 
       if (!user) {
-        setLoginError(`El correo "${loginEmail}" no está registrado. Usuarios disponibles: ${listaFresca.map(u => u.email).join(', ')}`);
+        setLoginError(`El correo "${loginEmail}" no está registrado.`);
         setIsLoggingIn(false);
         return;
       }
@@ -352,7 +341,7 @@ export default function App() {
       setActiveUserId(user.id);
       localStorage.setItem('fundo_sesion_id', user.id);
     } catch (err: any) {
-      setLoginError('Error de red al comprobar usuario: ' + err.message);
+      setLoginError('Error de red: ' + err.message);
     } finally {
       setIsLoggingIn(false);
     }
@@ -364,7 +353,7 @@ export default function App() {
     setLoginPassword('');
   };
 
-  // GUARDAR MI PERFIL, CORREO Y CLAVE
+  // GUARDAR PERFIL
   const handleSaveMyProfile = (e: React.FormEvent) => {
     e.preventDefault();
     if (!loggedInUser) return;
@@ -394,12 +383,13 @@ export default function App() {
 
     localStorage.setItem('fundo_sesion_id', updatedUser.id);
 
-    const payloadActualizado = {
+    guardarEnSupabase({
       explotacion,
       parcelas,
       labores,
       inventario,
       registrosPozo,
+      riegosSector,
       lugares,
       usuarios: nuevosUsuarios,
       activeUserId: updatedUser.id,
@@ -409,11 +399,9 @@ export default function App() {
       horasFrio,
       fenologia,
       polinizacion
-    };
+    });
 
-    guardarEnSupabase(payloadActualizado);
-
-    setProfileSuccessMsg('¡Correo y contraseña guardados con éxito!');
+    setProfileSuccessMsg('¡Correo y clave guardados con éxito!');
     setTimeout(() => {
       setIsProfileModalOpen(false);
       setProfileSuccessMsg('');
@@ -480,59 +468,6 @@ export default function App() {
       );
     }
 
-    if (laborToSave.tipoLabor === 'riego' && laborToSave.volumenM3) {
-      const m3 = Number(laborToSave.volumenM3);
-      const lts = m3 * 1000;
-      const hrs = laborToSave.duracionRiegoHoras || 4;
-      const caudal = hrs > 0 ? Number((lts / (hrs * 3600)).toFixed(1)) : 23.5;
-
-      if (isEdit && oldLabor?.registroPozoId) {
-        setRegistrosPozo((prev) =>
-          prev.map((r) => {
-            if (r.id === oldLabor.registroPozoId) {
-              return {
-                ...r,
-                fecha: laborToSave.fecha,
-                hora: laborToSave.hora || '07:00',
-                metrosCubicosExtraidos: m3,
-                litrosTotales: lts,
-                horasBombeo: hrs,
-                caudalPromedioLs: caudal,
-                sectorDestino: laborToSave.parcelaNombre,
-                operadorBomba: laborToSave.registradoPor || activeUser?.nombre || 'Operador'
-              };
-            }
-            return r;
-          })
-        );
-        laborToSave.registroPozoId = oldLabor.registroPozoId;
-        laborToSave.litrosAgua = lts;
-      } else {
-        const latestFinalM3 = registrosPozo.length > 0 
-          ? Math.max(...registrosPozo.map((r) => r.lecturaFinalM3))
-          : 0;
-
-        const nuevoRegistroPozo: RegistroExtraccionPozo = {
-          id: `pz-auto-${Date.now()}`,
-          fecha: laborToSave.fecha,
-          hora: laborToSave.hora || '07:00',
-          lecturaInicialM3: latestFinalM3,
-          lecturaFinalM3: latestFinalM3 + m3,
-          metrosCubicosExtraidos: m3,
-          litrosTotales: lts,
-          horasBombeo: hrs,
-          caudalPromedioLs: caudal,
-          sectorDestino: laborToSave.parcelaNombre,
-          operadorBomba: laborToSave.registradoPor || activeUser?.nombre || 'Operador',
-          observaciones: `Extracción registrada desde labor de riego en ${laborToSave.parcelaNombre}`
-        };
-
-        setRegistrosPozo((prev) => [nuevoRegistroPozo, ...prev]);
-        laborToSave.registroPozoId = nuevoRegistroPozo.id;
-        laborToSave.litrosAgua = lts;
-      }
-    }
-
     setLabores((prev) => {
       const idx = prev.findIndex((l) => l.id === laborToSave.id);
       if (idx >= 0) {
@@ -549,25 +484,20 @@ export default function App() {
 
   const handleDeleteLabor = (id: string) => {
     const labor = labores.find((l) => l.id === id);
-    if (labor) {
-      if (labor.insumoId && labor.totalInsumoUtilizado) {
-        const restoreAmount = Number(labor.totalInsumoUtilizado);
-        setInventario((prev) => 
-          prev.map((item) => {
-            if (item.id === labor.insumoId) {
-              return {
-                ...item,
-                stockActual: Number((item.stockActual + restoreAmount).toFixed(2)),
-                consumoHistoricoAcumulado: Math.max(0, Number((item.consumoHistoricoAcumulado - restoreAmount).toFixed(2)))
-              };
-            }
-            return item;
-          })
-        );
-      }
-      if (labor.registroPozoId) {
-        setRegistrosPozo((prev) => prev.filter((r) => r.id !== labor.registroPozoId));
-      }
+    if (labor && labor.insumoId && labor.totalInsumoUtilizado) {
+      const restoreAmount = Number(labor.totalInsumoUtilizado);
+      setInventario((prev) => 
+        prev.map((item) => {
+          if (item.id === labor.insumoId) {
+            return {
+              ...item,
+              stockActual: Number((item.stockActual + restoreAmount).toFixed(2)),
+              consumoHistoricoAcumulado: Math.max(0, Number((item.consumoHistoricoAcumulado - restoreAmount).toFixed(2)))
+            };
+          }
+          return item;
+        })
+      );
     }
     setLabores((prev) => prev.filter((l) => l.id !== id));
   };
@@ -579,6 +509,7 @@ export default function App() {
     setLabores(defaults.labores);
     setInventario(defaults.inventario);
     setRegistrosPozo(defaults.registrosPozo);
+    setRiegosSector([]);
     setLugares(defaults.lugares);
     setUsuarios(defaults.usuarios);
     setMuestreosMadurez(defaults.muestreosMadurez);
@@ -587,9 +518,9 @@ export default function App() {
     setHorasFrio(defaults.condicionHorasFrio);
     setFenologia(defaults.fenologia);
     setPolinizacion(defaults.polinizacion);
-    setActiveUserId(defaults.usuarios[0]?.id || 'usr-1');
+    setActiveUserId(defaults.usuarios[0]?.id || 'usr-admin-diego');
     setIsResetConfirmOpen(false);
-    guardarEnSupabase(defaults);
+    guardarEnSupabase({ ...defaults, riegosSector: [] });
   };
 
   const lowStockCount = inventario.filter((i) => i.stockActual <= i.stockMinimo).length;
@@ -673,10 +604,6 @@ export default function App() {
                 </>
               )}
             </button>
-
-            <div className="pt-2 text-center text-[11px] text-stone-400">
-              Base de datos segura conectada en la nube (Supabase)
-            </div>
           </form>
         </div>
       </div>
@@ -685,7 +612,7 @@ export default function App() {
 
   return (
     <div className="min-h-screen bg-stone-50 flex flex-col font-sans text-stone-900 pb-16 sm:pb-0">
-      {/* BARRA SUPERIOR DE CONEXIÓN */}
+      {/* BARRA SUPERIOR CON SUPABASE */}
       <div className="bg-stone-900 text-white px-4 py-2 border-b border-stone-800 text-xs flex flex-wrap items-center justify-between gap-3 sticky top-0 z-50">
         <div className="flex items-center gap-2">
           <Database className="w-4 h-4 text-emerald-400" />
@@ -806,6 +733,7 @@ export default function App() {
                 labores,
                 inventario,
                 registrosPozo,
+                riegosSector,
                 lugares,
                 usuarios: nuevaLista,
                 activeUserId,
@@ -826,6 +754,7 @@ export default function App() {
                 labores,
                 inventario,
                 registrosPozo,
+                riegosSector,
                 lugares,
                 usuarios: nuevaLista,
                 activeUserId,
@@ -846,6 +775,7 @@ export default function App() {
                 labores,
                 inventario,
                 registrosPozo,
+                riegosSector,
                 lugares,
                 usuarios: nuevaLista,
                 activeUserId,
@@ -940,12 +870,25 @@ export default function App() {
           />
         )}
 
+        {/* PESTAÑA 1: POZO PROFUNDO EXCLUSIVO (DGA) */}
         {activeTab === 'pozo' && (
           <PozoView
             registrosPozo={registrosPozo}
             onAddRegistroPozo={(r) => setRegistrosPozo((prev) => [r, ...prev])}
             onUpdateRegistroPozo={(r) => setRegistrosPozo((prev) => prev.map((p) => p.id === r.id ? r : p))}
             onDeleteRegistroPozo={(id) => setRegistrosPozo((prev) => prev.filter((p) => p.id !== id))}
+          />
+        )}
+
+        {/* PESTAÑA 2: RIEGO INDEPENDIENTE (DISTRIBUCIÓN Y FERTIRRIEGO) */}
+        {activeTab === 'riego' && (
+          <RiegoView
+            riegos={riegosSector}
+            parcelas={parcelas}
+            onAddRiego={(r) => setRiegosSector((prev) => [r, ...prev])}
+            onUpdateRiego={(r) => setRiegosSector((prev) => prev.map((item) => item.id === r.id ? r : item))}
+            onDeleteRiego={(id) => setRiegosSector((prev) => prev.filter((item) => item.id !== id))}
+            activeUserName={activeUser?.nombre}
           />
         )}
 
@@ -986,6 +929,7 @@ export default function App() {
                     if (parsed.labores) setLabores(parsed.labores);
                     if (parsed.inventario) setInventario(parsed.inventario);
                     if (parsed.registrosPozo) setRegistrosPozo(parsed.registrosPozo);
+                    if (parsed.riegosSector) setRiegosSector(parsed.riegosSector);
                     if (parsed.lugares) setLugares(parsed.lugares);
                     if (parsed.usuarios) setUsuarios(parsed.usuarios);
                     if (parsed.muestreosMadurez) setMuestreosMadurez(parsed.muestreosMadurez);
@@ -1006,7 +950,7 @@ export default function App() {
         )}
       </main>
 
-      {/* MODAL CAMBIAR NOMBRE, CORREO Y CONTRASEÑA */}
+      {/* MODAL MI PERFIL */}
       {isProfileModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-3 bg-stone-900/60 backdrop-blur-xs">
           <div className="bg-white rounded-2xl shadow-xl w-full max-w-md border border-stone-200 overflow-hidden text-xs">
