@@ -70,7 +70,7 @@ import { RotateCcw, X, CheckCircle2, Loader2, Save, RefreshCw, Database, Lock, L
 const SUPABASE_URL = 'https://zvtolionewlulqmtdaty.supabase.co';
 const SUPABASE_ANON_KEY = 'sb_publishable_s1vQx_x3_f3fDHHkdjVxZw_GTMkiU8I';
 
-// TU USUARIO OFICIAL CONFIGURADO DIRECTAMENTE
+// TU USUARIO PRINCIPAL OFICIAL
 const USUARIO_INICIAL_ADMIN: UsuarioPredio & { clave?: string } = {
   id: 'usr-admin-diego',
   nombre: 'Diego Pereira',
@@ -110,13 +110,13 @@ export default function App() {
   const [dbStatus, setDbStatus] = useState<'sincronizado' | 'guardando' | 'cargando' | 'error'>('cargando');
   const [dbMessage, setDbMessage] = useState('Conectando a Supabase...');
 
-  // SESIÓN Y USUARIO CONECTADO
+  // SESIÓN
   const [loggedInUser, setLoggedInUser] = useState<(UsuarioPredio & { clave?: string }) | null>(null);
   const [loginEmail, setLoginEmail] = useState('diegopereiraramirez@gmail.com');
   const [loginPassword, setLoginPassword] = useState('');
   const [loginError, setLoginError] = useState('');
 
-  // MODAL PARA CAMBIAR CLAVE Y CORREO
+  // MODAL MI PERFIL
   const [isProfileModalOpen, setIsProfileModalOpen] = useState(false);
   const [myNewName, setMyNewName] = useState('Diego Pereira');
   const [myNewEmail, setMyNewEmail] = useState('diegopereiraramirez@gmail.com');
@@ -132,7 +132,7 @@ export default function App() {
   const [isExplotacionModalOpen, setIsExplotacionModalOpen] = useState(false);
   const [isResetConfirmOpen, setIsResetConfirmOpen] = useState(false);
 
-  // 1. CARGA DESDE SUPABASE
+  // 1. CARGA AUTOMÁTICA DESDE SUPABASE
   const cargarDesdeSupabase = () => {
     setDbStatus('cargando');
     setDbMessage('Descargando datos de Supabase...');
@@ -197,8 +197,8 @@ export default function App() {
     }
   }, []);
 
-  // 2. GUARDAR EN SUPABASE (SOLUCIÓN AL ERROR: ?on_conflict=id Y ARRAY [{ ... }])
-  const guardarEnSupabase = (datosPersonalizados?: any) => {
+  // 2. SISTEMA DE TRIPLE GUARDADO BLINDADO EN SUPABASE
+  const guardarEnSupabase = async (datosPersonalizados?: any) => {
     setDbStatus('guardando');
     setDbMessage('Guardando en Supabase...');
 
@@ -234,30 +234,70 @@ export default function App() {
     saveStoredFenologia(payload.fenologia);
     saveStoredPolinizacion(payload.polinizacion);
 
-    fetch(`${SUPABASE_URL}/rest/v1/fundo_datos?on_conflict=id`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'apikey': SUPABASE_ANON_KEY,
-        'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
-        'Prefer': 'resolution=merge-duplicates'
-      },
-      body: JSON.stringify([{
-        id: 'fundo_la_cabana',
-        datos: payload,
-        updated_at: new Date().toISOString()
-      }])
-    })
-      .then((res) => {
-        if (!res.ok) throw new Error('Error al guardar en Supabase');
-        setDbStatus('sincronizado');
-        setDbMessage(`Guardado en Supabase (${new Date().toLocaleTimeString('es-CL')})`);
-      })
-      .catch((err) => {
-        console.error('Error guardando en Supabase:', err);
-        setDbStatus('error');
-        setDbMessage('Error al enviar a Supabase');
+    const headers = {
+      'Content-Type': 'application/json',
+      'apikey': SUPABASE_ANON_KEY,
+      'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
+      'Prefer': 'resolution=merge-duplicates'
+    };
+
+    try {
+      // Intento 1: Upsert PostgREST con ?on_conflict=id
+      const res = await fetch(`${SUPABASE_URL}/rest/v1/fundo_datos?on_conflict=id`, {
+        method: 'POST',
+        headers,
+        body: JSON.stringify([{
+          id: 'fundo_la_cabana',
+          datos: payload,
+          updated_at: new Date().toISOString()
+        }])
       });
+
+      if (!res.ok) {
+        // Intento 2: Si la fila ya existe, actualizarla directamente con PATCH
+        const patchRes = await fetch(`${SUPABASE_URL}/rest/v1/fundo_datos?id=eq.fundo_la_cabana`, {
+          method: 'PATCH',
+          headers: {
+            'Content-Type': 'application/json',
+            'apikey': SUPABASE_ANON_KEY,
+            'Authorization': `Bearer ${SUPABASE_ANON_KEY}`
+          },
+          body: JSON.stringify({
+            datos: payload,
+            updated_at: new Date().toISOString()
+          })
+        });
+
+        if (!patchRes.ok) {
+          // Intento 3: Insertar como fila nueva
+          const insertRes = await fetch(`${SUPABASE_URL}/rest/v1/fundo_datos`, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'apikey': SUPABASE_ANON_KEY,
+              'Authorization': `Bearer ${SUPABASE_ANON_KEY}`
+            },
+            body: JSON.stringify({
+              id: 'fundo_la_cabana',
+              datos: payload,
+              updated_at: new Date().toISOString()
+            })
+          });
+
+          if (!insertRes.ok) {
+            const errDetail = await insertRes.text();
+            throw new Error(`Error ${insertRes.status}: ${errDetail.slice(0, 40)}`);
+          }
+        }
+      }
+
+      setDbStatus('sincronizado');
+      setDbMessage(`Guardado en Supabase (${new Date().toLocaleTimeString('es-CL')})`);
+    } catch (err: any) {
+      console.error('Error guardando en Supabase:', err);
+      setDbStatus('error');
+      setDbMessage(err.message || 'Error al conectar con Supabase');
+    }
   };
 
   const primerCarga = useRef(true);
@@ -322,7 +362,7 @@ export default function App() {
     setLoginPassword('');
   };
 
-  // GUARDADO DIRECTO E INMEDIATO DE MI PERFIL, CORREO Y CLAVE
+  // GUARDADO DIRECTO DE PERFIL, CORREO Y CLAVE
   const handleSaveMyProfile = (e: React.FormEvent) => {
     e.preventDefault();
     if (!loggedInUser) return;
@@ -352,7 +392,6 @@ export default function App() {
 
     localStorage.setItem('fundo_sesion_id', updatedUser.id);
 
-    // ENVIAR DE INMEDIATO A SUPABASE
     const payloadActualizado = {
       explotacion,
       parcelas,
