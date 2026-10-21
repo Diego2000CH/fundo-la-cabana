@@ -65,7 +65,7 @@ import {
   RegistroPolinizacion
 } from './types/campo';
 import { initialClimaLaCabana } from './data/initialData';
-import { RotateCcw, X, CheckCircle2, Loader2, Save, RefreshCw, Database, Lock, LogIn, AlertCircle, LogOut, UserCog, KeyRound } from 'lucide-react';
+import { RotateCcw, X, CheckCircle2, Loader2, Save, RefreshCw, Database, Lock, LogIn, AlertCircle, LogOut, UserCog } from 'lucide-react';
 
 const SUPABASE_URL = 'https://zvtolionewlulqmtdaty.supabase.co';
 const SUPABASE_ANON_KEY = 'sb_publishable_s1vQx_x3_f3fDHHkdjVxZw_GTMkiU8I';
@@ -133,7 +133,7 @@ export default function App() {
   const [isExplotacionModalOpen, setIsExplotacionModalOpen] = useState(false);
   const [isResetConfirmOpen, setIsResetConfirmOpen] = useState(false);
 
-  // 1. CARGA AUTOMÁTICA DESDE SUPABASE
+  // 1. CARGA AUTOMÁTICA DESDE SUPABASE (SOLO CABECERA 'apikey')
   const cargarDesdeSupabase = async () => {
     setDbStatus('cargando');
     setDbMessage('Descargando datos de Supabase...');
@@ -141,8 +141,7 @@ export default function App() {
     try {
       const res = await fetch(`${SUPABASE_URL}/rest/v1/fundo_datos?id=eq.fundo_la_cabana&select=datos`, {
         headers: {
-          'apikey': SUPABASE_ANON_KEY,
-          'Authorization': `Bearer ${SUPABASE_ANON_KEY}`
+          'apikey': SUPABASE_ANON_KEY
         }
       });
 
@@ -197,7 +196,7 @@ export default function App() {
     }
   }, []);
 
-  // 2. GUARDAR EN SUPABASE (CON ENLACE BLINDADO)
+  // 2. GUARDAR EN SUPABASE (SOLO CABECERA 'apikey' - SIN BEARER)
   const guardarEnSupabase = async (datosPersonalizados?: any) => {
     setDbStatus('guardando');
     setDbMessage('Guardando en Supabase...');
@@ -219,7 +218,6 @@ export default function App() {
       polinizacion
     };
 
-    // Guardado de respaldo local
     saveStoredExplotacion(payload.explotacion);
     saveStoredParcelas(payload.parcelas);
     saveStoredLabores(payload.labores);
@@ -235,17 +233,14 @@ export default function App() {
     saveStoredFenologia(payload.fenologia);
     saveStoredPolinizacion(payload.polinizacion);
 
-    const headers = {
-      'Content-Type': 'application/json',
-      'apikey': SUPABASE_ANON_KEY,
-      'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
-      'Prefer': 'resolution=merge-duplicates'
-    };
-
     try {
       const res = await fetch(`${SUPABASE_URL}/rest/v1/fundo_datos?on_conflict=id`, {
         method: 'POST',
-        headers,
+        headers: {
+          'Content-Type': 'application/json',
+          'apikey': SUPABASE_ANON_KEY,
+          'Prefer': 'resolution=merge-duplicates'
+        },
         body: JSON.stringify([{
           id: 'fundo_la_cabana',
           datos: payload,
@@ -255,7 +250,7 @@ export default function App() {
 
       if (!res.ok) {
         const errDetail = await res.text();
-        throw new Error(`HTTP ${res.status}: ${errDetail}`);
+        throw new Error(`HTTP ${res.status}: ${errDetail.slice(0, 50)}`);
       }
 
       setDbStatus('sincronizado');
@@ -263,11 +258,10 @@ export default function App() {
     } catch (err: any) {
       console.error('Error guardando en Supabase:', err);
       setDbStatus('error');
-      setDbMessage('Error al enviar a Supabase');
+      setDbMessage(err.message || 'Error al conectar');
     }
   };
 
-  // Guardado debounced
   const primerCarga = useRef(true);
   useEffect(() => {
     if (!isDbLoaded) return;
@@ -299,19 +293,17 @@ export default function App() {
     polinizacion
   ]);
 
-  // 3. INICIO DE SESIÓN EN VIVO DIRECTO DESDE SUPABASE
+  // 3. INICIO DE SESIÓN DIRECTO
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoginError('');
     setIsLoggingIn(true);
 
     try {
-      // Descargar usuarios más recientes de Supabase al momento de hacer clic
       let listaFresca = usuarios;
       const res = await fetch(`${SUPABASE_URL}/rest/v1/fundo_datos?id=eq.fundo_la_cabana&select=datos`, {
         headers: {
-          'apikey': SUPABASE_ANON_KEY,
-          'Authorization': `Bearer ${SUPABASE_ANON_KEY}`
+          'apikey': SUPABASE_ANON_KEY
         }
       });
 
@@ -321,7 +313,6 @@ export default function App() {
           listaFresca = filas[0].datos.usuarios;
           setUsuarios(listaFresca);
 
-          // Cargar todo el fundo
           const datos = filas[0].datos;
           if (datos.explotacion) setExplotacion(datos.explotacion);
           if (Array.isArray(datos.parcelas)) setParcelas(datos.parcelas);
@@ -603,7 +594,6 @@ export default function App() {
 
   const lowStockCount = inventario.filter((i) => i.stockActual <= i.stockMinimo).length;
 
-  // PANTALLA DE BLOQUEO / LOGIN CON CONSULTA DIRECTA A SUPABASE
   if (!loggedInUser) {
     return (
       <div className="min-h-screen bg-stone-900 flex items-center justify-center p-4">
@@ -725,7 +715,6 @@ export default function App() {
         </div>
 
         <div className="flex items-center gap-2">
-          {/* BOTÓN MI PERFIL */}
           <button
             onClick={() => {
               setMyNewName(activeUser.nombre);
@@ -811,7 +800,6 @@ export default function App() {
               const userWithPass = { ...u, clave: (u as any).clave || '1234' };
               const nuevaLista = [...usuarios, userWithPass];
               setUsuarios(nuevaLista);
-              // Guardado inmediato en Supabase
               guardarEnSupabase({
                 explotacion,
                 parcelas,
@@ -1018,7 +1006,7 @@ export default function App() {
         )}
       </main>
 
-      {/* MODAL MI PERFIL */}
+      {/* MODAL CAMBIAR NOMBRE, CORREO Y CONTRASEÑA */}
       {isProfileModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-3 bg-stone-900/60 backdrop-blur-xs">
           <div className="bg-white rounded-2xl shadow-xl w-full max-w-md border border-stone-200 overflow-hidden text-xs">
@@ -1078,7 +1066,7 @@ export default function App() {
                 <button
                   type="button"
                   onClick={() => setIsProfileModalOpen(false)}
-                  className="px-4 py-2 border rounded-lg text-stone-600 hover:bg-stone-50 cursor-pointer"
+                  className="px-4 py-2 border rounded-lg text-stone-600 hover:bg-stone-50"
                 >
                   Cancelar
                 </button>
