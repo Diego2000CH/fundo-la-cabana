@@ -220,12 +220,19 @@ export const InventarioView: React.FC<InventarioViewProps> = ({
             onChange={(e) => setSelectedCategoria(e.target.value)}
             className="px-3 py-1.5 text-xs bg-stone-50 border border-stone-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-700 font-medium"
           >
+          
             <option value="all">Todas las categorías ({inventario.length})</option>
-            <option value="Fungicida">Fungicidas (Botrytis / Oídio)</option>
-            <option value="Bactericida">Bactericidas (Cobre / Psa)</option>
-            <option value="Insecticida / Acaricida">Insecticidas / Acaricidas</option>
-            <option value="Fertilizante">Fertilizantes y Nutrientes</option>
-            <option value="Coadyuvante">Coadyuvantes y Adherentes</option>
+  <option value="Fungicida">Fungicidas (Botrytis / Oídio)</option>
+  <option value="Insecticida">Insecticidas</option>
+  <option value="Acaricida">Acaricidas (Falsa Arañita)</option>
+  <option value="Bactericida">Bactericidas (Cobres / Psa)</option>
+  <option value="Herbicida">Herbicidas</option>
+  <option value="Fitorregulador">Fitorreguladores / Rompedores de Dormancia</option>
+  <option value="Bioestimulante">Bioestimulantes / Algas</option>
+  <option value="Fertilizante">Fertilizantes & Nutrientes</option>
+  <option value="Coadyuvante">Coadyuvantes & Adherentes</option>
+  <option value="Desinfectante">Desinfectantes de Herramientas</option>
+  <option value="Otro">Otros</option>
           </select>
         </div>
       </div>
