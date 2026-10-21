@@ -65,12 +65,11 @@ import {
   RegistroPolinizacion
 } from './types/campo';
 import { initialClimaLaCabana } from './data/initialData';
-import { RotateCcw, X, CheckCircle2, Loader2, Save, RefreshCw, Database, Lock, LogIn, UserCheck, KeyRound, AlertCircle, LogOut } from 'lucide-react';
+import { RotateCcw, X, CheckCircle2, Loader2, Save, RefreshCw, Database, Lock, LogIn, UserCheck, KeyRound, AlertCircle, LogOut, UserCog } from 'lucide-react';
 
 const SUPABASE_URL = 'https://zvtolionewlulqmtdaty.supabase.co';
 const SUPABASE_ANON_KEY = 'sb_publishable_s1vQx_x3_f3fDHHkdjVxZw_GTMkiU8I';
 
-// Usuario administrador inicial con clave por defecto (puedes cambiarla después)
 const USUARIO_INICIAL_ADMIN: UsuarioPredio & { clave?: string } = {
   id: 'usr-admin-diego',
   nombre: 'Diego Administrador',
@@ -117,6 +116,13 @@ export default function App() {
   const [loginPassword, setLoginPassword] = useState('');
   const [loginError, setLoginError] = useState('');
 
+  // MODAL PARA CAMBIAR MI CLAVE Y CORREO
+  const [isProfileModalOpen, setIsProfileModalOpen] = useState(false);
+  const [myNewName, setMyNewName] = useState('');
+  const [myNewEmail, setMyNewEmail] = useState('');
+  const [myNewPassword, setMyNewPassword] = useState('');
+  const [profileSuccessMsg, setProfileSuccessMsg] = useState('');
+
   // Modales
   const [isLaborModalOpen, setIsLaborModalOpen] = useState(false);
   const [isAlertsModalOpen, setIsAlertsModalOpen] = useState(false);
@@ -126,18 +132,21 @@ export default function App() {
   const [isExplotacionModalOpen, setIsExplotacionModalOpen] = useState(false);
   const [isResetConfirmOpen, setIsResetConfirmOpen] = useState(false);
 
-  // 1. CARGA AUTOMÁTICA DESDE SUPABASE AL ABRIR LA APP
+  // 1. CARGA AUTOMÁTICA DESDE SUPABASE
   const cargarDesdeSupabase = () => {
     setDbStatus('cargando');
-    setDbMessage('Descargando datos del fundo...');
+    setDbMessage('Descargando datos de Supabase...');
 
+    // Solución al error: solo enviamos 'apikey' sin Bearer
     fetch(`${SUPABASE_URL}/rest/v1/fundo_datos?id=eq.fundo_la_cabana&select=datos`, {
       headers: {
-        'apikey': SUPABASE_ANON_KEY,
-        'Authorization': `Bearer ${SUPABASE_ANON_KEY}`
+        'apikey': SUPABASE_ANON_KEY
       }
     })
-      .then((res) => res.json())
+      .then((res) => {
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        return res.json();
+      })
       .then((filas) => {
         if (Array.isArray(filas) && filas.length > 0 && filas[0].datos) {
           const datos = filas[0].datos;
@@ -162,7 +171,7 @@ export default function App() {
         setDbMessage('Supabase conectado en vivo');
       })
       .catch((err) => {
-        console.warn('Iniciando en modo local:', err);
+        console.warn('Iniciando con memoria local:', err);
         setIsDbLoaded(true);
         setDbStatus('sincronizado');
         setDbMessage('Modo local activo');
@@ -172,7 +181,6 @@ export default function App() {
   useEffect(() => {
     cargarDesdeSupabase();
 
-    // Restaurar sesión guardada en este celular/computador si ya inició sesión antes
     const savedUserId = localStorage.getItem('fundo_sesion_id');
     if (savedUserId) {
       const u = usuarios.find((item) => item.id === savedUserId);
@@ -220,12 +228,12 @@ export default function App() {
     saveStoredFenologia(payload.fenologia);
     saveStoredPolinizacion(payload.polinizacion);
 
+    // Solución al error: llamada limpia a PostgREST
     fetch(`${SUPABASE_URL}/rest/v1/fundo_datos`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
         'apikey': SUPABASE_ANON_KEY,
-        'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
         'Prefer': 'resolution=merge-duplicates'
       },
       body: JSON.stringify({
@@ -235,14 +243,14 @@ export default function App() {
       })
     })
       .then((res) => {
-        if (!res.ok) throw new Error('Error al guardar');
+        if (!res.ok) throw new Error('Error al guardar en Supabase');
         setDbStatus('sincronizado');
         setDbMessage(`Guardado en Supabase (${new Date().toLocaleTimeString('es-CL')})`);
       })
       .catch((err) => {
         console.error(err);
         setDbStatus('error');
-        setDbMessage('Error al enviar a Supabase');
+        setDbMessage('Error al enviar a Supabase (Verifica el Paso 1)');
       });
   };
 
@@ -291,7 +299,6 @@ export default function App() {
       return;
     }
 
-    // Si el usuario no tiene clave definida, la clave es 1234
     const userPass = user.clave || '1234';
 
     if (loginPassword !== userPass) {
@@ -308,6 +315,31 @@ export default function App() {
     setLoggedInUser(null);
     localStorage.removeItem('fundo_sesion_id');
     setLoginPassword('');
+  };
+
+  // CAMBIAR MI NOMBRE, CORREO Y CLAVE
+  const handleSaveMyProfile = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!loggedInUser) return;
+
+    const updatedUser = {
+      ...loggedInUser,
+      nombre: myNewName.trim() || loggedInUser.nombre,
+      email: myNewEmail.trim().toLowerCase() || loggedInUser.email,
+      clave: myNewPassword.trim() || loggedInUser.clave || '1234'
+    };
+
+    setLoggedInUser(updatedUser);
+    setUsuarios((prev) => prev.map((u) => u.id === updatedUser.id ? updatedUser : u));
+
+    // Guardado directo en Supabase
+    guardarEnSupabase();
+
+    setProfileSuccessMsg('¡Tus datos y contraseña fueron actualizados con éxito!');
+    setTimeout(() => {
+      setIsProfileModalOpen(false);
+      setProfileSuccessMsg('');
+    }, 1500);
   };
 
   const activeUser = loggedInUser || usuarios.find((u) => u.id === activeUserId) || usuarios[0];
@@ -484,7 +516,7 @@ export default function App() {
 
   const lowStockCount = inventario.filter((i) => i.stockActual <= i.stockMinimo).length;
 
-  // PANTALLA DE BLOQUEO / INICIO DE SESIÓN CON CLAVE
+  // PANTALLA DE BLOQUEO / INICIO DE SESIÓN
   if (!loggedInUser) {
     return (
       <div className="min-h-screen bg-stone-900 flex items-center justify-center p-4">
@@ -546,7 +578,7 @@ export default function App() {
                 className="w-full p-2.5 rounded-lg border border-stone-300 text-sm"
               />
               <span className="text-[10px] text-stone-400 mt-1 block">
-                *(Clave por defecto para ingresar: <strong>1234</strong>)*
+                *(Clave por defecto: <strong>1234</strong>)*
               </span>
             </div>
 
@@ -570,7 +602,7 @@ export default function App() {
   // APLICACIÓN PRINCIPAL
   return (
     <div className="min-h-screen bg-stone-50 flex flex-col font-sans text-stone-900 pb-16 sm:pb-0">
-      {/* BARRA SUPERIOR DE CONEXIÓN CON SUPABASE & USUARIO ACTIVO */}
+      {/* BARRA SUPERIOR DE CONEXIÓN */}
       <div className="bg-stone-900 text-white px-4 py-2 border-b border-stone-800 text-xs flex flex-wrap items-center justify-between gap-3 sticky top-0 z-50">
         <div className="flex items-center gap-2">
           <Database className="w-4 h-4 text-emerald-400" />
@@ -599,10 +631,21 @@ export default function App() {
           )}
         </div>
 
-        <div className="flex items-center gap-3">
-          <span className="text-stone-300 hidden sm:inline">
-            Conectado como: <strong>{loggedInUser.nombre}</strong>
-          </span>
+        <div className="flex items-center gap-2">
+          <button
+            onClick={() => {
+              setMyNewName(loggedInUser.nombre);
+              setMyNewEmail(loggedInUser.email);
+              setMyNewPassword(loggedInUser.clave || '1234');
+              setIsProfileModalOpen(true);
+            }}
+            className="px-2.5 py-1 bg-stone-800 hover:bg-stone-700 text-stone-200 font-semibold rounded-lg transition-colors flex items-center gap-1.5 cursor-pointer border border-stone-700"
+            title="Cambiar mi nombre, correo y contraseña"
+          >
+            <UserCog className="w-3.5 h-3.5 text-emerald-400" />
+            <span>Mi Perfil / Clave</span>
+          </button>
+
           <button
             onClick={() => guardarEnSupabase()}
             className="px-3 py-1 bg-emerald-600 hover:bg-emerald-500 text-white font-bold rounded-lg transition-all flex items-center gap-1.5 active:scale-95 cursor-pointer shadow-xs"
@@ -610,6 +653,7 @@ export default function App() {
             <Save className="w-3.5 h-3.5" />
             Guardar en Supabase
           </button>
+
           <button
             onClick={handleLogout}
             className="px-2.5 py-1 bg-stone-800 hover:bg-red-800 text-stone-300 hover:text-white rounded-lg transition-colors flex items-center gap-1 cursor-pointer"
@@ -670,7 +714,6 @@ export default function App() {
             activeUserId={activeUserId}
             onSetActiveUser={setActiveUserId}
             onAddUsuario={(u) => {
-              // Si no tiene clave, le asignamos 1234
               const userWithPass = { ...u, clave: (u as any).clave || '1234' };
               setUsuarios((prev) => [...prev, userWithPass]);
             }}
@@ -824,6 +867,85 @@ export default function App() {
           />
         )}
       </main>
+
+      {/* MODAL PARA CAMBIAR MI NOMBRE, CORREO Y CONTRASEÑA */}
+      {isProfileModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-3 bg-stone-900/60 backdrop-blur-xs">
+          <div className="bg-white rounded-2xl shadow-xl w-full max-w-md border border-stone-200 overflow-hidden text-xs">
+            <div className="px-5 py-4 border-b border-stone-200 bg-emerald-950 text-white flex items-center justify-between">
+              <h3 className="font-bold text-sm flex items-center gap-2">
+                <UserCog className="w-4 h-4 text-emerald-400" />
+                Mi Perfil y Contraseña
+              </h3>
+              <button onClick={() => setIsProfileModalOpen(false)} className="text-emerald-200 hover:text-white cursor-pointer">
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <form onSubmit={handleSaveMyProfile} className="p-5 space-y-4">
+              {profileSuccessMsg && (
+                <div className="p-3 bg-emerald-50 border border-emerald-300 text-emerald-900 rounded-xl font-bold flex items-center gap-2">
+                  <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
+                  <span>{profileSuccessMsg}</span>
+                </div>
+              )}
+
+              <div>
+                <label className="block text-stone-700 font-bold mb-1">Nombre Completo *</label>
+                <input
+                  type="text"
+                  required
+                  value={myNewName}
+                  onChange={(e) => setMyNewName(e.target.value)}
+                  className="w-full p-2.5 rounded-lg border border-stone-300"
+                />
+              </div>
+
+              <div>
+                <label className="block text-stone-700 font-bold mb-1">Correo Electrónico (Tu usuario de ingreso) *</label>
+                <input
+                  type="email"
+                  required
+                  value={myNewEmail}
+                  onChange={(e) => setMyNewEmail(e.target.value)}
+                  className="w-full p-2.5 rounded-lg border border-stone-300"
+                />
+              </div>
+
+              <div>
+                <label className="block text-stone-700 font-bold mb-1">Nueva Contraseña *</label>
+                <input
+                  type="text"
+                  required
+                  value={myNewPassword}
+                  onChange={(e) => setMyNewPassword(e.target.value)}
+                  placeholder="Escribe tu nueva clave"
+                  className="w-full p-2.5 rounded-lg border border-stone-300 text-sm font-mono"
+                />
+                <span className="text-[10px] text-stone-500 mt-1 block">
+                  *(Con este correo y esta clave entrarás al iniciar sesión)*
+                </span>
+              </div>
+
+              <div className="pt-3 border-t border-stone-200 flex justify-end gap-2">
+                <button
+                  type="button"
+                  onClick={() => setIsProfileModalOpen(false)}
+                  className="px-4 py-2 border rounded-lg text-stone-600 hover:bg-stone-50"
+                >
+                  Cancelar
+                </button>
+                <button
+                  type="submit"
+                  className="px-5 py-2 bg-emerald-800 hover:bg-emerald-700 text-white font-bold rounded-lg shadow-sm"
+                >
+                  Guardar Cambios
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
 
       {/* Modals */}
       <ModalLabor
