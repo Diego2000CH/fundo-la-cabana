@@ -18,19 +18,33 @@ import { ModalLabor } from './components/ModalLabor';
 import { ModalExplotacion } from './components/ModalExplotacion';
 import { 
   getStoredExplotacion, 
+  saveStoredExplotacion,
   getStoredParcelas, 
+  saveStoredParcelas,
   getStoredLabores, 
+  saveStoredLabores,
   getStoredInventario, 
+  saveStoredInventario,
   getStoredRegistrosPozo, 
+  saveStoredRegistrosPozo,
   getStoredLugares, 
+  saveStoredLugares,
   getStoredUsuarios, 
+  saveStoredUsuarios,
   getStoredActiveUserId, 
+  saveStoredActiveUserId,
   getStoredMuestreosMadurez, 
+  saveStoredMuestreosMadurez,
   getStoredCosechasLote, 
+  saveStoredCosechasLote,
   getStoredOrdenesTrabajo, 
+  saveStoredOrdenesTrabajo,
   getStoredCondicionHorasFrio, 
+  saveStoredCondicionHorasFrio,
   getStoredFenologia, 
+  saveStoredFenologia,
   getStoredPolinizacion, 
+  saveStoredPolinizacion,
   resetStorageToDefaults 
 } from './utils/storage';
 import { 
@@ -51,7 +65,24 @@ import {
   RegistroPolinizacion
 } from './types/campo';
 import { initialClimaLaCabana } from './data/initialData';
-import { RotateCcw, X, HardDrive } from 'lucide-react';
+import { RotateCcw, X, CheckCircle2, Loader2, Save, RefreshCw, Database, Lock, LogIn, UserCheck, KeyRound, AlertCircle, LogOut } from 'lucide-react';
+
+const SUPABASE_URL = 'https://zvtolionewlulqmtdaty.supabase.co';
+const SUPABASE_ANON_KEY = 'sb_publishable_s1vQx_x3_f3fDHHkdjVxZw_GTMkiU8I';
+
+// Usuario administrador inicial con clave por defecto (puedes cambiarla después)
+const USUARIO_INICIAL_ADMIN: UsuarioPredio & { clave?: string } = {
+  id: 'usr-admin-diego',
+  nombre: 'Diego Administrador',
+  email: 'diego@fundolacabana.cl',
+  telefono: '+56 9 ',
+  rol: 'administrador',
+  rutIdentificacion: '',
+  estado: 'activo',
+  fechaAlta: '2026-10-20',
+  avatarColor: 'bg-emerald-800 text-white',
+  notas: 'Administrador del Fundo La Cabaña'
+};
 
 export default function App() {
   const [activeTab, setActiveTab] = useState<ActiveTab>('dashboard');
@@ -62,8 +93,10 @@ export default function App() {
   const [inventario, setInventario] = useState<InsumoInventario[]>(getStoredInventario);
   const [registrosPozo, setRegistrosPozo] = useState<RegistroExtraccionPozo[]>(getStoredRegistrosPozo);
   const [lugares, setLugares] = useState<LugarPredio[]>(getStoredLugares);
-  const [usuarios, setUsuarios] = useState<UsuarioPredio[]>(getStoredUsuarios);
-  const [activeUserId, setActiveUserId] = useState<string>(getStoredActiveUserId);
+  const [usuarios, setUsuarios] = useState<(UsuarioPredio & { clave?: string })[]>([
+    { ...USUARIO_INICIAL_ADMIN, clave: '1234' }
+  ]);
+  const [activeUserId, setActiveUserId] = useState<string>('usr-admin-diego');
   const [clima, setClima] = useState<ClimaCondiciones>(initialClimaLaCabana);
 
   const [muestreosMadurez, setMuestreosMadurez] = useState<MuestreoMadurez[]>(getStoredMuestreosMadurez);
@@ -73,9 +106,18 @@ export default function App() {
   const [fenologia, setFenologia] = useState<SeguimientoFenologico[]>(getStoredFenologia);
   const [polinizacion, setPolinizacion] = useState<RegistroPolinizacion[]>(getStoredPolinizacion);
 
-  const [isLoadedFromDisk, setIsLoadedFromDisk] = useState(false);
+  // Estados de conexión con Supabase
+  const [isDbLoaded, setIsDbLoaded] = useState(false);
+  const [dbStatus, setDbStatus] = useState<'sincronizado' | 'guardando' | 'cargando' | 'error'>('cargando');
+  const [dbMessage, setDbMessage] = useState('Conectando a Supabase...');
 
-  // Modals state
+  // SISTEMA DE SESIÓN Y LOGIN
+  const [loggedInUser, setLoggedInUser] = useState<(UsuarioPredio & { clave?: string }) | null>(null);
+  const [loginEmail, setLoginEmail] = useState('diego@fundolacabana.cl');
+  const [loginPassword, setLoginPassword] = useState('');
+  const [loginError, setLoginError] = useState('');
+
+  // Modales
   const [isLaborModalOpen, setIsLaborModalOpen] = useState(false);
   const [isAlertsModalOpen, setIsAlertsModalOpen] = useState(false);
   const [editingLabor, setEditingLabor] = useState<RegistroLabor | null>(null);
@@ -84,72 +126,141 @@ export default function App() {
   const [isExplotacionModalOpen, setIsExplotacionModalOpen] = useState(false);
   const [isResetConfirmOpen, setIsResetConfirmOpen] = useState(false);
 
-  // 1. CARGA AUTOMÁTICA DESDE EL ARCHIVO CENTRAL AL ABRIR CUALQUIER NAVEGADOR
-  useEffect(() => {
-    fetch('/api/datos')
+  // 1. CARGA AUTOMÁTICA DESDE SUPABASE AL ABRIR LA APP
+  const cargarDesdeSupabase = () => {
+    setDbStatus('cargando');
+    setDbMessage('Descargando datos del fundo...');
+
+    fetch(`${SUPABASE_URL}/rest/v1/fundo_datos?id=eq.fundo_la_cabana&select=datos`, {
+      headers: {
+        'apikey': SUPABASE_ANON_KEY,
+        'Authorization': `Bearer ${SUPABASE_ANON_KEY}`
+      }
+    })
       .then((res) => res.json())
-      .then((datos) => {
-        if (datos && datos.explotacion) {
-          setExplotacion(datos.explotacion);
-          if (datos.parcelas) setParcelas(datos.parcelas);
-          if (datos.labores) setLabores(datos.labores);
-          if (datos.inventario) setInventario(datos.inventario);
-          if (datos.registrosPozo) setRegistrosPozo(datos.registrosPozo);
-          if (datos.lugares) setLugares(datos.lugares);
-          if (datos.usuarios) setUsuarios(datos.usuarios);
-          if (datos.activeUserId) setActiveUserId(datos.activeUserId);
-          if (datos.muestreosMadurez) setMuestreosMadurez(datos.muestreosMadurez);
-          if (datos.cosechasLote) setCosechasLote(datos.cosechasLote);
-          if (datos.ordenesTrabajo) setOrdenesTrabajo(datos.ordenesTrabajo);
+      .then((filas) => {
+        if (Array.isArray(filas) && filas.length > 0 && filas[0].datos) {
+          const datos = filas[0].datos;
+          if (datos.explotacion) setExplotacion(datos.explotacion);
+          if (Array.isArray(datos.parcelas)) setParcelas(datos.parcelas);
+          if (Array.isArray(datos.labores)) setLabores(datos.labores);
+          if (Array.isArray(datos.inventario)) setInventario(datos.inventario);
+          if (Array.isArray(datos.registrosPozo)) setRegistrosPozo(datos.registrosPozo);
+          if (Array.isArray(datos.lugares)) setLugares(datos.lugares);
+          if (Array.isArray(datos.usuarios) && datos.usuarios.length > 0) {
+            setUsuarios(datos.usuarios);
+          }
+          if (Array.isArray(datos.muestreosMadurez)) setMuestreosMadurez(datos.muestreosMadurez);
+          if (Array.isArray(datos.cosechasLote)) setCosechasLote(datos.cosechasLote);
+          if (Array.isArray(datos.ordenesTrabajo)) setOrdenesTrabajo(datos.ordenesTrabajo);
           if (datos.horasFrio) setHorasFrio(datos.horasFrio);
-          if (datos.fenologia) setFenologia(datos.fenologia);
-          if (datos.polinizacion) setPolinizacion(datos.polinizacion);
+          if (Array.isArray(datos.fenologia)) setFenologia(datos.fenologia);
+          if (Array.isArray(datos.polinizacion)) setPolinizacion(datos.polinizacion);
         }
-        setIsLoadedFromDisk(true);
+        setIsDbLoaded(true);
+        setDbStatus('sincronizado');
+        setDbMessage('Supabase conectado en vivo');
       })
       .catch((err) => {
-        console.warn('Iniciando con datos locales:', err);
-        setIsLoadedFromDisk(true);
+        console.warn('Iniciando en modo local:', err);
+        setIsDbLoaded(true);
+        setDbStatus('sincronizado');
+        setDbMessage('Modo local activo');
       });
+  };
+
+  useEffect(() => {
+    cargarDesdeSupabase();
+
+    // Restaurar sesión guardada en este celular/computador si ya inició sesión antes
+    const savedUserId = localStorage.getItem('fundo_sesion_id');
+    if (savedUserId) {
+      const u = usuarios.find((item) => item.id === savedUserId);
+      if (u) {
+        setLoggedInUser(u);
+        setActiveUserId(u.id);
+      }
+    }
   }, []);
 
-  // 2. GUARDADO AUTOMÁTICO EN EL ARCHIVO CENTRAL ANTE CUALQUIER CAMBIO
-  const isFirstRun = useRef(true);
+  // 2. GUARDAR EN SUPABASE ANTE CUALQUIER CAMBIO
+  const guardarEnSupabase = (datosPersonalizados?: any) => {
+    setDbStatus('guardando');
+    setDbMessage('Guardando en Supabase...');
+
+    const payload = datosPersonalizados || {
+      explotacion,
+      parcelas,
+      labores,
+      inventario,
+      registrosPozo,
+      lugares,
+      usuarios,
+      activeUserId,
+      muestreosMadurez,
+      cosechasLote,
+      ordenesTrabajo,
+      horasFrio,
+      fenologia,
+      polinizacion
+    };
+
+    saveStoredExplotacion(payload.explotacion);
+    saveStoredParcelas(payload.parcelas);
+    saveStoredLabores(payload.labores);
+    saveStoredInventario(payload.inventario);
+    saveStoredRegistrosPozo(payload.registrosPozo);
+    saveStoredLugares(payload.lugares);
+    saveStoredUsuarios(payload.usuarios);
+    saveStoredActiveUserId(payload.activeUserId);
+    saveStoredMuestreosMadurez(payload.muestreosMadurez);
+    saveStoredCosechasLote(payload.cosechasLote);
+    saveStoredOrdenesTrabajo(payload.ordenesTrabajo);
+    saveStoredCondicionHorasFrio(payload.horasFrio);
+    saveStoredFenologia(payload.fenologia);
+    saveStoredPolinizacion(payload.polinizacion);
+
+    fetch(`${SUPABASE_URL}/rest/v1/fundo_datos`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'apikey': SUPABASE_ANON_KEY,
+        'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
+        'Prefer': 'resolution=merge-duplicates'
+      },
+      body: JSON.stringify({
+        id: 'fundo_la_cabana',
+        datos: payload,
+        updated_at: new Date().toISOString()
+      })
+    })
+      .then((res) => {
+        if (!res.ok) throw new Error('Error al guardar');
+        setDbStatus('sincronizado');
+        setDbMessage(`Guardado en Supabase (${new Date().toLocaleTimeString('es-CL')})`);
+      })
+      .catch((err) => {
+        console.error(err);
+        setDbStatus('error');
+        setDbMessage('Error al enviar a Supabase');
+      });
+  };
+
+  const primerCarga = useRef(true);
   useEffect(() => {
-    if (!isLoadedFromDisk) return;
-    if (isFirstRun.current) {
-      isFirstRun.current = false;
+    if (!isDbLoaded) return;
+    if (primerCarga.current) {
+      primerCarga.current = false;
       return;
     }
 
     const timer = setTimeout(() => {
-      const datosCompletos = {
-        explotacion,
-        parcelas,
-        labores,
-        inventario,
-        registrosPozo,
-        lugares,
-        usuarios,
-        activeUserId,
-        muestreosMadurez,
-        cosechasLote,
-        ordenesTrabajo,
-        horasFrio,
-        fenologia,
-        polinizacion
-      };
-
-      fetch('/api/datos', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(datosCompletos)
-      }).catch((err) => console.error('Error guardando en archivo central:', err));
-    }, 400);
+      guardarEnSupabase();
+    }, 600);
 
     return () => clearTimeout(timer);
   }, [
-    isLoadedFromDisk,
+    isDbLoaded,
     explotacion,
     parcelas,
     labores,
@@ -166,7 +277,40 @@ export default function App() {
     polinizacion
   ]);
 
-  const activeUser = usuarios.find((u) => u.id === activeUserId) || usuarios[0];
+  // Manejo de inicio de sesión
+  const handleLogin = (e: React.FormEvent) => {
+    e.preventDefault();
+    setLoginError('');
+
+    const user = usuarios.find(
+      (u) => u.email.trim().toLowerCase() === loginEmail.trim().toLowerCase()
+    );
+
+    if (!user) {
+      setLoginError('No existe ningún usuario con este correo electrónico.');
+      return;
+    }
+
+    // Si el usuario no tiene clave definida, la clave es 1234
+    const userPass = user.clave || '1234';
+
+    if (loginPassword !== userPass) {
+      setLoginError('Contraseña incorrecta. (Clave por defecto: 1234)');
+      return;
+    }
+
+    setLoggedInUser(user);
+    setActiveUserId(user.id);
+    localStorage.setItem('fundo_sesion_id', user.id);
+  };
+
+  const handleLogout = () => {
+    setLoggedInUser(null);
+    localStorage.removeItem('fundo_sesion_id');
+    setLoginPassword('');
+  };
+
+  const activeUser = loggedInUser || usuarios.find((u) => u.id === activeUserId) || usuarios[0];
 
   const handleOpenNewLabor = () => {
     setEditingLabor(null);
@@ -245,7 +389,7 @@ export default function App() {
                 horasBombeo: hrs,
                 caudalPromedioLs: caudal,
                 sectorDestino: laborToSave.parcelaNombre,
-                operadorBomba: laborToSave.registradoPor || activeUser?.nombre || 'Carlos Morales Vega'
+                operadorBomba: laborToSave.registradoPor || activeUser?.nombre || 'Operador'
               };
             }
             return r;
@@ -256,7 +400,7 @@ export default function App() {
       } else {
         const latestFinalM3 = registrosPozo.length > 0 
           ? Math.max(...registrosPozo.map((r) => r.lecturaFinalM3))
-          : 41630;
+          : 0;
 
         const nuevoRegistroPozo: RegistroExtraccionPozo = {
           id: `pz-auto-${Date.now()}`,
@@ -269,8 +413,8 @@ export default function App() {
           horasBombeo: hrs,
           caudalPromedioLs: caudal,
           sectorDestino: laborToSave.parcelaNombre,
-          operadorBomba: laborToSave.registradoPor || activeUser?.nombre || 'Carlos Morales Vega',
-          observaciones: `Extracción automática registrada desde labor de riego en ${laborToSave.parcelaNombre}`
+          operadorBomba: laborToSave.registradoPor || activeUser?.nombre || 'Operador',
+          observaciones: `Extracción registrada desde labor de riego en ${laborToSave.parcelaNombre}`
         };
 
         setRegistrosPozo((prev) => [nuevoRegistroPozo, ...prev]);
@@ -335,12 +479,148 @@ export default function App() {
     setPolinizacion(defaults.polinizacion);
     setActiveUserId(defaults.usuarios[0]?.id || 'usr-1');
     setIsResetConfirmOpen(false);
+    guardarEnSupabase(defaults);
   };
 
   const lowStockCount = inventario.filter((i) => i.stockActual <= i.stockMinimo).length;
 
+  // PANTALLA DE BLOQUEO / INICIO DE SESIÓN CON CLAVE
+  if (!loggedInUser) {
+    return (
+      <div className="min-h-screen bg-stone-900 flex items-center justify-center p-4">
+        <div className="w-full max-w-md bg-white rounded-2xl shadow-2xl overflow-hidden border border-stone-200">
+          <div className="bg-emerald-950 p-6 text-white text-center">
+            <div className="w-12 h-12 bg-emerald-800 rounded-xl flex items-center justify-center mx-auto mb-3 border border-emerald-600">
+              <Lock className="w-6 h-6 text-emerald-200" />
+            </div>
+            <h1 className="text-xl font-bold">Fundo La Cabaña</h1>
+            <p className="text-xs text-emerald-300 mt-1">
+              Cuaderno de Campo Digital · Kiwi Hayward
+            </p>
+          </div>
+
+          <form onSubmit={handleLogin} className="p-6 space-y-4 text-xs">
+            {loginError && (
+              <div className="p-3 bg-red-50 border border-red-200 text-red-800 rounded-xl flex items-center gap-2 font-medium">
+                <AlertCircle className="w-4 h-4 text-red-600 shrink-0" />
+                <span>{loginError}</span>
+              </div>
+            )}
+
+            <div>
+              <label className="block text-stone-700 font-bold mb-1">
+                Selecciona tu Usuario o Escribe tu Correo *
+              </label>
+              <select
+                value={loginEmail}
+                onChange={(e) => setLoginEmail(e.target.value)}
+                className="w-full p-2.5 rounded-lg border border-stone-300 font-medium bg-white text-stone-900 mb-2"
+              >
+                {usuarios.map((u) => (
+                  <option key={u.id} value={u.email}>
+                    {u.nombre} ({u.email})
+                  </option>
+                ))}
+              </select>
+
+              <input
+                type="email"
+                required
+                value={loginEmail}
+                onChange={(e) => setLoginEmail(e.target.value)}
+                placeholder="correo@fundolacabana.cl"
+                className="w-full p-2.5 rounded-lg border border-stone-300"
+              />
+            </div>
+
+            <div>
+              <label className="block text-stone-700 font-bold mb-1">
+                Contraseña Personal *
+              </label>
+              <input
+                type="password"
+                required
+                value={loginPassword}
+                onChange={(e) => setLoginPassword(e.target.value)}
+                placeholder="Escribe tu clave aquí"
+                className="w-full p-2.5 rounded-lg border border-stone-300 text-sm"
+              />
+              <span className="text-[10px] text-stone-400 mt-1 block">
+                *(Clave por defecto para ingresar: <strong>1234</strong>)*
+              </span>
+            </div>
+
+            <button
+              type="submit"
+              className="w-full py-3 bg-emerald-800 hover:bg-emerald-700 text-white font-bold rounded-xl text-sm transition-all flex items-center justify-center gap-2 shadow-sm cursor-pointer active:scale-95"
+            >
+              <LogIn className="w-4 h-4" />
+              Ingresar al Cuaderno
+            </button>
+
+            <div className="pt-2 text-center text-[11px] text-stone-400">
+              Base de datos segura conectada en la nube (Supabase)
+            </div>
+          </form>
+        </div>
+      </div>
+    );
+  }
+
+  // APLICACIÓN PRINCIPAL
   return (
     <div className="min-h-screen bg-stone-50 flex flex-col font-sans text-stone-900 pb-16 sm:pb-0">
+      {/* BARRA SUPERIOR DE CONEXIÓN CON SUPABASE & USUARIO ACTIVO */}
+      <div className="bg-stone-900 text-white px-4 py-2 border-b border-stone-800 text-xs flex flex-wrap items-center justify-between gap-3 sticky top-0 z-50">
+        <div className="flex items-center gap-2">
+          <Database className="w-4 h-4 text-emerald-400" />
+          {dbStatus === 'guardando' && (
+            <span className="flex items-center gap-1.5 text-amber-300 font-bold">
+              <Loader2 className="w-3.5 h-3.5 animate-spin" />
+              {dbMessage}
+            </span>
+          )}
+          {dbStatus === 'sincronizado' && (
+            <span className="flex items-center gap-1.5 text-emerald-400 font-bold">
+              <CheckCircle2 className="w-4 h-4 text-emerald-400" />
+              {dbMessage}
+            </span>
+          )}
+          {dbStatus === 'cargando' && (
+            <span className="flex items-center gap-1.5 text-stone-300">
+              <Loader2 className="w-3.5 h-3.5 animate-spin" />
+              {dbMessage}
+            </span>
+          )}
+          {dbStatus === 'error' && (
+            <span className="text-red-400 font-bold">
+              {dbMessage}
+            </span>
+          )}
+        </div>
+
+        <div className="flex items-center gap-3">
+          <span className="text-stone-300 hidden sm:inline">
+            Conectado como: <strong>{loggedInUser.nombre}</strong>
+          </span>
+          <button
+            onClick={() => guardarEnSupabase()}
+            className="px-3 py-1 bg-emerald-600 hover:bg-emerald-500 text-white font-bold rounded-lg transition-all flex items-center gap-1.5 active:scale-95 cursor-pointer shadow-xs"
+          >
+            <Save className="w-3.5 h-3.5" />
+            Guardar en Supabase
+          </button>
+          <button
+            onClick={handleLogout}
+            className="px-2.5 py-1 bg-stone-800 hover:bg-red-800 text-stone-300 hover:text-white rounded-lg transition-colors flex items-center gap-1 cursor-pointer"
+            title="Cerrar sesión"
+          >
+            <LogOut className="w-3.5 h-3.5" />
+            Salir
+          </button>
+        </div>
+      </div>
+
       <Navbar
         activeTab={activeTab}
         setActiveTab={setActiveTab}
@@ -389,8 +669,12 @@ export default function App() {
             usuarios={usuarios}
             activeUserId={activeUserId}
             onSetActiveUser={setActiveUserId}
-            onAddUsuario={(u) => setUsuarios((prev) => [...prev, u])}
-            onUpdateUsuario={(u) => setUsuarios((prev) => prev.map((item) => item.id === u.id ? u : item))}
+            onAddUsuario={(u) => {
+              // Si no tiene clave, le asignamos 1234
+              const userWithPass = { ...u, clave: (u as any).clave || '1234' };
+              setUsuarios((prev) => [...prev, userWithPass]);
+            }}
+            onUpdateUsuario={(u) => setUsuarios((prev) => prev.map((item) => item.id === u.id ? { ...u, clave: (item as any).clave || '1234' } : item))}
             onDeleteUsuario={(id) => setUsuarios((prev) => prev.filter((item) => item.id !== id))}
           />
         )}
@@ -479,6 +763,7 @@ export default function App() {
           <PozoView
             registrosPozo={registrosPozo}
             onAddRegistroPozo={(r) => setRegistrosPozo((prev) => [r, ...prev])}
+            onUpdateRegistroPozo={(r) => setRegistrosPozo((prev) => prev.map((p) => p.id === r.id ? r : p))}
             onDeleteRegistroPozo={(id) => setRegistrosPozo((prev) => prev.filter((p) => p.id !== id))}
           />
         )}
@@ -522,6 +807,13 @@ export default function App() {
                     if (parsed.registrosPozo) setRegistrosPozo(parsed.registrosPozo);
                     if (parsed.lugares) setLugares(parsed.lugares);
                     if (parsed.usuarios) setUsuarios(parsed.usuarios);
+                    if (parsed.muestreosMadurez) setMuestreosMadurez(parsed.muestreosMadurez);
+                    if (parsed.cosechasLote) setCosechasLote(parsed.cosechasLote);
+                    if (parsed.ordenesTrabajo) setOrdenesTrabajo(parsed.ordenesTrabajo);
+                    if (parsed.horasFrio) setHorasFrio(parsed.horasFrio);
+                    if (parsed.fenologia) setFenologia(parsed.fenologia);
+                    if (parsed.polinizacion) setPolinizacion(parsed.polinizacion);
+                    guardarEnSupabase(parsed);
                   } catch (err) {
                     console.error('Error importando', err);
                   }
@@ -570,51 +862,59 @@ export default function App() {
         <div className="fixed inset-0 z-50 flex items-center justify-center p-3 bg-stone-900/60 backdrop-blur-xs">
           <div className="bg-white rounded-2xl shadow-xl w-full max-w-md border border-stone-200 overflow-hidden">
             <div className="px-5 py-4 border-b border-stone-200 bg-amber-950 text-white flex items-center justify-between">
-              <h3 className="font-bold text-sm">Restablecer Datos de Demostración</h3>
-              <button onClick={() => setIsResetConfirmOpen(false)} className="p-1 text-amber-200 hover:text-white">
+              <h3 className="font-bold text-sm">Vaciar Datos</h3>
+              <button onClick={() => setIsResetConfirmOpen(false)} className="p-1 text-amber-200 hover:text-white cursor-pointer">
                 <X className="w-5 h-5" />
               </button>
             </div>
             <div className="p-5 space-y-3 text-xs">
-              <p className="text-stone-700 text-sm">¿Deseas restablecer Fundo La Cabaña a sus datos iniciales?</p>
+              <p className="text-stone-700 text-sm">¿Deseas vaciar la base de datos para comenzar en blanco?</p>
               <div className="pt-3 border-t border-stone-200 flex justify-end gap-2">
                 <button
                   type="button"
                   onClick={() => setIsResetConfirmOpen(false)}
-                  className="px-4 py-2 border border-stone-300 rounded-lg text-stone-700 font-medium hover:bg-stone-50"
+                  className="px-4 py-2 border border-stone-300 rounded-lg text-stone-700 font-medium hover:bg-stone-50 cursor-pointer"
                 >
                   Cancelar
                 </button>
                 <button
                   type="button"
                   onClick={handleExecuteReset}
-                  className="px-4 py-2 bg-amber-700 hover:bg-amber-800 text-white font-bold rounded-lg shadow-sm"
+                  className="px-4 py-2 bg-amber-700 hover:bg-amber-800 text-white font-bold rounded-lg shadow-sm cursor-pointer"
                 >
-                  Restablecer
+                  Confirmar y Vaciar
                 </button>
               </div>
             </div>
           </div>
         </div>
       )}
-      <footer className="no-print mt-auto border-t border-stone-200 bg-white py-4">
+
+      {/* FOOTER */}
+      <footer className="no-print mt-auto border-t border-stone-200 bg-white py-3.5">
         <div className="max-w-7xl mx-auto px-4 flex flex-col sm:flex-row items-center justify-between gap-3 text-xs text-stone-500">
-          <div className="flex items-center gap-2">
-            <span className="font-semibold text-stone-700">{explotacion.nombreFundo}</span>
-            <span>·</span>
-            <span className="flex items-center gap-1 text-emerald-800 font-semibold bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200">
-              <HardDrive className="w-3.5 h-3.5 text-emerald-600" />
-              Guardado automático central activo
-            </span>
+          <div>
+            <span className="font-semibold text-stone-800">{explotacion.nombreFundo}</span>
+            <span className="mx-2">·</span>
+            <span>Cuaderno Oficial SAG</span>
           </div>
 
-          <button
-            onClick={() => setIsResetConfirmOpen(true)}
-            className="text-stone-400 hover:text-stone-700 flex items-center gap-1 cursor-pointer"
-          >
-            <RotateCcw className="w-3.5 h-3.5" />
-            Restablecer Datos
-          </button>
+          <div className="flex items-center gap-3">
+            <button
+              onClick={() => guardarEnSupabase()}
+              className="text-emerald-800 font-bold hover:underline cursor-pointer flex items-center gap-1"
+            >
+              <Save className="w-3.5 h-3.5" />
+              Guardar en Supabase
+            </button>
+            <button
+              onClick={() => setIsResetConfirmOpen(true)}
+              className="text-stone-400 hover:text-stone-700 flex items-center gap-1 cursor-pointer"
+            >
+              <RotateCcw className="w-3.5 h-3.5" />
+              Vaciar / Empezar en Blanco
+            </button>
+          </div>
         </div>
       </footer>
     </div>
