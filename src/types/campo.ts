@@ -7,10 +7,32 @@ export type TipoLabor =
   | 'labor_cultural' 
   | 'monitoreo';
 
+export type DestinoAplicacion = 
+  | 'Huerto de Kiwi'
+  | 'Casa patronal'
+  | 'Quinta frutal'
+  | 'Control de praderas'
+  | 'Vivero'
+  | 'Caminos y cercos'
+  | 'Otro destino';
+
+export type CategoriaInsumo = 
+  | 'Fungicida'
+  | 'Insecticida'
+  | 'Acaricida'
+  | 'Bactericida'
+  | 'Herbicida'
+  | 'Fitorregulador'
+  | 'Bioestimulante'
+  | 'Fertilizante'
+  | 'Coadyuvante'
+  | 'Desinfectante'
+  | 'Otro';
+
 export interface ExplotacionAgricola {
   nombreFundo: string;
   titular: string;
-  identificacionFiscal: string; // RUT o CIF/NIF
+  identificacionFiscal: string;
   comunaRegion: string;
   direccion: string;
   asesorAgronomo: string;
@@ -24,15 +46,14 @@ export interface Parcela {
   nombre: string;
   codigoLote: string;
   superficieHa: number;
-  cultivo: string; // "Kiwi"
-  variedad: string; // 100% Kiwi Hayward
+  cultivo: string;
+  variedad: string;
   anoPlantacion: number;
-  marcoPlantacion: string; // e.g., "4.5m x 4.0m"
+  marcoPlantacion: string;
   sistemaRiego: 'Goteo automatizado' | 'Microaspersión' | 'Aspersión cobertura total' | 'Pivote central' | 'Surco / Gravedad';
   tipoSuelo: string;
   latitud: number;
   longitud: number;
-  poligono?: [number, number][]; // Coordenadas relativas de visualización [x, y] en %
   estadoActual: 'En crecimiento' | 'Floración' | 'Cuaje / Maduración' | 'Cosecha activa' | 'Receso invernal' | 'En descanso / Barbecho';
   sistemaConduccion?: 'Parrón Español / Pérgola' | 'Espaldera en T / Doble T';
 }
@@ -64,10 +85,10 @@ export interface InsumoInventario {
   id: string;
   nombreComercial: string;
   materiaActiva: string;
-  categoria: 'Fungicida' | 'Insecticida / Acaricida' | 'Bactericida' | 'Herbicida' | 'Fertilizante' | 'Regulador de Crecimiento' | 'Coadyuvante';
+  categoria: CategoriaInsumo;
   stockActual: number;
   unidad: 'kg' | 'L' | 'g' | 'cc';
-  stockMinimo: number; // Umbral de alerta
+  stockMinimo: number;
   numeroRegistroSAG?: string;
   ubicacionBodega: string;
   fechaVencimiento: string;
@@ -77,41 +98,55 @@ export interface InsumoInventario {
 
 export interface RegistroExtraccionPozo {
   id: string;
-  fecha: string; // YYYY-MM-DD
-  hora: string;  // HH:MM
+  fecha: string;
+  hora: string;
   lecturaInicialM3: number;
   lecturaFinalM3: number;
   metrosCubicosExtraidos: number;
-  litrosTotales: number; // m3 * 1000
+  litrosTotales: number;
   horasBombeo: number;
-  caudalPromedioLs: number; // Litros por segundo
+  caudalPromedioLs: number;
   nivelEstaticoMetros?: number;
   nivelDinamicoMetros?: number;
-  sectorDestino: string;
   operadorBomba: string;
+  observaciones?: string;
+}
+
+export interface RegistroRiegoSector {
+  id: string;
+  fecha: string;
+  horaInicio: string;
+  sectorDestino: string;
+  duracionHoras: number;
+  volumenM3: number;
+  litrosTotales: number;
+  laminaAguaMm: number;
+  fuenteAgua: string;
+  metodoRiego: string;
+  operador: string;
   observaciones?: string;
 }
 
 export interface RegistroLabor {
   id: string;
-  fecha: string; // YYYY-MM-DD
-  hora: string;  // HH:MM
+  fecha: string;
+  hora: string;
   parcelaId: string;
   parcelaNombre: string;
   tipoLabor: TipoLabor;
   descripcionGeneral: string;
+  destinoAplicacion?: DestinoAplicacion;
 
-  // Campos específicos Tratamiento Fitosanitario
   productoComercial?: string;
-  insumoId?: string; // Vinculación con el inventario
+  insumoId?: string;
   materiaActiva?: string;
   numeroRegistroSAG?: string;
   plagaObjetivo?: string;
   dosisPorHa?: number;
   unidadDosis?: 'L/ha' | 'kg/ha' | 'cc/100L' | 'g/100L';
   volumenCaldoLHa?: number;
-  totalInsumoUtilizado?: number; // Cantidad total descontada de bodega
-  plazoSeguridadDias?: number; // Días de carencia
+  totalInsumoUtilizado?: number;
+  plazoSeguridadDias?: number;
   plazoReingresoHoras?: number;
   maquinariaEquipo?: string;
   aplicadorNombre?: string;
@@ -119,37 +154,27 @@ export interface RegistroLabor {
   condicionesClima?: ClimaCondiciones;
   estadoFenologicoBBCH?: string;
 
-  // Campos específicos Fertilización
   abonoProducto?: string;
   formulacionNPK?: string;
   dosisAbonoKgHa?: number;
   metodoAplicacionAbono?: 'Fertirriego' | 'Foliar' | 'Al voleo / Fondo' | 'Localizado en hilera';
 
-  // Campos específicos Riego
   duracionRiegoHoras?: number;
   volumenM3?: number;
   litrosAgua?: number;
   fuenteAgua?: string;
   registroPozoId?: string;
 
-  // Campos específicos Cosecha
   kilosRecolectados?: number;
   calibreCalidad?: string;
   destinoProducto?: 'Exportación Fresco' | 'Mercado Interno' | 'Agroindustria / Proceso';
   loteTrazabilidad?: string;
 
-  // Campos específicos Siembra / Plantación
-  dosisSemillaKgHa?: number;
-  semillaLote?: string;
-  profundidadSiembraCm?: number;
-
-  // Campos específicos Monitoreo
   nivelInfestacion?: 'Bajo (<5%)' | 'Medio (5-15%)' | 'Crítico (>15%)' | 'No detectado';
   umbralSuperado?: boolean;
   accionSugerida?: string;
   fotoUrl?: string;
 
-  // Metadatos
   costoEstimadoCLP?: number;
   observaciones?: string;
   registradoPor: string;
@@ -180,6 +205,7 @@ export interface UsuarioPredio {
   telefono: string;
   rol: RolUsuario;
   rutIdentificacion: string;
+  clave?: string;
   numeroRegistroSAG?: string;
   tituloProfesional?: string;
   estado: 'activo' | 'inactivo';
@@ -188,28 +214,15 @@ export interface UsuarioPredio {
   notas?: string;
 }
 
-export interface AlertaInsumoStock {
-  insumo: InsumoInventario;
-  nivel: 'agotado' | 'critico' | 'advertencia';
-  porcentajeStock: number;
-  diferenciaUnidades: number;
-  hectareasEstimadasRestantes: number;
-}
-
-// -------------------------------------------------------------
-// CONTROL DE COSECHA & MADUREZ (KIWI HAYWARD)
-// -------------------------------------------------------------
-
 export interface MuestreoMadurez {
   id: string;
-  fecha: string; // YYYY-MM-DD
+  fecha: string;
   parcelaId: string;
   parcelaNombre: string;
   variedad: 'Hayward';
   cuartelSector?: string;
-  solidosSolublesBrix: number; // Objetivo: >= 6.2° - 6.5° Brix para autorización
-  firmezaLibras: number; // Penetrómetro de pulpa (libras/cm² con punta 7.9mm, óptimo 14-16 lb)
-  materiaSecaPorcentaje: number; // Óptimo > 15.5% - 16.5% MS
+  solidosSolublesBrix: number;
+  materiaSecaPorcentaje: number;
   colorSemillas: '100% Negras' | '75% Pardo Oscuro' | 'Verdosas / Inmaduras';
   estadoAutorizacion: 'Autorizado Cosecha' | 'En Observación' | 'No Autorizado';
   temperaturaAmbienteMuestreoC?: number;
@@ -225,7 +238,7 @@ export interface RegistroCosechaLote {
   variedad: 'Hayward';
   cuartelHilera?: string;
   cantidadBins: number;
-  pesoPromedioBinKg: number; // Estándar 380 - 400 kg por bin de kiwi
+  pesoPromedioBinKg: number;
   kilosTotales: number;
   cuadrillaCosecheros: string;
   numeroCosecheros: number;
@@ -236,22 +249,18 @@ export interface RegistroCosechaLote {
   observaciones?: string;
 }
 
-// -------------------------------------------------------------
-// ÓRDENES DE TRABAJO FITOSANITARIAS (RECETAS AGRONÓMICAS)
-// -------------------------------------------------------------
-
 export interface OrdenTrabajoFitosanitaria {
   id: string;
-  numeroOrden: string; // e.g. "OT-2026-001"
+  numeroOrden: string;
   fechaEmision: string;
   fechaProgramada: string;
   fechaEjecucion?: string;
   parcelaId: string;
   parcelaNombre: string;
   superficieTratarHa: number;
+  destinoAplicacion: DestinoAplicacion;
   estado: 'borrador' | 'emitida' | 'en_ejecucion' | 'completada' | 'cancelada';
   
-  // Detalle Fitosanitario
   plagaObjetivo: string;
   insumoId?: string;
   productoComercial: string;
@@ -264,17 +273,15 @@ export interface OrdenTrabajoFitosanitaria {
   totalProductoRequerido: number;
   unidadProducto: 'kg' | 'L' | 'g' | 'cc';
 
-  // Seguridad y Buenas Prácticas Agrícolas
   plazoReingresoHoras: number;
   plazoCarenciaDias: number;
   eppObligatorio: string[];
   condicionesClimaticasRequeridas: string;
 
-  // Personal y Firmas
   agronomoEmisorId: string;
   agronomoEmisorNombre: string;
   agronomoRegistroSAG?: string;
-  agronomoFirmaDigital?: string; // Sello de tiempo o validación
+  agronomoFirmaDigital?: string;
   
   aplicadorAsignadoId?: string;
   aplicadorAsignadoNombre?: string;
@@ -286,22 +293,34 @@ export interface OrdenTrabajoFitosanitaria {
   observacionesTecnicas?: string;
 }
 
-// -------------------------------------------------------------
-// HORAS FRÍO & FENOLOGÍA / POLINIZACIÓN DEL KIWI HAYWARD
-// -------------------------------------------------------------
-
 export interface CondicionHorasFrio {
   temporada: string;
-  horasFrioAcumuladas: number; // Horas bajo 7.2°C (Weinberger)
-  horasFrioMetaHayward: number; // 850 HF (Rango 800-1000 HF)
+  horasFrioAcumuladas: number;
+  horasFrioMetaHayward: number;
   porcentajeCumplimiento: number;
-  fechaInicioMedicion: string; // Ej: 01 de Mayo
+  fechaInicioMedicion: string;
   fechaUltimaActualizacion: string;
   temperaturaMinimaRegistradaC: number;
   rompedorDormanciaRecomendado: string;
   fechaSugeridaRompedor: string;
   estadoDormancia: 'En acumulación' | 'Cumplimiento óptimo' | 'Déficit - Rompedor urgente';
   observacionesAgronomicas: string;
+}
+
+export interface ConteoYemasBrotacion {
+  id: string;
+  fecha: string;
+  parcelaId: string;
+  parcelaNombre: string;
+  hileraSector: string;
+  cargadoresMuestreados: number;
+  yemasTotalesInvierno: number;
+  brotesEmergidos: number;
+  brotesFertilesFlorales: number;
+  porcentajeBrotacion: number;
+  porcentajeFertilidad: number;
+  evaluador: string;
+  observaciones?: string;
 }
 
 export interface SeguimientoFenologico {
@@ -311,8 +330,8 @@ export interface SeguimientoFenologico {
   parcelaNombre: string;
   variedad: 'Hayward';
   codigoBBCH: string;
-  nombreEstado: string; // ej. "BBCH 00: Receso invernal", "BBCH 65: Plena floración"
-  porcentajeAvance: number; // 0 - 100%
+  nombreEstado: string;
+  porcentajeAvance: number;
   observaciones: string;
   evaluador: string;
 }
@@ -322,13 +341,13 @@ export interface RegistroPolinizacion {
   temporada: string;
   parcelaId: string;
   parcelaNombre: string;
-  variedadPrincipal: string; // "Hayward (Hembra)"
-  variedadPolinizadora: string; // "Tomuri / Chieftain (Macho)"
+  variedadPrincipal: string;
+  variedadPolinizadora: string;
   fechaEntradaColmenas: string;
   fechaSalidaColmenas: string;
   tipoPolinizador: 'Abejas melíferas (Apis mellifera)' | 'Abejorros (Bombus terrestris)' | 'Mixta (Abejas + Abejorros)' | 'Polen seco / asistido';
   colmenasTotales: number;
-  colmenasPorHectarea: number; // Recomendado 8-10 colm/ha en Hayward
+  colmenasPorHectarea: number;
   proveedorApiario: string;
   sincroniaFloracion: 'Óptima (>90%)' | 'Aceptable (70-90%)' | 'Desfasada (<70%)';
   porcentajeFloresAbiertas: number;
