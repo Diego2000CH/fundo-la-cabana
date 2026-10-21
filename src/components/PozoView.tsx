@@ -240,7 +240,6 @@ export const PozoView: React.FC<PozoViewProps> = ({
             </div>
           </div>
 
-          {/* Tabla de Pozo */}
           <div className="bg-white border border-stone-200 rounded-xl shadow-xs overflow-hidden">
             <div className="overflow-x-auto">
               <table className="w-full text-left text-xs">
@@ -309,7 +308,7 @@ export const PozoView: React.FC<PozoViewProps> = ({
         </div>
       )}
 
-      {/* VISTA 2: RIEGO Y DISTRIBUCIÓN */}
+      {/* VISTA 2: RIEGO */}
       {activeTabPozo === 'riego' && (
         <div className="space-y-4">
           <div className="p-4 bg-emerald-50 rounded-xl border border-emerald-200 text-xs">
@@ -320,7 +319,7 @@ export const PozoView: React.FC<PozoViewProps> = ({
           </div>
 
           <div className="bg-white rounded-xl border border-stone-200 p-8 text-center text-xs text-stone-500">
-            💡 Puedes registrar un nuevo riego hacia cualquier cuartel o sector directamente desde el botón verde <strong>"+ Nueva Labor"</strong> arriba a la derecha, seleccionando el tipo <strong>"Riego Pozo"</strong>.
+            💡 Puedes registrar un nuevo riego hacia cualquier cuartel o sector directamente desde el botón verde <strong>"+ Nueva Labor"</strong> arriba a la derecha, seleccionando el tipo <strong>"Riego Pozo"</strong> y especificando el destino (Huerto, Casa patronal, Quinta frutal, etc.).
           </div>
         </div>
       )}
