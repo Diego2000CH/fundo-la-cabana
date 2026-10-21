@@ -65,7 +65,14 @@ import {
   RegistroPolinizacion
 } from './types/campo';
 import { initialClimaLaCabana } from './data/initialData';
-import { RotateCcw, X, CheckCircle2, Loader2, Save, RefreshCw } from 'lucide-react';
+import { RotateCcw, X, CheckCircle2, Loader2, Save, RefreshCw, Database } from 'lucide-react';
+
+// =====================================================================
+// PEGA AQUÍ TUS DATOS DE SUPABASE (Copiados de la Fase 3)
+// =====================================================================
+const SUPABASE_URL = 'PEGA_AQUI_TU_PROJECT_URL'; // Ej: https://xyzcompany.supabase.co
+const SUPABASE_ANON_KEY = 'PEGA_AQUI_TU_ANON_KEY'; // Ej: eyJhbGciOi...
+// =====================================================================
 
 export default function App() {
   const [activeTab, setActiveTab] = useState<ActiveTab>('dashboard');
@@ -87,9 +94,9 @@ export default function App() {
   const [fenologia, setFenologia] = useState<SeguimientoFenologico[]>(getStoredFenologia);
   const [polinizacion, setPolinizacion] = useState<RegistroPolinizacion[]>(getStoredPolinizacion);
 
-  const [isServerLoaded, setIsServerLoaded] = useState(false);
-  const [serverStatus, setServerStatus] = useState<'sincronizado' | 'guardando' | 'cargando'>('cargando');
-  const [statusText, setStatusText] = useState('Conectando al servidor...');
+  const [isDbLoaded, setIsDbLoaded] = useState(false);
+  const [dbStatus, setDbStatus] = useState<'sincronizado' | 'guardando' | 'cargando' | 'error'>('cargando');
+  const [dbMessage, setDbMessage] = useState('Conectando a Supabase...');
 
   const [isLaborModalOpen, setIsLaborModalOpen] = useState(false);
   const [isAlertsModalOpen, setIsAlertsModalOpen] = useState(false);
@@ -99,14 +106,28 @@ export default function App() {
   const [isExplotacionModalOpen, setIsExplotacionModalOpen] = useState(false);
   const [isResetConfirmOpen, setIsResetConfirmOpen] = useState(false);
 
-  // 1. CARGA INICIAL DESDE EL SERVIDOR CENTRAL
-  const cargarDesdeServidor = () => {
-    setServerStatus('cargando');
-    setStatusText('Cargando datos del fundo...');
-    fetch('/api/datos')
+  // 1. CARGA AUTOMÁTICA DESDE SUPABASE AL ABRIR LA APP
+  const cargarDesdeSupabase = () => {
+    if (!SUPABASE_URL || SUPABASE_URL.includes('PEGA_AQUI')) {
+      setIsDbLoaded(true);
+      setDbStatus('sincronizado');
+      setDbMessage('Falta ingresar las credenciales de Supabase');
+      return;
+    }
+
+    setDbStatus('cargando');
+    setDbMessage('Descargando datos desde Supabase...');
+
+    fetch(`${SUPABASE_URL}/rest/v1/fundo_datos?id=eq.fundo_la_cabana&select=datos`, {
+      headers: {
+        'apikey': SUPABASE_ANON_KEY,
+        'Authorization': `Bearer ${SUPABASE_ANON_KEY}`
+      }
+    })
       .then((res) => res.json())
-      .then((datos) => {
-        if (datos && typeof datos === 'object' && Object.keys(datos).length > 0) {
+      .then((filas) => {
+        if (Array.isArray(filas) && filas.length > 0 && filas[0].datos) {
+          const datos = filas[0].datos;
           if (datos.explotacion) setExplotacion(datos.explotacion);
           if (Array.isArray(datos.parcelas)) setParcelas(datos.parcelas);
           if (Array.isArray(datos.labores)) setLabores(datos.labores);
@@ -122,25 +143,28 @@ export default function App() {
           if (Array.isArray(datos.fenologia)) setFenologia(datos.fenologia);
           if (Array.isArray(datos.polinizacion)) setPolinizacion(datos.polinizacion);
         }
-        setIsServerLoaded(true);
-        setServerStatus('sincronizado');
-        setStatusText('Base de datos central conectada');
+        setIsDbLoaded(true);
+        setDbStatus('sincronizado');
+        setDbMessage('Supabase conectado en vivo');
       })
-      .catch(() => {
-        setIsServerLoaded(true);
-        setServerStatus('sincronizado');
-        setStatusText('Modo de respaldo activo');
+      .catch((err) => {
+        console.warn('Error leyendo de Supabase:', err);
+        setIsDbLoaded(true);
+        setDbStatus('sincronizado');
+        setDbMessage('Modo local activo');
       });
   };
 
   useEffect(() => {
-    cargarDesdeServidor();
+    cargarDesdeSupabase();
   }, []);
 
-  // 2. FUNCIÓN DE GUARDADO CENTRAL
-  const guardarEnServidor = (datosPersonalizados?: any) => {
-    setServerStatus('guardando');
-    setStatusText('Guardando en el servidor...');
+  // 2. GUARDAR EN SUPABASE ANTE CUALQUIER CAMBIO
+  const guardarEnSupabase = (datosPersonalizados?: any) => {
+    if (!SUPABASE_URL || SUPABASE_URL.includes('PEGA_AQUI')) return;
+
+    setDbStatus('guardando');
+    setDbMessage('Guardando en Supabase...');
 
     const payload = datosPersonalizados || {
       explotacion,
@@ -159,7 +183,7 @@ export default function App() {
       polinizacion
     };
 
-    // Guardado local de respaldo inmediato
+    // Guardado de respaldo en memoria local del navegador
     saveStoredExplotacion(payload.explotacion);
     saveStoredParcelas(payload.parcelas);
     saveStoredLabores(payload.labores);
@@ -175,36 +199,48 @@ export default function App() {
     saveStoredFenologia(payload.fenologia);
     saveStoredPolinizacion(payload.polinizacion);
 
-    fetch('/api/datos', {
+    fetch(`${SUPABASE_URL}/rest/v1/fundo_datos`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(payload)
-    })
-      .then(() => {
-        setServerStatus('sincronizado');
-        setStatusText(`Guardado confirmado (${new Date().toLocaleTimeString('es-CL')})`);
+      headers: {
+        'Content-Type': 'application/json',
+        'apikey': SUPABASE_ANON_KEY,
+        'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
+        'Prefer': 'resolution=merge-duplicates'
+      },
+      body: JSON.stringify({
+        id: 'fundo_la_cabana',
+        datos: payload,
+        updated_at: new Date().toISOString()
       })
-      .catch(() => {
-        setServerStatus('sincronizado');
+    })
+      .then((res) => {
+        if (!res.ok) throw new Error('Error al guardar');
+        setDbStatus('sincronizado');
+        setDbMessage(`Guardado en Supabase (${new Date().toLocaleTimeString('es-CL')})`);
+      })
+      .catch((err) => {
+        console.error(err);
+        setDbStatus('error');
+        setDbMessage('Error al enviar a Supabase');
       });
   };
 
-  // Guardado automático ante cualquier cambio
+  // Guardado automático debounced
   const primerCarga = useRef(true);
   useEffect(() => {
-    if (!isServerLoaded) return;
+    if (!isDbLoaded) return;
     if (primerCarga.current) {
       primerCarga.current = false;
       return;
     }
 
     const timer = setTimeout(() => {
-      guardarEnServidor();
-    }, 500);
+      guardarEnSupabase();
+    }, 600);
 
     return () => clearTimeout(timer);
   }, [
-    isServerLoaded,
+    isDbLoaded,
     explotacion,
     parcelas,
     labores,
@@ -390,46 +426,52 @@ export default function App() {
     setPolinizacion(defaults.polinizacion);
     setActiveUserId(defaults.usuarios[0]?.id || 'usr-1');
     setIsResetConfirmOpen(false);
-    guardarEnServidor(defaults);
+    guardarEnSupabase(defaults);
   };
 
   const lowStockCount = inventario.filter((i) => i.stockActual <= i.stockMinimo).length;
 
   return (
     <div className="min-h-screen bg-stone-50 flex flex-col font-sans text-stone-900 pb-16 sm:pb-0">
-      {/* BARRA SUPERIOR DE GUARDADO CENTRAL EN EL SERVIDOR */}
+      {/* BARRA SUPERIOR DE CONEXIÓN CON SUPABASE */}
       <div className="bg-stone-900 text-white px-4 py-2 border-b border-stone-800 text-xs flex flex-wrap items-center justify-between gap-3 sticky top-0 z-50">
         <div className="flex items-center gap-2">
-          {serverStatus === 'guardando' && (
+          <Database className="w-4 h-4 text-emerald-400" />
+          {dbStatus === 'guardando' && (
             <span className="flex items-center gap-1.5 text-amber-300 font-bold">
               <Loader2 className="w-3.5 h-3.5 animate-spin" />
-              {statusText}
+              {dbMessage}
             </span>
           )}
-          {serverStatus === 'sincronizado' && (
+          {dbStatus === 'sincronizado' && (
             <span className="flex items-center gap-1.5 text-emerald-400 font-bold">
               <CheckCircle2 className="w-4 h-4 text-emerald-400" />
-              {statusText}
+              {dbMessage}
             </span>
           )}
-          {serverStatus === 'cargando' && (
+          {dbStatus === 'cargando' && (
             <span className="flex items-center gap-1.5 text-stone-300">
               <Loader2 className="w-3.5 h-3.5 animate-spin" />
-              {statusText}
+              {dbMessage}
+            </span>
+          )}
+          {dbStatus === 'error' && (
+            <span className="text-red-400 font-bold">
+              {dbMessage}
             </span>
           )}
         </div>
 
         <div className="flex items-center gap-2">
           <button
-            onClick={() => guardarEnServidor()}
+            onClick={() => guardarEnSupabase()}
             className="px-3 py-1 bg-emerald-600 hover:bg-emerald-500 text-white font-bold rounded-lg transition-all flex items-center gap-1.5 active:scale-95 cursor-pointer shadow-xs"
           >
             <Save className="w-3.5 h-3.5" />
-            Guardar Todo Ahora
+            Guardar en Supabase
           </button>
           <button
-            onClick={cargarDesdeServidor}
+            onClick={cargarDesdeSupabase}
             className="px-2.5 py-1 bg-stone-800 hover:bg-stone-700 text-stone-300 rounded-lg transition-colors flex items-center gap-1 cursor-pointer"
           >
             <RefreshCw className="w-3 h-3" />
@@ -626,7 +668,7 @@ export default function App() {
                     if (parsed.horasFrio) setHorasFrio(parsed.horasFrio);
                     if (parsed.fenologia) setFenologia(parsed.fenologia);
                     if (parsed.polinizacion) setPolinizacion(parsed.polinizacion);
-                    guardarEnServidor(parsed);
+                    guardarEnSupabase(parsed);
                   } catch (err) {
                     console.error('Error importando', err);
                   }
@@ -675,13 +717,13 @@ export default function App() {
         <div className="fixed inset-0 z-50 flex items-center justify-center p-3 bg-stone-900/60 backdrop-blur-xs">
           <div className="bg-white rounded-2xl shadow-xl w-full max-w-md border border-stone-200 overflow-hidden">
             <div className="px-5 py-4 border-b border-stone-200 bg-amber-950 text-white flex items-center justify-between">
-              <h3 className="font-bold text-sm">Restablecer Datos</h3>
+              <h3 className="font-bold text-sm">Vaciar Datos</h3>
               <button onClick={() => setIsResetConfirmOpen(false)} className="p-1 text-amber-200 hover:text-white cursor-pointer">
                 <X className="w-5 h-5" />
               </button>
             </div>
             <div className="p-5 space-y-3 text-xs">
-              <p className="text-stone-700 text-sm">¿Deseas vaciar los datos para empezar en blanco?</p>
+              <p className="text-stone-700 text-sm">¿Deseas vaciar la base de datos para comenzar en blanco?</p>
               <div className="pt-3 border-t border-stone-200 flex justify-end gap-2">
                 <button
                   type="button"
@@ -714,18 +756,18 @@ export default function App() {
 
           <div className="flex items-center gap-3">
             <button
-              onClick={() => guardarEnServidor()}
+              onClick={() => guardarEnSupabase()}
               className="text-emerald-800 font-bold hover:underline cursor-pointer flex items-center gap-1"
             >
               <Save className="w-3.5 h-3.5" />
-              Guardar Ahora
+              Guardar en Supabase
             </button>
             <button
               onClick={() => setIsResetConfirmOpen(true)}
               className="text-stone-400 hover:text-stone-700 flex items-center gap-1 cursor-pointer"
             >
               <RotateCcw className="w-3.5 h-3.5" />
-              Vaciar / Restablecer
+              Vaciar / Empezar en Blanco
             </button>
           </div>
         </div>
