@@ -65,7 +65,7 @@ import {
   RegistroPolinizacion
 } from './types/campo';
 import { initialClimaLaCabana } from './data/initialData';
-import { RotateCcw, X, CheckCircle2, Loader2, Save, RefreshCw, Database, Lock, LogIn, UserCheck, KeyRound, AlertCircle, LogOut, UserCog } from 'lucide-react';
+import { RotateCcw, X, CheckCircle2, Loader2, Save, RefreshCw, Database, Lock, LogIn, AlertCircle, LogOut, UserCog } from 'lucide-react';
 
 const SUPABASE_URL = 'https://zvtolionewlulqmtdaty.supabase.co';
 const SUPABASE_ANON_KEY = 'sb_publishable_s1vQx_x3_f3fDHHkdjVxZw_GTMkiU8I';
@@ -105,18 +105,17 @@ export default function App() {
   const [fenologia, setFenologia] = useState<SeguimientoFenologico[]>(getStoredFenologia);
   const [polinizacion, setPolinizacion] = useState<RegistroPolinizacion[]>(getStoredPolinizacion);
 
-  // Estados de conexión con Supabase
   const [isDbLoaded, setIsDbLoaded] = useState(false);
   const [dbStatus, setDbStatus] = useState<'sincronizado' | 'guardando' | 'cargando' | 'error'>('cargando');
   const [dbMessage, setDbMessage] = useState('Conectando a Supabase...');
 
-  // SISTEMA DE SESIÓN Y LOGIN
+  // SISTEMA DE SESIÓN
   const [loggedInUser, setLoggedInUser] = useState<(UsuarioPredio & { clave?: string }) | null>(null);
   const [loginEmail, setLoginEmail] = useState('diego@fundolacabana.cl');
   const [loginPassword, setLoginPassword] = useState('');
   const [loginError, setLoginError] = useState('');
 
-  // MODAL PARA CAMBIAR MI CLAVE Y CORREO
+  // MODAL PARA CAMBIAR CLAVE Y CORREO
   const [isProfileModalOpen, setIsProfileModalOpen] = useState(false);
   const [myNewName, setMyNewName] = useState('');
   const [myNewEmail, setMyNewEmail] = useState('');
@@ -132,12 +131,11 @@ export default function App() {
   const [isExplotacionModalOpen, setIsExplotacionModalOpen] = useState(false);
   const [isResetConfirmOpen, setIsResetConfirmOpen] = useState(false);
 
-  // 1. CARGA AUTOMÁTICA DESDE SUPABASE
+  // 1. CARGA DESDE SUPABASE AL ABRIR LA APP
   const cargarDesdeSupabase = () => {
     setDbStatus('cargando');
     setDbMessage('Descargando datos de Supabase...');
 
-    // Solución al error: solo enviamos 'apikey' sin Bearer
     fetch(`${SUPABASE_URL}/rest/v1/fundo_datos?id=eq.fundo_la_cabana&select=datos`, {
       headers: {
         'apikey': SUPABASE_ANON_KEY
@@ -191,7 +189,7 @@ export default function App() {
     }
   }, []);
 
-  // 2. GUARDAR EN SUPABASE ANTE CUALQUIER CAMBIO
+  // 2. GUARDAR EN SUPABASE (CON ENLACE POSTGREST BLINDADO)
   const guardarEnSupabase = (datosPersonalizados?: any) => {
     setDbStatus('guardando');
     setDbMessage('Guardando en Supabase...');
@@ -228,29 +226,29 @@ export default function App() {
     saveStoredFenologia(payload.fenologia);
     saveStoredPolinizacion(payload.polinizacion);
 
-    // Solución al error: llamada limpia a PostgREST
-    fetch(`${SUPABASE_URL}/rest/v1/fundo_datos`, {
+    // LLAMADA EXACTA QUE SUPABASE ESPERA: ?on_conflict=id y cuerpo en array [{ ... }]
+    fetch(`${SUPABASE_URL}/rest/v1/fundo_datos?on_conflict=id`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
         'apikey': SUPABASE_ANON_KEY,
         'Prefer': 'resolution=merge-duplicates'
       },
-      body: JSON.stringify({
+      body: JSON.stringify([{
         id: 'fundo_la_cabana',
         datos: payload,
         updated_at: new Date().toISOString()
-      })
+      }])
     })
       .then((res) => {
-        if (!res.ok) throw new Error('Error al guardar en Supabase');
+        if (!res.ok) throw new Error('Error al guardar');
         setDbStatus('sincronizado');
         setDbMessage(`Guardado en Supabase (${new Date().toLocaleTimeString('es-CL')})`);
       })
       .catch((err) => {
-        console.error(err);
+        console.error('Error guardando en Supabase:', err);
         setDbStatus('error');
-        setDbMessage('Error al enviar a Supabase (Verifica el Paso 1)');
+        setDbMessage('Error al enviar a Supabase');
       });
   };
 
@@ -285,7 +283,6 @@ export default function App() {
     polinizacion
   ]);
 
-  // Manejo de inicio de sesión
   const handleLogin = (e: React.FormEvent) => {
     e.preventDefault();
     setLoginError('');
@@ -302,7 +299,7 @@ export default function App() {
     const userPass = user.clave || '1234';
 
     if (loginPassword !== userPass) {
-      setLoginError('Contraseña incorrecta. (Clave por defecto: 1234)');
+      setLoginError('Contraseña incorrecta.');
       return;
     }
 
@@ -317,7 +314,7 @@ export default function App() {
     setLoginPassword('');
   };
 
-  // CAMBIAR MI NOMBRE, CORREO Y CLAVE
+  // GUARDAR MI PERFIL, CORREO Y CONTRASEÑA
   const handleSaveMyProfile = (e: React.FormEvent) => {
     e.preventDefault();
     if (!loggedInUser) return;
@@ -332,10 +329,10 @@ export default function App() {
     setLoggedInUser(updatedUser);
     setUsuarios((prev) => prev.map((u) => u.id === updatedUser.id ? updatedUser : u));
 
-    // Guardado directo en Supabase
+    // Guardado inmediato en Supabase
     guardarEnSupabase();
 
-    setProfileSuccessMsg('¡Tus datos y contraseña fueron actualizados con éxito!');
+    setProfileSuccessMsg('¡Datos actualizados con éxito!');
     setTimeout(() => {
       setIsProfileModalOpen(false);
       setProfileSuccessMsg('');
@@ -516,7 +513,6 @@ export default function App() {
 
   const lowStockCount = inventario.filter((i) => i.stockActual <= i.stockMinimo).length;
 
-  // PANTALLA DE BLOQUEO / INICIO DE SESIÓN
   if (!loggedInUser) {
     return (
       <div className="min-h-screen bg-stone-900 flex items-center justify-center p-4">
@@ -589,20 +585,15 @@ export default function App() {
               <LogIn className="w-4 h-4" />
               Ingresar al Cuaderno
             </button>
-
-            <div className="pt-2 text-center text-[11px] text-stone-400">
-              Base de datos segura conectada en la nube (Supabase)
-            </div>
           </form>
         </div>
       </div>
     );
   }
 
-  // APLICACIÓN PRINCIPAL
   return (
     <div className="min-h-screen bg-stone-50 flex flex-col font-sans text-stone-900 pb-16 sm:pb-0">
-      {/* BARRA SUPERIOR DE CONEXIÓN */}
+      {/* BARRA SUPERIOR DE CONEXIÓN CON SUPABASE & BOTÓN MI PERFIL */}
       <div className="bg-stone-900 text-white px-4 py-2 border-b border-stone-800 text-xs flex flex-wrap items-center justify-between gap-3 sticky top-0 z-50">
         <div className="flex items-center gap-2">
           <Database className="w-4 h-4 text-emerald-400" />
@@ -632,14 +623,15 @@ export default function App() {
         </div>
 
         <div className="flex items-center gap-2">
+          {/* BOTÓN PARA CAMBIAR NOMBRE, CORREO Y CLAVE */}
           <button
             onClick={() => {
-              setMyNewName(loggedInUser.nombre);
-              setMyNewEmail(loggedInUser.email);
-              setMyNewPassword(loggedInUser.clave || '1234');
+              setMyNewName(activeUser.nombre);
+              setMyNewEmail(activeUser.email);
+              setMyNewPassword((activeUser as any).clave || '1234');
               setIsProfileModalOpen(true);
             }}
-            className="px-2.5 py-1 bg-stone-800 hover:bg-stone-700 text-stone-200 font-semibold rounded-lg transition-colors flex items-center gap-1.5 cursor-pointer border border-stone-700"
+            className="px-2.5 py-1 bg-stone-800 hover:bg-stone-700 text-stone-200 font-semibold rounded-lg transition-colors flex items-center gap-1.5 cursor-pointer border border-stone-700 shadow-xs"
             title="Cambiar mi nombre, correo y contraseña"
           >
             <UserCog className="w-3.5 h-3.5 text-emerald-400" />
@@ -868,7 +860,7 @@ export default function App() {
         )}
       </main>
 
-      {/* MODAL PARA CAMBIAR MI NOMBRE, CORREO Y CONTRASEÑA */}
+      {/* MODAL CAMBIAR NOMBRE, CORREO Y CONTRASEÑA */}
       {isProfileModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-3 bg-stone-900/60 backdrop-blur-xs">
           <div className="bg-white rounded-2xl shadow-xl w-full max-w-md border border-stone-200 overflow-hidden text-xs">
@@ -902,7 +894,7 @@ export default function App() {
               </div>
 
               <div>
-                <label className="block text-stone-700 font-bold mb-1">Correo Electrónico (Tu usuario de ingreso) *</label>
+                <label className="block text-stone-700 font-bold mb-1">Correo Electrónico (Para iniciar sesión) *</label>
                 <input
                   type="email"
                   required
@@ -922,9 +914,6 @@ export default function App() {
                   placeholder="Escribe tu nueva clave"
                   className="w-full p-2.5 rounded-lg border border-stone-300 text-sm font-mono"
                 />
-                <span className="text-[10px] text-stone-500 mt-1 block">
-                  *(Con este correo y esta clave entrarás al iniciar sesión)*
-                </span>
               </div>
 
               <div className="pt-3 border-t border-stone-200 flex justify-end gap-2">
