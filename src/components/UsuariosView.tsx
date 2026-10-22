@@ -6,19 +6,23 @@ import {
   Edit2, 
   Mail, 
   Phone, 
-  Award, 
   Search, 
   X, 
   Check, 
   AlertCircle,
   Clock,
-  KeyRound
+  KeyRound,
+  ShieldAlert,
+  ShieldCheck,
+  Eye,
+  EyeOff
 } from 'lucide-react';
 import { UsuarioPredio, RolUsuario } from '../types/campo';
 
 interface UsuariosViewProps {
   usuarios: (UsuarioPredio & { clave?: string })[];
   activeUserId: string;
+  loggedInUser?: (UsuarioPredio & { clave?: string }) | null;
   onSetActiveUser: (userId: string) => void;
   onAddUsuario: (usuario: UsuarioPredio & { clave?: string }) => void;
   onUpdateUsuario: (usuario: UsuarioPredio & { clave?: string }) => void;
@@ -28,6 +32,7 @@ interface UsuariosViewProps {
 export const UsuariosView: React.FC<UsuariosViewProps> = ({
   usuarios,
   activeUserId,
+  loggedInUser,
   onSetActiveUser,
   onAddUsuario,
   onUpdateUsuario,
@@ -36,11 +41,13 @@ export const UsuariosView: React.FC<UsuariosViewProps> = ({
   const [searchTerm, setSearchTerm] = useState('');
   const [roleFilter, setRoleFilter] = useState<string>('todos');
   
-  // Modales
+  // Eres Administrador si tu rol es administrador o tu correo es diegopereiraramirez@gmail.com
+  const isAdmin = loggedInUser?.rol === 'administrador' || loggedInUser?.email === 'diegopereiraramirez@gmail.com';
+
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingUser, setEditingUser] = useState<(UsuarioPredio & { clave?: string }) | null>(null);
 
-  // Estados del formulario
+  // Form states
   const [nombre, setNombre] = useState('');
   const [email, setEmail] = useState('');
   const [telefono, setTelefono] = useState('');
@@ -68,7 +75,7 @@ export const UsuariosView: React.FC<UsuariosViewProps> = ({
     setRol('agronomo_predio');
     setRutIdentificacion('');
     setNumeroRegistroSAG('');
-    setTituloProfesional('Ingeniero Agrónomo');
+    setTituloProfesional('Técnico / Operador');
     setClave('1234');
     setNotas('');
     setFormError('');
@@ -76,6 +83,12 @@ export const UsuariosView: React.FC<UsuariosViewProps> = ({
   };
 
   const openEditUserModal = (u: UsuarioPredio & { clave?: string }) => {
+    // Si no es admin y no es su propio perfil, no puede editar
+    if (!isAdmin && u.id !== loggedInUser?.id) {
+      alert('Solo el administrador puede editar a otros usuarios.');
+      return;
+    }
+
     setEditingUser(u);
     setNombre(u.nombre);
     setEmail(u.email);
@@ -142,7 +155,7 @@ export const UsuariosView: React.FC<UsuariosViewProps> = ({
         notas: notas.trim() || undefined
       };
       onAddUsuario(newUser);
-      showToast(`¡Nuevo usuario "${newUser.nombre}" creado exitosamente!`);
+      showToast(`¡Usuario creado con clave!`);
     }
 
     setIsModalOpen(false);
@@ -153,12 +166,6 @@ export const UsuariosView: React.FC<UsuariosViewProps> = ({
     const id = userToDelete.id;
     const name = userToDelete.nombre;
     onDeleteUsuario(id);
-    if (activeUserId === id) {
-      const remaining = usuarios.filter((u) => u.id !== id);
-      if (remaining.length > 0) {
-        onSetActiveUser(remaining[0].id);
-      }
-    }
     showToast(`Usuario "${name}" eliminado`);
     setUserToDelete(null);
   };
@@ -183,104 +190,64 @@ export const UsuariosView: React.FC<UsuariosViewProps> = ({
   const filteredUsuarios = usuarios.filter((u) => {
     const matchesSearch = 
       u.nombre.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      u.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      u.rutIdentificacion.toLowerCase().includes(searchTerm.toLowerCase());
+      u.email.toLowerCase().includes(searchTerm.toLowerCase());
 
     if (!matchesSearch) return false;
     if (roleFilter === 'todos') return true;
     if (roleFilter === 'agronomos') return u.rol === 'agronomo_predio' || u.rol === 'asesor_externo';
-    if (roleFilter === 'admin') return u.rol === 'administrador';
     if (roleFilter === 'operadores') return u.rol === 'aplicador_calificado' || u.rol === 'operador_riego' || u.rol === 'jefe_campo';
     return u.rol === roleFilter;
   });
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 text-xs">
       {toastMsg && (
-        <div className="fixed bottom-5 right-5 z-50 bg-emerald-900 text-white px-4 py-2.5 rounded-xl shadow-lg border border-emerald-600 flex items-center gap-2 text-xs font-semibold animate-in fade-in slide-in-from-bottom-2">
+        <div className="fixed bottom-5 right-5 z-50 bg-emerald-900 text-white px-4 py-2.5 rounded-xl shadow-lg border border-emerald-600 flex items-center gap-2 text-xs font-semibold animate-in fade-in">
           <Check className="w-4 h-4 text-emerald-300" />
           {toastMsg}
         </div>
       )}
 
       {/* Header */}
-      <div className="bg-white border border-stone-200 rounded-xl p-5 sm:p-6 shadow-xs">
-        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-          <div>
-            <div className="flex items-center gap-2 text-xs font-semibold text-emerald-800 uppercase tracking-wide">
-              <Users className="w-4 h-4" />
-              Gestión de Equipo & Cuentas de Acceso
-            </div>
-            <h1 className="text-xl sm:text-2xl font-bold tracking-tight text-stone-900 mt-1">
-              Equipo y Usuarios del Fundo
-            </h1>
-            <p className="text-xs sm:text-sm text-stone-500 mt-0.5">
-              Crea usuarios para tus trabajadores, tractoristas o agrónomos con su propio correo y contraseña personal.
-            </p>
+      <div className="bg-white border border-stone-200 rounded-2xl p-5 shadow-xs flex flex-col md:flex-row md:items-center justify-between gap-4">
+        <div>
+          <div className="flex items-center gap-2 text-xs font-semibold text-emerald-800 uppercase tracking-wide">
+            <Users className="w-4 h-4" />
+            Control de Personal y Seguridad de Acceso
           </div>
+          <h1 className="text-xl sm:text-2xl font-bold tracking-tight text-stone-900 mt-1">
+            Usuarios del Fundo y Contraseñas
+          </h1>
+          <p className="text-xs text-stone-500 mt-0.5">
+            {isAdmin 
+              ? '🔑 Modo Administrador: Puedes ver y modificar las contraseñas de todo el equipo.'
+              : '🔒 Modo Trabajador: Solo puedes ver y modificar tu propia contraseña personal.'}
+          </p>
+        </div>
 
+        {isAdmin && (
           <button
             onClick={openNewUserModal}
-            className="w-full sm:w-auto px-4 py-2.5 bg-emerald-800 hover:bg-emerald-900 text-white rounded-lg font-semibold text-xs shadow-sm transition-colors flex items-center justify-center gap-2 active:scale-95 cursor-pointer"
+            className="px-4 py-2.5 bg-emerald-800 hover:bg-emerald-900 text-white rounded-xl font-bold text-xs shadow-sm transition-all flex items-center gap-2 cursor-pointer active:scale-95"
           >
             <UserPlus className="w-4 h-4" />
             + Agregar Nuevo Usuario con Clave
           </button>
-        </div>
+        )}
       </div>
 
-      {/* Buscador */}
-      <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 bg-white p-3.5 rounded-xl border border-stone-200 shadow-xs">
-        <div className="relative flex-1">
-          <Search className="w-4 h-4 text-stone-400 absolute left-3 top-1/2 -translate-y-1/2" />
-          <input
-            type="text"
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            placeholder="Buscar usuario por nombre o correo..."
-            className="w-full pl-9 pr-4 py-2 bg-stone-50 border border-stone-200 rounded-lg text-xs"
-          />
-        </div>
-
-        <div className="flex items-center gap-1.5 overflow-x-auto text-xs">
-          <button
-            onClick={() => setRoleFilter('todos')}
-            className={`px-3 py-1.5 rounded-lg font-medium whitespace-nowrap transition-colors ${
-              roleFilter === 'todos' ? 'bg-stone-900 text-white' : 'bg-stone-100 text-stone-600 hover:bg-stone-200'
-            }`}
-          >
-            Todos ({usuarios.length})
-          </button>
-          <button
-            onClick={() => setRoleFilter('agronomos')}
-            className={`px-3 py-1.5 rounded-lg font-medium whitespace-nowrap transition-colors ${
-              roleFilter === 'agronomos' ? 'bg-emerald-800 text-white' : 'bg-stone-100 text-stone-600 hover:bg-stone-200'
-            }`}
-          >
-            Agrónomos
-          </button>
-          <button
-            onClick={() => setRoleFilter('operadores')}
-            className={`px-3 py-1.5 rounded-lg font-medium whitespace-nowrap transition-colors ${
-              roleFilter === 'operadores' ? 'bg-amber-800 text-white' : 'bg-stone-100 text-stone-600 hover:bg-stone-200'
-            }`}
-          >
-            Campo & Riego
-          </button>
-        </div>
-      </div>
-
-      {/* Cuadrícula de Usuarios */}
+      {/* Grid de Usuarios */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
         {filteredUsuarios.map((u) => {
           const badge = getRoleBadge(u.rol);
-          const isActive = u.id === activeUserId;
+          const esMiCuenta = u.id === loggedInUser?.id;
+          const puedeVerClave = isAdmin || esMiCuenta;
 
           return (
             <div 
               key={u.id}
-              className={`bg-white rounded-xl border p-5 shadow-xs flex flex-col justify-between transition-all ${
-                isActive ? 'border-emerald-600 ring-2 ring-emerald-500/20' : 'border-stone-200 hover:border-stone-300'
+              className={`bg-white rounded-2xl border p-5 shadow-xs flex flex-col justify-between transition-all ${
+                esMiCuenta ? 'border-emerald-600 ring-2 ring-emerald-500/20' : 'border-stone-200'
               }`}
             >
               <div>
@@ -290,256 +257,32 @@ export const UsuariosView: React.FC<UsuariosViewProps> = ({
                       {u.nombre.slice(0, 2).toUpperCase()}
                     </div>
                     <div>
-                      <h3 className="font-bold text-sm text-stone-900 leading-tight">
+                      <h3 className="font-bold text-sm text-stone-900 leading-tight flex items-center gap-1.5">
                         {u.nombre}
+                        {esMiCuenta && (
+                          <span className="px-1.5 py-0.2 rounded-full text-[9px] bg-emerald-100 text-emerald-900 font-bold">
+                            Tú
+                          </span>
+                        )}
                       </h3>
-                      <div className="text-[11px] text-stone-500 mt-0.5 font-medium line-clamp-1">
-                        {u.tituloProfesional || badge.label}
-                      </div>
-                      <div className="mt-1.5 flex flex-wrap items-center gap-1.5">
-                        <span className={`px-2 py-0.5 rounded text-[10px] font-semibold border ${badge.class}`}>
-                          {badge.label}
-                        </span>
-                      </div>
+                      <div className="text-[11px] text-stone-500 mt-0.5 font-medium">{u.tituloProfesional || badge.label}</div>
+                      <span className={`inline-block mt-1.5 px-2 py-0.5 rounded text-[10px] font-semibold border ${badge.class}`}>
+                        {badge.label}
+                      </span>
                     </div>
                   </div>
 
-                  <div className="flex items-center gap-1 shrink-0">
-                    <button
-                      onClick={() => openEditUserModal(u)}
-                      className="p-1.5 text-stone-400 hover:text-stone-900 rounded hover:bg-stone-100 cursor-pointer"
-                      title="Editar usuario o cambiar contraseña"
-                    >
-                      <Edit2 className="w-3.5 h-3.5" />
-                    </button>
-                    <button
-                      onClick={() => setUserToDelete(u)}
-                      className="p-1.5 text-stone-400 hover:text-red-700 rounded hover:bg-red-50 cursor-pointer"
-                      title="Eliminar usuario"
-                    >
-                      <Trash2 className="w-3.5 h-3.5" />
-                    </button>
-                  </div>
-                </div>
-
-                {/* Detalles de contacto y clave */}
-                <div className="mt-4 pt-3 border-t border-stone-100 space-y-2 text-xs">
-                  <div className="flex items-center gap-2 text-stone-600">
-                    <Mail className="w-3.5 h-3.5 text-stone-400 shrink-0" />
-                    <span className="font-medium text-stone-800 truncate">{u.email}</span>
-                  </div>
-
-                  {u.telefono && (
-                    <div className="flex items-center gap-2 text-stone-600">
-                      <Phone className="w-3.5 h-3.5 text-stone-400 shrink-0" />
-                      <span className="font-mono text-stone-700">{u.telefono}</span>
-                    </div>
-                  )}
-
-                  {/* VISUALIZACIÓN DE CONTRASEÑA PARA EL ADMINISTRADOR */}
-                  <div className="p-2 bg-stone-50 rounded-lg border border-stone-200/80 flex items-center justify-between text-[11px] mt-2">
-                    <span className="text-stone-500 flex items-center gap-1 font-semibold">
-                      <KeyRound className="w-3.5 h-3.5 text-amber-600" />
-                      Clave de ingreso:
-                    </span>
-                    <strong className="font-mono text-stone-900 bg-white px-2 py-0.5 rounded border border-stone-200">
-                      {u.clave || '1234'}
-                    </strong>
-                  </div>
-                </div>
-              </div>
-
-              <div className="mt-4 pt-3 border-t border-stone-100 flex items-center justify-between text-[11px]">
-                <span className="text-stone-400 flex items-center gap-1">
-                  <Clock className="w-3 h-3" />
-                  Alta: {u.fechaAlta}
-                </span>
-
-                <button
-                  onClick={() => openEditUserModal(u)}
-                  className="text-emerald-800 font-bold hover:underline cursor-pointer"
-                >
-                  Cambiar clave
-                </button>
-              </div>
-            </div>
-          );
-        })}
-      </div>
-
-      {/* MODAL CREAR / EDITAR USUARIO CON CONTRASEÑA */}
-      {isModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-xs p-4 overflow-y-auto">
-          <div className="bg-white rounded-2xl max-w-lg w-full p-6 shadow-xl border border-stone-200 my-8 text-xs">
-            <div className="flex items-center justify-between border-b border-stone-200 pb-3">
-              <div className="flex items-center gap-2">
-                <div className="w-8 h-8 rounded-lg bg-emerald-800 text-white flex items-center justify-center">
-                  <Users className="w-4 h-4" />
-                </div>
-                <div>
-                  <h3 className="font-bold text-sm text-stone-900">
-                    {editingUser ? `Editar Usuario: ${editingUser.nombre}` : 'Crear Nuevo Usuario de Acceso'}
-                  </h3>
-                  <span className="text-[11px] text-stone-500">
-                    Podrá ingresar con su propio correo y contraseña a la app
-                  </span>
-                </div>
-              </div>
-              <button onClick={() => setIsModalOpen(false)} className="text-stone-400 hover:text-stone-700 cursor-pointer">
-                <X className="w-5 h-5" />
-              </button>
-            </div>
-
-            {formError && (
-              <div className="mt-3 p-2.5 bg-red-50 border border-red-200 rounded-lg text-red-700 flex items-center gap-2 font-medium">
-                <AlertCircle className="w-4 h-4 shrink-0" />
-                {formError}
-              </div>
-            )}
-
-            <form onSubmit={handleSaveUser} className="space-y-4 mt-4">
-              <div>
-                <label className="font-bold text-stone-800 block mb-1">Nombre Completo *</label>
-                <input
-                  type="text"
-                  required
-                  value={nombre}
-                  onChange={(e) => setNombre(e.target.value)}
-                  placeholder="Ej: Carlos Manqui"
-                  className="w-full p-2.5 border border-stone-300 rounded-lg"
-                />
-              </div>
-
-              {/* CORREO Y CONTRASEÑA PERSONAL */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 p-3 bg-emerald-50/50 rounded-xl border border-emerald-200">
-                <div>
-                  <label className="font-bold text-emerald-950 block mb-1">
-                    Correo Electrónico (Usuario) *
-                  </label>
-                  <input
-                    type="email"
-                    required
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
-                    placeholder="trabajador@gmail.com"
-                    className="w-full p-2.5 border border-emerald-300 rounded-lg bg-white"
-                  />
-                </div>
-
-                <div>
-                  <label className="font-bold text-emerald-950 block mb-1 flex items-center gap-1">
-                    <KeyRound className="w-3.5 h-3.5 text-emerald-700" />
-                    Contraseña Personal *
-                  </label>
-                  <input
-                    type="text"
-                    required
-                    value={clave}
-                    onChange={(e) => setClave(e.target.value)}
-                    placeholder="Ej: clave2026"
-                    className="w-full p-2.5 border border-emerald-300 rounded-lg bg-white font-mono font-bold text-emerald-950"
-                  />
-                  <span className="text-[10px] text-emerald-800 mt-0.5 block">
-                    (Clave con la que esta persona entrará a la app)
-                  </span>
-                </div>
-              </div>
-
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                <div>
-                  <label className="font-semibold text-stone-800 block mb-1">Rol en el Fundo</label>
-                  <select
-                    value={rol}
-                    onChange={(e) => setRol(e.target.value as RolUsuario)}
-                    className="w-full p-2.5 border border-stone-300 rounded-lg bg-white font-medium"
-                  >
-                    <option value="agronomo_predio">Agrónomo a Cargo del Predio</option>
-                    <option value="jefe_campo">Jefe de Campo / Administrador</option>
-                    <option value="aplicador_calificado">Aplicador con Carnet SAG</option>
-                    <option value="operador_riego">Operador de Riego y Pozo</option>
-                    <option value="asesor_externo">Asesor Externo</option>
-                    <option value="administrador">Administrador de la App</option>
-                  </select>
-                </div>
-
-                <div>
-                  <label className="font-semibold text-stone-800 block mb-1">Cargo / Especialidad</label>
-                  <input
-                    type="text"
-                    value={tituloProfesional}
-                    onChange={(e) => setTituloProfesional(e.target.value)}
-                    placeholder="Ej: Tractorista / Regador"
-                    className="w-full p-2.5 border border-stone-300 rounded-lg"
-                  />
-                </div>
-              </div>
-
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                <div>
-                  <label className="font-semibold text-stone-800 block mb-1">Teléfono / Celular</label>
-                  <input
-                    type="text"
-                    value={telefono}
-                    onChange={(e) => setTelefono(e.target.value)}
-                    placeholder="+56 9 "
-                    className="w-full p-2.5 border border-stone-300 rounded-lg font-mono"
-                  />
-                </div>
-
-                <div>
-                  <label className="font-semibold text-stone-800 block mb-1">N° Carnet SAG (Si aplica)</label>
-                  <input
-                    type="text"
-                    value={numeroRegistroSAG}
-                    onChange={(e) => setNumeroRegistroSAG(e.target.value)}
-                    placeholder="Ej: APL-SAG-8921"
-                    className="w-full p-2.5 border border-stone-300 rounded-lg font-mono"
-                  />
-                </div>
-              </div>
-
-              <div className="flex items-center justify-end gap-2 pt-3 border-t border-stone-200">
-                <button
-                  type="button"
-                  onClick={() => setIsModalOpen(false)}
-                  className="px-4 py-2 border border-stone-300 rounded-lg text-stone-700 font-medium hover:bg-stone-50 cursor-pointer"
-                >
-                  Cancelar
-                </button>
-                <button
-                  type="submit"
-                  className="px-5 py-2 bg-emerald-800 hover:bg-emerald-900 text-white font-bold rounded-lg shadow-sm cursor-pointer"
-                >
-                  {editingUser ? 'Guardar Cambios' : 'Registrar Usuario con Clave'}
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
-
-      {/* MODAL ELIMINAR USUARIO */}
-      {userToDelete && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-3 bg-stone-900/60 backdrop-blur-xs text-xs">
-          <div className="bg-white rounded-2xl shadow-xl w-full max-w-md border border-stone-200 p-5 space-y-3">
-            <h3 className="font-bold text-sm text-stone-900">¿Deseas eliminar a este usuario?</h3>
-            <p className="text-stone-600">
-              Se eliminará el acceso para <strong>{userToDelete.nombre}</strong> ({userToDelete.email}).
-            </p>
-            <div className="pt-3 border-t border-stone-200 flex justify-end gap-2">
-              <button onClick={() => setUserToDelete(null)} className="px-4 py-2 border rounded-lg cursor-pointer">
-                Cancelar
-              </button>
-              <button
-                onClick={handleConfirmDelete}
-                className="px-4 py-2 bg-red-700 text-white font-bold rounded-lg cursor-pointer"
-              >
-                Eliminar
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-    </div>
-  );
-};
+                  {/* Botones de acción (Solo admin o el propio usuario) */}
+                  {(isAdmin || esMiCuenta) && (
+                    <div className="flex items-center gap-1 shrink-0">
+                      <button
+                        onClick={() => openEditUserModal(u)}
+                        className="p-1.5 text-stone-500 hover:text-emerald-900 rounded hover:bg-stone-100 cursor-pointer"
+                        title={esMiCuenta ? "Cambiar mi clave o datos" : "Editar clave o datos de este usuario"}
+                      >
+                        <Edit2 className="w-3.5 h-3.5" />
+                      </button>
+                      {isAdmin && !esMiCuenta && (
+                        <button
+                          onClick={() => setUserToDelete(u)}
+                          className="
