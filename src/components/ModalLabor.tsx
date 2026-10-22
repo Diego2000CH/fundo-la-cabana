@@ -7,9 +7,7 @@ import {
   Apple, 
   Layers, 
   Compass, 
-  Clock, 
-  Calendar, 
-  User 
+  Sprout
 } from 'lucide-react';
 import { RegistroLabor, Parcela, TipoLabor, InsumoInventario, ClimaCondiciones, UsuarioPredio, DestinoAplicacion } from '../types/campo';
 
@@ -42,7 +40,6 @@ export const ModalLabor: React.FC<ModalLaborProps> = ({
 }) => {
   const isEditing = Boolean(initialLabor);
 
-  // Ya no incluye 'riego'
   const [tipoLabor, setTipoLabor] = useState<TipoLabor>('fitosanitario');
   const [parcelaId, setParcelaId] = useState<string>('');
   const [destinoAplicacion, setDestinoAplicacion] = useState<DestinoAplicacion>('Huerto de Kiwi');
@@ -71,6 +68,10 @@ export const ModalLabor: React.FC<ModalLaborProps> = ({
   const [formulacionNPK, setFormulacionNPK] = useState<string>('');
   const [dosisAbonoKgHa, setDosisAbonoKgHa] = useState<number | ''>('');
   const [metodoAplicacionAbono, setMetodoAplicacionAbono] = useState<'Fertirriego' | 'Foliar' | 'Al voleo / Fondo' | 'Localizado en hilera'>('Foliar');
+
+  // ENMIENDA AGRÍCOLA
+  const [tipoEnmienda, setTipoEnmienda] = useState<any>('Banda Enmienda Orgánica (BEO)');
+  const [dosisToneladasHa, setDosisToneladasHa] = useState<number | ''>(8.0);
 
   // Cosecha
   const [kilosRecolectados, setKilosRecolectados] = useState<number | ''>('');
@@ -108,7 +109,8 @@ export const ModalLabor: React.FC<ModalLaborProps> = ({
         setAbonoProducto(initialLabor.abonoProducto || '');
         setFormulacionNPK(initialLabor.formulacionNPK || '');
         setDosisAbonoKgHa(initialLabor.dosisAbonoKgHa ?? '');
-        setMetodoAplicacionAbono(initialLabor.metodoAplicacionAbono || 'Foliar');
+        setTipoEnmienda(initialLabor.tipoEnmienda || 'Banda Enmienda Orgánica (BEO)');
+        setDosisToneladasHa(initialLabor.dosisToneladasHa ?? 8.0);
         setKilosRecolectados(initialLabor.kilosRecolectados ?? '');
         setCalibreCalidad(initialLabor.calibreCalidad || 'Exportación Calibre 30-33');
         setDestinoProducto(initialLabor.destinoProducto || 'Exportación Fresco');
@@ -139,6 +141,8 @@ export const ModalLabor: React.FC<ModalLaborProps> = ({
         setAbonoProducto('');
         setFormulacionNPK('');
         setDosisAbonoKgHa('');
+        setTipoEnmienda('Banda Enmienda Orgánica (BEO)');
+        setDosisToneladasHa(8.0);
         setKilosRecolectados('');
         setObservaciones('');
         const currentUser = usuarios.find(u => u.id === activeUserId);
@@ -199,6 +203,8 @@ export const ModalLabor: React.FC<ModalLaborProps> = ({
       formulacionNPK: formulacionNPK || undefined,
       dosisAbonoKgHa: dosisAbonoKgHa !== '' ? Number(dosisAbonoKgHa) : undefined,
       metodoAplicacionAbono,
+      tipoEnmienda: tipoLabor === 'enmienda' ? tipoEnmienda : undefined,
+      dosisToneladasHa: tipoLabor === 'enmienda' && dosisToneladasHa !== '' ? Number(dosisToneladasHa) : undefined,
       kilosRecolectados: kilosRecolectados !== '' ? Number(kilosRecolectados) : undefined,
       calibreCalidad,
       destinoProducto,
@@ -221,7 +227,7 @@ export const ModalLabor: React.FC<ModalLaborProps> = ({
               {isEditing ? 'Editar Labor Agrícola' : 'Registrar Nueva Labor / Aplicación'}
             </h2>
             <p className="text-xs text-emerald-200 mt-0.5">
-              Cuaderno oficial de labores de campo (Fitosanitario, Fertilización, Cosecha, Poda y Monitoreo)
+              Control de destino de aplicación, descuento automático de bodega y cuaderno SAG
             </p>
           </div>
           <button type="button" onClick={onClose} className="text-emerald-200 hover:text-white cursor-pointer">
@@ -232,15 +238,16 @@ export const ModalLabor: React.FC<ModalLaborProps> = ({
         {/* Form Body */}
         <form onSubmit={handleSubmit} className="overflow-y-auto p-5 sm:p-6 space-y-4">
           
-          {/* TIPO DE LABOR (SIN RIEGO NI POZO) */}
+          {/* TIPO DE LABOR CON ENMIENDA AGRÍCOLA INCLUIDA */}
           <div>
             <label className="block font-bold text-stone-800 uppercase mb-1.5">
               Tipo de Labor Agrícola *
             </label>
-            <div className="grid grid-cols-2 sm:grid-cols-5 gap-2">
+            <div className="grid grid-cols-2 sm:grid-cols-6 gap-2">
               {[
                 { id: 'fitosanitario', label: 'Fitosanitario', icon: ShieldCheck },
                 { id: 'fertilizacion', label: 'Fertilización', icon: Layers },
+                { id: 'enmienda', label: 'Enmienda Agrícola', icon: Sprout },
                 { id: 'cosecha', label: 'Cosecha Kiwis', icon: Apple },
                 { id: 'labor_cultural', label: 'Poda / Cultural', icon: Scissors },
                 { id: 'monitoreo', label: 'Monitoreo', icon: Bug },
@@ -336,14 +343,55 @@ export const ModalLabor: React.FC<ModalLaborProps> = ({
             <input
               type="text"
               required
-              placeholder="Ej: Aplicación de fungicida en huerto de kiwi"
+              placeholder="Ej: Aplicación de enmienda orgánica en banda (BEO) sobre camellón"
               value={descripcionGeneral}
               onChange={(e) => setDescripcionGeneral(e.target.value)}
               className="w-full p-2 border rounded-lg"
             />
           </div>
 
-          {/* FITOSANITARIO / INSUMO */}
+          {/* ENMIENDA AGRÍCOLA (NUEVO FORMULARIO ESPECÍFICO) */}
+          {tipoLabor === 'enmienda' && (
+            <div className="space-y-3 p-3.5 bg-emerald-50 rounded-xl border border-emerald-300">
+              <div className="font-bold text-emerald-950 flex items-center gap-1.5">
+                <Sprout className="w-4 h-4 text-emerald-700" />
+                Parámetros de Enmienda Agrícola (Suelo y Vitalización)
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block font-semibold text-stone-700 mb-1">Tipo de Enmienda *</label>
+                  <select
+                    value={tipoEnmienda}
+                    onChange={(e) => setTipoEnmienda(e.target.value)}
+                    className="w-full p-2.5 rounded-lg border bg-white font-medium"
+                  >
+                    <option value="Banda Enmienda Orgánica (BEO)">Banda Enmienda Orgánica (BEO - Camellón)</option>
+                    <option value="Compost Maduro">Compost Maduro Certificado</option>
+                    <option value="Enmienda Húmica/Fúlvica">Ácidos Húmicos y Fúlvicos</option>
+                    <option value="Yeso Agrícola">Yeso Agrícola (Calcio / Desulfuración)</option>
+                    <option value="Cal / Carbonato">Cal Agrícola (Corrector de pH)</option>
+                    <option value="Cubierta Herbácea (CHM)">Cubierta Herbácea Multiespecies (CHM)</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block font-semibold text-stone-700 mb-1">Dosis Aplicada (t/ha) *</label>
+                  <input
+                    type="number"
+                    step="0.5"
+                    required
+                    value={dosisToneladasHa}
+                    onChange={(e) => setDosisToneladasHa(parseFloat(e.target.value) || 0)}
+                    placeholder="Ej: 8.0 t/ha"
+                    className="w-full p-2.5 rounded-lg border bg-white font-bold"
+                  />
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* FITOSANITARIO */}
           {tipoLabor === 'fitosanitario' && (
             <div className="space-y-3 p-3.5 bg-stone-50 rounded-xl border border-stone-200">
               <div>
@@ -423,27 +471,6 @@ export const ModalLabor: React.FC<ModalLaborProps> = ({
                     value={plazoSeguridadDias}
                     onChange={(e) => setPlazoSeguridadDias(e.target.value === '' ? '' : Number(e.target.value))}
                     className="w-full p-2 border rounded-lg bg-white font-mono"
-                  />
-                </div>
-              </div>
-
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="block font-semibold text-stone-700 mb-1">Maquinaria / Equipo</label>
-                  <input
-                    type="text"
-                    value={maquinariaEquipo}
-                    onChange={(e) => setMaquinariaEquipo(e.target.value)}
-                    className="w-full p-2 border rounded-lg bg-white"
-                  />
-                </div>
-                <div>
-                  <label className="block font-semibold text-stone-700 mb-1">Aplicador Responsable</label>
-                  <input
-                    type="text"
-                    value={aplicadorNombre}
-                    onChange={(e) => setAplicadorNombre(e.target.value)}
-                    className="w-full p-2 border rounded-lg bg-white"
                   />
                 </div>
               </div>
