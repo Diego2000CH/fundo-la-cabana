@@ -1,19 +1,15 @@
 import React, { useState, useEffect } from 'react';
 import { 
   X, 
-  Check, 
-  CloudSun, 
-  MapPin, 
   ShieldCheck, 
-  Package, 
-  Droplets,
-  Edit2,
-  Scissors,
-  Bug,
-  Apple,
-  Layers,
-  CheckCircle2,
-  Compass
+  Scissors, 
+  Bug, 
+  Apple, 
+  Layers, 
+  Compass, 
+  Clock, 
+  Calendar, 
+  User 
 } from 'lucide-react';
 import { RegistroLabor, Parcela, TipoLabor, InsumoInventario, ClimaCondiciones, UsuarioPredio, DestinoAplicacion } from '../types/campo';
 
@@ -46,6 +42,7 @@ export const ModalLabor: React.FC<ModalLaborProps> = ({
 }) => {
   const isEditing = Boolean(initialLabor);
 
+  // Ya no incluye 'riego'
   const [tipoLabor, setTipoLabor] = useState<TipoLabor>('fitosanitario');
   const [parcelaId, setParcelaId] = useState<string>('');
   const [destinoAplicacion, setDestinoAplicacion] = useState<DestinoAplicacion>('Huerto de Kiwi');
@@ -68,24 +65,12 @@ export const ModalLabor: React.FC<ModalLaborProps> = ({
   const [maquinariaEquipo, setMaquinariaEquipo] = useState<string>('Nebulizadora Hardi 2000L');
   const [aplicadorNombre, setAplicadorNombre] = useState<string>('Carlos Morales Vega');
   const [carnetAplicador, setCarnetAplicador] = useState<string>('APL-SAG-8921');
-  const [estadoFenologicoBBCH, setEstadoFenologicoBBCH] = useState<string>('BBCH 57');
   
-  // Clima
-  const [temperaturaC, setTemperaturaC] = useState<number | ''>(17.5);
-  const [humedadRelativa, setHumedadRelativa] = useState<number | ''>(62);
-  const [velocidadVientoKmH, setVelocidadVientoKmH] = useState<number | ''>(5.2);
-  const [vientoDireccion, setVientoDireccion] = useState<string>('Sur-Suroeste');
-
   // Fertilización
   const [abonoProducto, setAbonoProducto] = useState<string>('');
   const [formulacionNPK, setFormulacionNPK] = useState<string>('');
   const [dosisAbonoKgHa, setDosisAbonoKgHa] = useState<number | ''>('');
-  const [metodoAplicacionAbono, setMetodoAplicacionAbono] = useState<'Fertirriego' | 'Foliar' | 'Al voleo / Fondo' | 'Localizado en hilera'>('Fertirriego');
-
-  // Riego
-  const [duracionRiegoHoras, setDuracionRiegoHoras] = useState<number | ''>(4.5);
-  const [volumenM3, setVolumenM3] = useState<number | ''>(380);
-  const [fuenteAgua, setFuenteAgua] = useState<string>('Pozo Profundo N°1');
+  const [metodoAplicacionAbono, setMetodoAplicacionAbono] = useState<'Fertirriego' | 'Foliar' | 'Al voleo / Fondo' | 'Localizado en hilera'>('Foliar');
 
   // Cosecha
   const [kilosRecolectados, setKilosRecolectados] = useState<number | ''>('');
@@ -100,7 +85,7 @@ export const ModalLabor: React.FC<ModalLaborProps> = ({
   useEffect(() => {
     if (isOpen) {
       if (initialLabor) {
-        setTipoLabor(initialLabor.tipoLabor);
+        setTipoLabor(initialLabor.tipoLabor === 'riego' ? 'fitosanitario' : initialLabor.tipoLabor);
         setParcelaId(initialLabor.parcelaId || (parcelas[0]?.id ?? ''));
         setDestinoAplicacion(initialLabor.destinoAplicacion || 'Huerto de Kiwi');
         setFecha(initialLabor.fecha);
@@ -120,14 +105,10 @@ export const ModalLabor: React.FC<ModalLaborProps> = ({
         setMaquinariaEquipo(initialLabor.maquinariaEquipo || '');
         setAplicadorNombre(initialLabor.aplicadorNombre || '');
         setCarnetAplicador(initialLabor.carnetAplicador || '');
-        setEstadoFenologicoBBCH(initialLabor.estadoFenologicoBBCH || '');
         setAbonoProducto(initialLabor.abonoProducto || '');
         setFormulacionNPK(initialLabor.formulacionNPK || '');
         setDosisAbonoKgHa(initialLabor.dosisAbonoKgHa ?? '');
-        setMetodoAplicacionAbono(initialLabor.metodoAplicacionAbono || 'Fertirriego');
-        setDuracionRiegoHoras(initialLabor.duracionRiegoHoras ?? 4.5);
-        setVolumenM3(initialLabor.volumenM3 ?? 380);
-        setFuenteAgua(initialLabor.fuenteAgua || 'Pozo Profundo N°1');
+        setMetodoAplicacionAbono(initialLabor.metodoAplicacionAbono || 'Foliar');
         setKilosRecolectados(initialLabor.kilosRecolectados ?? '');
         setCalibreCalidad(initialLabor.calibreCalidad || 'Exportación Calibre 30-33');
         setDestinoProducto(initialLabor.destinoProducto || 'Exportación Fresco');
@@ -136,7 +117,8 @@ export const ModalLabor: React.FC<ModalLaborProps> = ({
         setRegistradoPor(initialLabor.registradoPor || 'Diego Pereira');
       } else {
         const defParcId = defaultParcelaId || parcelas[0]?.id || '';
-        setTipoLabor(defaultTipoLabor || 'fitosanitario');
+        const defTipo = (defaultTipoLabor === 'riego' ? 'fitosanitario' : defaultTipoLabor) || 'fitosanitario';
+        setTipoLabor(defTipo);
         setParcelaId(defParcId);
         setDestinoAplicacion('Huerto de Kiwi');
         setFecha(new Date().toISOString().slice(0, 10));
@@ -157,9 +139,6 @@ export const ModalLabor: React.FC<ModalLaborProps> = ({
         setAbonoProducto('');
         setFormulacionNPK('');
         setDosisAbonoKgHa('');
-        setDuracionRiegoHoras(4.5);
-        setVolumenM3(380);
-        setFuenteAgua('Pozo Profundo N°1');
         setKilosRecolectados('');
         setObservaciones('');
         const currentUser = usuarios.find(u => u.id === activeUserId);
@@ -220,10 +199,6 @@ export const ModalLabor: React.FC<ModalLaborProps> = ({
       formulacionNPK: formulacionNPK || undefined,
       dosisAbonoKgHa: dosisAbonoKgHa !== '' ? Number(dosisAbonoKgHa) : undefined,
       metodoAplicacionAbono,
-      duracionRiegoHoras: duracionRiegoHoras !== '' ? Number(duracionRiegoHoras) : undefined,
-      volumenM3: volumenM3 !== '' ? Number(volumenM3) : undefined,
-      litrosAgua: volumenM3 !== '' ? Number(volumenM3) * 1000 : undefined,
-      fuenteAgua,
       kilosRecolectados: kilosRecolectados !== '' ? Number(kilosRecolectados) : undefined,
       calibreCalidad,
       destinoProducto,
@@ -246,7 +221,7 @@ export const ModalLabor: React.FC<ModalLaborProps> = ({
               {isEditing ? 'Editar Labor Agrícola' : 'Registrar Nueva Labor / Aplicación'}
             </h2>
             <p className="text-xs text-emerald-200 mt-0.5">
-              Control de destino de aplicación, descuento automático de bodega y cuaderno SAG
+              Cuaderno oficial de labores de campo (Fitosanitario, Fertilización, Cosecha, Poda y Monitoreo)
             </p>
           </div>
           <button type="button" onClick={onClose} className="text-emerald-200 hover:text-white cursor-pointer">
@@ -257,16 +232,15 @@ export const ModalLabor: React.FC<ModalLaborProps> = ({
         {/* Form Body */}
         <form onSubmit={handleSubmit} className="overflow-y-auto p-5 sm:p-6 space-y-4">
           
-          {/* Tipo de Labor */}
+          {/* TIPO DE LABOR (SIN RIEGO NI POZO) */}
           <div>
             <label className="block font-bold text-stone-800 uppercase mb-1.5">
-              Tipo de Actividad *
+              Tipo de Labor Agrícola *
             </label>
-            <div className="grid grid-cols-3 sm:grid-cols-6 gap-2">
+            <div className="grid grid-cols-2 sm:grid-cols-5 gap-2">
               {[
                 { id: 'fitosanitario', label: 'Fitosanitario', icon: ShieldCheck },
                 { id: 'fertilizacion', label: 'Fertilización', icon: Layers },
-                { id: 'riego', label: 'Riego Pozo', icon: Droplets },
                 { id: 'cosecha', label: 'Cosecha Kiwis', icon: Apple },
                 { id: 'labor_cultural', label: 'Poda / Cultural', icon: Scissors },
                 { id: 'monitoreo', label: 'Monitoreo', icon: Bug },
@@ -292,7 +266,7 @@ export const ModalLabor: React.FC<ModalLaborProps> = ({
             </div>
           </div>
 
-          {/* DESTINO DE LA LABOR (NUEVO) */}
+          {/* DESTINO DE LA LABOR */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 p-3.5 bg-amber-50/60 rounded-xl border border-amber-200">
             <div>
               <label className="block font-bold text-amber-950 mb-1 flex items-center gap-1.5">
@@ -362,7 +336,7 @@ export const ModalLabor: React.FC<ModalLaborProps> = ({
             <input
               type="text"
               required
-              placeholder="Ej: Control preventivo con bactericida de cobre en huerto de kiwi"
+              placeholder="Ej: Aplicación de fungicida en huerto de kiwi"
               value={descripcionGeneral}
               onChange={(e) => setDescripcionGeneral(e.target.value)}
               className="w-full p-2 border rounded-lg"
@@ -476,26 +450,55 @@ export const ModalLabor: React.FC<ModalLaborProps> = ({
             </div>
           )}
 
-          {/* RIEGO */}
-          {tipoLabor === 'riego' && (
-            <div className="grid grid-cols-2 gap-3 p-3.5 bg-sky-50 rounded-xl border border-sky-200">
+          {/* FERTILIZACIÓN */}
+          {tipoLabor === 'fertilizacion' && (
+            <div className="space-y-3 p-3.5 bg-emerald-50 rounded-xl border border-emerald-200">
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block font-semibold text-stone-700 mb-1">Producto / Abono *</label>
+                  <input
+                    type="text"
+                    required
+                    value={abonoProducto}
+                    onChange={(e) => setAbonoProducto(e.target.value)}
+                    placeholder="Ej: Nitrato de Calcio"
+                    className="w-full p-2 border rounded-lg bg-white"
+                  />
+                </div>
+                <div>
+                  <label className="block font-semibold text-stone-700 mb-1">Dosis (kg o L/ha)</label>
+                  <input
+                    type="number"
+                    step="0.1"
+                    value={dosisAbonoKgHa}
+                    onChange={(e) => setDosisAbonoKgHa(e.target.value === '' ? '' : Number(e.target.value))}
+                    className="w-full p-2 border rounded-lg bg-white font-mono"
+                  />
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* COSECHA */}
+          {tipoLabor === 'cosecha' && (
+            <div className="grid grid-cols-2 gap-3 p-3.5 bg-purple-50 rounded-xl border border-purple-200">
               <div>
-                <label className="block font-semibold text-stone-700 mb-1">Horas de Riego</label>
+                <label className="block font-semibold text-stone-700 mb-1">Kilos Cosechados *</label>
                 <input
                   type="number"
-                  step="0.5"
-                  value={duracionRiegoHoras}
-                  onChange={(e) => setDuracionRiegoHoras(e.target.value === '' ? '' : Number(e.target.value))}
-                  className="w-full p-2 border rounded-lg bg-white font-mono"
+                  required
+                  value={kilosRecolectados}
+                  onChange={(e) => setKilosRecolectados(e.target.value === '' ? '' : Number(e.target.value))}
+                  className="w-full p-2 border rounded-lg bg-white font-mono font-bold"
                 />
               </div>
               <div>
-                <label className="block font-semibold text-stone-700 mb-1">Metros Cúbicos (m³)</label>
+                <label className="block font-semibold text-stone-700 mb-1">Calibre / Calidad</label>
                 <input
-                  type="number"
-                  value={volumenM3}
-                  onChange={(e) => setVolumenM3(e.target.value === '' ? '' : Number(e.target.value))}
-                  className="w-full p-2 border rounded-lg bg-white font-mono"
+                  type="text"
+                  value={calibreCalidad}
+                  onChange={(e) => setCalibreCalidad(e.target.value)}
+                  className="w-full p-2 border rounded-lg bg-white"
                 />
               </div>
             </div>
