@@ -1,6 +1,7 @@
 export type TipoLabor = 
   | 'fitosanitario' 
   | 'fertilizacion' 
+  | 'enmienda'
   | 'riego' 
   | 'cosecha' 
   | 'siembra' 
@@ -25,6 +26,7 @@ export type CategoriaInsumo =
   | 'Fitorregulador'
   | 'Bioestimulante'
   | 'Fertilizante'
+  | 'Enmienda Agrícola'
   | 'Coadyuvante'
   | 'Desinfectante'
   | 'Otro';
@@ -41,6 +43,13 @@ export type FuenteAguaRiego =
   | 'Pozo profundo'
   | 'Red presurizada'
   | 'Otra fuente';
+
+export type EtapaFenologicaSabaini = 
+  | 'E1' // Sep - Nov: Inicio brotación a Plena Flor
+  | 'E2' // Nov - Ene: Plena Flor a 50 DDPF (División celular y Calcio)
+  | 'E3' // Ene - Abr: 50 DDPF a Cosecha (Acumulación MS y metabolitos)
+  | 'E4' // Abr - Jun: Cosecha a Caída de hojas (Reservas y Flash radicular)
+  | 'E5'; // Jun - Sep: Receso invernal (Horas Frío, BEO y rizósfera PGPR)
 
 export interface ExplotacionAgricola {
   nombreFundo: string;
@@ -109,7 +118,6 @@ export interface InsumoInventario {
   consumoHistoricoAcumulado: number;
 }
 
-// CONTROL EXCLUSIVO DE POZO PROFUNDO (EXTRACCIONES DGA)
 export interface RegistroExtraccionPozo {
   id: string;
   fecha: string;
@@ -126,7 +134,6 @@ export interface RegistroExtraccionPozo {
   observaciones?: string;
 }
 
-// NUEVA ESTRUCTURA EXCLUSIVA PARA REGISTRO DE RIEGO Y FERTIRRIEGO
 export interface RegistroRiegoSector {
   id: string;
   fecha: string;
@@ -138,7 +145,6 @@ export interface RegistroRiegoSector {
   volumenM3: number;
   litrosTotales: number;
   laminaMm?: number;
-  // Campos exclusivos para Fertirriego
   productoFertilizante?: string;
   dosisKgHa?: number;
   conductividadElectrica?: number;
@@ -173,11 +179,16 @@ export interface RegistroLabor {
   carnetAplicador?: string;
   condicionesClima?: ClimaCondiciones;
   estadoFenologicoBBCH?: string;
+  etapaFenologicaSabaini?: EtapaFenologicaSabaini;
 
   abonoProducto?: string;
   formulacionNPK?: string;
   dosisAbonoKgHa?: number;
   metodoAplicacionAbono?: 'Fertirriego' | 'Foliar' | 'Al voleo / Fondo' | 'Localizado en hilera';
+
+  // Enmienda Agrícola (BEO / CHM)
+  tipoEnmienda?: 'Compost Maduro' | 'Enmienda Húmica/Fúlvica' | 'Yeso Agrícola' | 'Cal / Carbonato' | 'Banda Enmienda Orgánica (BEO)' | 'Cubierta Herbácea (CHM)';
+  dosisToneladasHa?: number;
 
   duracionRiegoHoras?: number;
   volumenM3?: number;
@@ -341,6 +352,26 @@ export interface ConteoYemasBrotacion {
   porcentajeFertilidad: number;
   evaluador: string;
   observaciones?: string;
+}
+
+// Registro Fenológico detallado según las 5 Etapas del Curso Kiwi
+export interface SeguimientoFenologicoSabaini {
+  id: string;
+  fecha: string;
+  parcelaId: string;
+  parcelaNombre: string;
+  etapa: EtapaFenologicaSabaini;
+  nombreEtapa: string;
+  diametroBrotesBaseMm?: number; // > o < 15 mm
+  largoBrotePromedioCm?: number;
+  yemasPorMetro?: number;
+  calibreFrutoPolarSemanalCm?: number; // E2: potencial 1 cm/sem
+  crecimientoFrutoGDia?: number; // E2: 1.6 g/día primeros 35 ddpf
+  materiaSecaFruto?: number; // E3: % MS
+  estadoRaicesFlash?: 'Sin actividad' | 'Flash de otoño activo' | 'Flash de primavera activo' | 'En crecimiento';
+  enmiendaAplicada?: string; // E4/E5: BEO o CHM
+  observaciones: string;
+  evaluador: string;
 }
 
 export interface SeguimientoFenologico {
