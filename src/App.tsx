@@ -72,6 +72,7 @@ import { RotateCcw, X, CheckCircle2, Loader2, Save, RefreshCw, Database, Lock, L
 const SUPABASE_URL = 'https://zvtolionewlulqmtdaty.supabase.co';
 const SUPABASE_ANON_KEY = 'sb_publishable_s1vQx_x3_f3fDHHkdjVxZw_GTMkiU8I';
 
+// USUARIO PRINCIPAL ADMINISTRADOR
 const USUARIO_INICIAL_ADMIN: UsuarioPredio & { clave?: string } = {
   id: 'usr-admin-diego',
   nombre: 'Diego Pereira',
@@ -108,18 +109,19 @@ export default function App() {
   const [fenologia, setFenologia] = useState<SeguimientoFenologico[]>(getStoredFenologia);
   const [polinizacion, setPolinizacion] = useState<RegistroPolinizacion[]>(getStoredPolinizacion);
 
+  // Estados de conexión con Supabase
   const [isDbLoaded, setIsDbLoaded] = useState(false);
   const [dbStatus, setDbStatus] = useState<'sincronizado' | 'guardando' | 'cargando' | 'error'>('cargando');
   const [dbMessage, setDbMessage] = useState('Conectando a Supabase...');
 
-  // Sesión
+  // Sesión y Login
   const [loggedInUser, setLoggedInUser] = useState<(UsuarioPredio & { clave?: string }) | null>(null);
   const [loginEmail, setLoginEmail] = useState('diegopereiraramirez@gmail.com');
   const [loginPassword, setLoginPassword] = useState('');
   const [loginError, setLoginError] = useState('');
   const [isLoggingIn, setIsLoggingIn] = useState(false);
 
-  // Modal Mi Perfil
+  // Modal Mi Perfil y Clave
   const [isProfileModalOpen, setIsProfileModalOpen] = useState(false);
   const [myNewName, setMyNewName] = useState('Diego Pereira');
   const [myNewEmail, setMyNewEmail] = useState('diegopereiraramirez@gmail.com');
@@ -135,12 +137,13 @@ export default function App() {
   const [isExplotacionModalOpen, setIsExplotacionModalOpen] = useState(false);
   const [isResetConfirmOpen, setIsResetConfirmOpen] = useState(false);
 
-  // 1. CARGA DESDE SUPABASE (SOLO CABECERA 'apikey' - SIN AUTHORIZATION BEARER)
+  // 1. CARGA AUTOMÁTICA EN VIVO DESDE SUPABASE
   const cargarDesdeSupabase = async () => {
     setDbStatus('cargando');
     setDbMessage('Descargando datos de Supabase...');
 
     try {
+      // Cabecera limpia 'apikey' sin Bearer
       const res = await fetch(`${SUPABASE_URL}/rest/v1/fundo_datos?id=eq.fundo_la_cabana&select=datos`, {
         headers: {
           'apikey': SUPABASE_ANON_KEY
@@ -203,7 +206,7 @@ export default function App() {
     }
   }, []);
 
-  // 2. GUARDAR EN SUPABASE (SOLO CABECERA 'apikey' - RESOLVIENDO DUPLICADOS)
+  // 2. GUARDAR EN SUPABASE (BLINDADO CON ?on_conflict=id Y CABECERA 'apikey')
   const guardarEnSupabase = async (datosPersonalizados?: any) => {
     setDbStatus('guardando');
     setDbMessage('Guardando en Supabase...');
@@ -302,7 +305,7 @@ export default function App() {
     polinizacion
   ]);
 
-  // LOGIN EN VIVO
+  // 3. INICIO DE SESIÓN CON VALIDACIÓN EN VIVO EN SUPABASE
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoginError('');
@@ -319,6 +322,21 @@ export default function App() {
         if (Array.isArray(filas) && filas.length > 0 && filas[0].datos?.usuarios) {
           listaFresca = filas[0].datos.usuarios;
           setUsuarios(listaFresca);
+
+          const datos = filas[0].datos;
+          if (datos.explotacion) setExplotacion(datos.explotacion);
+          if (Array.isArray(datos.parcelas)) setParcelas(datos.parcelas);
+          if (Array.isArray(datos.labores)) setLabores(datos.labores);
+          if (Array.isArray(datos.inventario)) setInventario(datos.inventario);
+          if (Array.isArray(datos.registrosPozo)) setRegistrosPozo(datos.registrosPozo);
+          if (Array.isArray(datos.riegosSector)) setRiegosSector(datos.riegosSector);
+          if (Array.isArray(datos.lugares)) setLugares(datos.lugares);
+          if (Array.isArray(datos.muestreosMadurez)) setMuestreosMadurez(datos.muestreosMadurez);
+          if (Array.isArray(datos.cosechasLote)) setCosechasLote(datos.cosechasLote);
+          if (Array.isArray(datos.ordenesTrabajo)) setOrdenesTrabajo(datos.ordenesTrabajo);
+          if (datos.horasFrio) setHorasFrio(datos.horasFrio);
+          if (Array.isArray(datos.fenologia)) setFenologia(datos.fenologia);
+          if (Array.isArray(datos.polinizacion)) setPolinizacion(datos.polinizacion);
         }
       }
 
@@ -357,6 +375,7 @@ export default function App() {
     setLoginPassword('');
   };
 
+  // CAMBIO DE MI PERFIL Y CLAVE
   const handleSaveMyProfile = (e: React.FormEvent) => {
     e.preventDefault();
     if (!loggedInUser) return;
@@ -386,7 +405,7 @@ export default function App() {
 
     localStorage.setItem('fundo_sesion_id', updatedUser.id);
 
-    guardarEnSupabase({
+    const payloadActualizado = {
       explotacion,
       parcelas,
       labores,
@@ -402,9 +421,11 @@ export default function App() {
       horasFrio,
       fenologia,
       polinizacion
-    });
+    };
 
-    setProfileSuccessMsg('¡Correo y clave guardados con éxito!');
+    guardarEnSupabase(payloadActualizado);
+
+    setProfileSuccessMsg('¡Correo y contraseña guardados con éxito!');
     setTimeout(() => {
       setIsProfileModalOpen(false);
       setProfileSuccessMsg('');
@@ -528,6 +549,7 @@ export default function App() {
 
   const lowStockCount = inventario.filter((i) => i.stockActual <= i.stockMinimo).length;
 
+  // PANTALLA DE ACCESO / LOGIN
   if (!loggedInUser) {
     return (
       <div className="min-h-screen bg-stone-900 flex items-center justify-center p-4">
@@ -615,7 +637,7 @@ export default function App() {
 
   return (
     <div className="min-h-screen bg-stone-50 flex flex-col font-sans text-stone-900 pb-16 sm:pb-0">
-      {/* BARRA SUPERIOR CON SUPABASE */}
+      {/* BARRA SUPERIOR DE CONEXIÓN */}
       <div className="bg-stone-900 text-white px-4 py-2 border-b border-stone-800 text-xs flex flex-wrap items-center justify-between gap-3 sticky top-0 z-50">
         <div className="flex items-center gap-2">
           <Database className="w-4 h-4 text-emerald-400" />
@@ -645,6 +667,7 @@ export default function App() {
         </div>
 
         <div className="flex items-center gap-2">
+          {/* BOTÓN MI PERFIL */}
           <button
             onClick={() => {
               setMyNewName(activeUser.nombre);
@@ -721,10 +744,12 @@ export default function App() {
           />
         )}
 
+        {/* GESTIÓN DE USUARIOS CON VISIBILIDAD DE CLAVES SEGÚN PRIVILEGIOS */}
         {activeTab === 'usuarios' && (
           <UsuariosView
             usuarios={usuarios}
             activeUserId={activeUserId}
+            loggedInUser={loggedInUser}
             onSetActiveUser={setActiveUserId}
             onAddUsuario={(u) => {
               const userWithPass = { ...u, clave: (u as any).clave || '1234' };
@@ -854,7 +879,7 @@ export default function App() {
           />
         )}
 
-        {/* LABORES (SOLO FITOSANITARIOS, FERTILIZACIÓN, COSECHA, PODA Y MONITOREO) */}
+        {/* LABORES (SIN RIEGO NI POZO) */}
         {activeTab === 'labores' && (
           <LaboresView
             labores={labores.filter(l => l.tipoLabor !== 'riego')}
@@ -916,11 +941,19 @@ export default function App() {
           <CalculadoraView />
         )}
 
+        {/* INFORME OFICIAL SAG CON TODAS LAS TABLAS EN VIVO */}
         {activeTab === 'informe' && (
           <InformeOficialView
             explotacion={explotacion}
             parcelas={parcelas}
             labores={labores}
+            inventario={inventario}
+            registrosPozo={registrosPozo}
+            riegosSector={riegosSector}
+            muestreosMadurez={muestreosMadurez}
+            cosechasLote={cosechasLote}
+            ordenesTrabajo={ordenesTrabajo}
+            usuarios={usuarios}
             onImportJSON={(e) => {
               const file = e.target.files?.[0];
               if (file) {
