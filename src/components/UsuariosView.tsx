@@ -44,7 +44,7 @@ export const UsuariosView: React.FC<UsuariosViewProps> = ({
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingUser, setEditingUser] = useState<(UsuarioPredio & { clave?: string }) | null>(null);
 
-  // Form states
+  // Estados del formulario
   const [nombre, setNombre] = useState('');
   const [email, setEmail] = useState('');
   const [telefono, setTelefono] = useState('');
@@ -82,7 +82,6 @@ export const UsuariosView: React.FC<UsuariosViewProps> = ({
   const openEditUserModal = (u: UsuarioPredio & { clave?: string }) => {
     const esMiPropiaCuenta = u.email?.trim().toLowerCase() === currentUser?.email?.trim().toLowerCase();
 
-    // Si no es Diego y no es su propia cuenta, se le prohíbe el acceso
     if (!isMasterAdmin && !esMiPropiaCuenta) {
       alert('Solo el administrador Diego Pereira tiene acceso a ver y modificar a otros usuarios.');
       return;
@@ -189,7 +188,8 @@ export const UsuariosView: React.FC<UsuariosViewProps> = ({
   const filteredUsuarios = usuarios.filter((u) => {
     const matchesSearch = 
       u.nombre.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      u.email.toLowerCase().includes(searchTerm.toLowerCase());
+      u.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      u.rutIdentificacion.toLowerCase().includes(searchTerm.toLowerCase());
 
     if (!matchesSearch) return false;
     if (roleFilter === 'todos') return true;
@@ -241,9 +241,7 @@ export const UsuariosView: React.FC<UsuariosViewProps> = ({
           const badge = getRoleBadge(u.rol);
           const esMiCuenta = u.email?.trim().toLowerCase() === currentUser?.email?.trim().toLowerCase();
           
-          // REGLA ESTRICTA DE PRIVACIDAD:
-          // Solo tú (isMasterAdmin) ves las claves de todos.
-          // Cualquier otra persona solo ve su propia clave.
+          // Solo Diego ve las claves de todos. Los demás solo ven la suya.
           const puedeVerClave = isMasterAdmin || esMiCuenta;
           const puedeEditar = isMasterAdmin || esMiCuenta;
           const puedeEliminar = isMasterAdmin && !esMiCuenta;
@@ -306,7 +304,7 @@ export const UsuariosView: React.FC<UsuariosViewProps> = ({
                     <span className="font-medium text-stone-800 truncate">{u.email}</span>
                   </div>
 
-                  {/* VISUALIZACIÓN PROTEGIDA DE CLAVE */}
+                  {/* Visualización protegida de clave */}
                   <div className={`p-2 rounded-xl border flex items-center justify-between text-[11px] mt-2 ${
                     puedeVerClave ? 'bg-amber-50/60 border-amber-200' : 'bg-stone-50 border-stone-200'
                   }`}>
@@ -418,4 +416,61 @@ export const UsuariosView: React.FC<UsuariosViewProps> = ({
                       onChange={(e) => setRol(e.target.value as RolUsuario)}
                       className="w-full p-2.5 border border-stone-300 rounded-lg bg-white font-medium"
                     >
-                      <option value="agron
+                      <option value="agronomo_predio">Agrónomo a Cargo del Predio</option>
+                      <option value="jefe_campo">Jefe de Campo / Administrador</option>
+                      <option value="aplicador_calificado">Aplicador con Carnet SAG</option>
+                      <option value="operador_riego">Operador de Riego & Pozo</option>
+                      <option value="asesor_externo">Asesor Externo</option>
+                      <option value="administrador">Administrador de la App</option>
+                    </select>
+                  </div>
+
+                  <div>
+                    <label className="font-semibold text-stone-800 block mb-1">Cargo / Especialidad</label>
+                    <input
+                      type="text"
+                      value={tituloProfesional}
+                      onChange={(e) => setTituloProfesional(e.target.value)}
+                      placeholder="Ej: Tractorista / Regador"
+                      className="w-full p-2.5 border border-stone-300 rounded-lg"
+                    />
+                  </div>
+                </div>
+              )}
+
+              <div className="pt-3 border-t flex justify-end gap-2">
+                <button
+                  type="button"
+                  onClick={() => setIsModalOpen(false)}
+                  className="px-4 py-2 border rounded-lg text-stone-700 font-medium hover:bg-stone-50 cursor-pointer"
+                >
+                  Cancelar
+                </button>
+                <button
+                  type="submit"
+                  className="px-5 py-2 bg-emerald-800 hover:bg-emerald-900 text-white font-bold rounded-lg shadow-sm cursor-pointer"
+                >
+                  Guardar Datos
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Modal eliminar */}
+      {userToDelete && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-3 bg-stone-900/60 backdrop-blur-xs text-xs">
+          <div className="bg-white rounded-2xl shadow-xl w-full max-w-md border border-stone-200 p-5 space-y-3">
+            <h3 className="font-bold text-sm text-stone-900">¿Eliminar usuario?</h3>
+            <p className="text-stone-600">Se eliminará el acceso de <strong>{userToDelete.nombre}</strong> ({userToDelete.email}).</p>
+            <div className="pt-3 border-t flex justify-end gap-2">
+              <button onClick={() => setUserToDelete(null)} className="px-4 py-2 border rounded-lg cursor-pointer">Cancelar</button>
+              <button onClick={handleConfirmDelete} className="px-4 py-2 bg-red-700 text-white font-bold rounded-lg cursor-pointer">Eliminar</button>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+};
