@@ -4,6 +4,7 @@ import { DashboardView } from './components/DashboardView';
 import { LaboresView } from './components/LaboresView';
 import { InventarioView } from './components/InventarioView';
 import { PozoView } from './components/PozoView';
+import { RiegoView } from './components/RiegoView';
 import { ClimaView } from './components/ClimaView';
 import { ParcelasView } from './components/ParcelasView';
 import { MonitoreoView } from './components/MonitoreoView';
@@ -54,6 +55,7 @@ import {
   TipoLabor, 
   InsumoInventario, 
   RegistroExtraccionPozo,
+  RegistroRiegoSector,
   ClimaCondiciones,
   LugarPredio,
   UsuarioPredio,
@@ -65,33 +67,14 @@ import {
   RegistroPolinizacion
 } from './types/campo';
 import { initialClimaLaCabana } from './data/initialData';
-import { RotateCcw, X, CheckCircle2, Loader2, Save, RefreshCw, Database, Lock, LogIn, AlertCircle, LogOut, UserCog, Waves, Plus, Droplet, Wheat, Edit2, Trash2 } from 'lucide-react';
+import { RotateCcw, X, CheckCircle2, Loader2, Save, RefreshCw, Database, Lock, LogIn, AlertCircle, LogOut, UserCog, User } from 'lucide-react';
 
 const SUPABASE_URL = 'https://zvtolionewlulqmtdaty.supabase.co';
 const SUPABASE_ANON_KEY = 'sb_publishable_s1vQx_x3_f3fDHHkdjVxZw_GTMkiU8I';
 
-// Estructura de Riego
-interface RegistroRiegoSector {
-  id: string;
-  fecha: string;
-  horaInicio: string;
-  sectorDestino: string;
-  tipoRiego: 'Solo Riego por Goteo' | 'Fertirriego' | 'Microaspersión' | 'Surco / Gravedad';
-  fuenteAgua: string;
-  duracionHoras: number;
-  volumenM3: number;
-  litrosTotales: number;
-  productoFertilizante?: string;
-  dosisKgHa?: number;
-  conductividadElectrica?: number;
-  phSolucion?: number;
-  operador: string;
-  observaciones?: string;
-}
-
 const USUARIO_INICIAL_ADMIN: UsuarioPredio & { clave?: string } = {
   id: 'usr-admin-diego',
-  nombre: 'Diego Pereira',
+  nombre: 'Diego Pereira Ramirez',
   email: 'diegopereiraramirez@gmail.com',
   telefono: '+56 9 ',
   rol: 'administrador',
@@ -113,7 +96,7 @@ export default function App() {
   const [riegosSector, setRiegosSector] = useState<RegistroRiegoSector[]>([]);
   const [lugares, setLugares] = useState<LugarPredio[]>(getStoredLugares);
   const [usuarios, setUsuarios] = useState<(UsuarioPredio & { clave?: string })[]>([
-    { ...USUARIO_INICIAL_ADMIN, clave: '1234' }
+    { ...USUARIO_INICIAL_ADMIN, clave: 'DiegoPer1.' }
   ]);
   const [activeUserId, setActiveUserId] = useState<string>('usr-admin-diego');
   const [clima, setClima] = useState<ClimaCondiciones>(initialClimaLaCabana);
@@ -139,9 +122,9 @@ export default function App() {
 
   // Modal Mi Perfil y Clave
   const [isProfileModalOpen, setIsProfileModalOpen] = useState(false);
-  const [myNewName, setMyNewName] = useState('Diego Pereira');
+  const [myNewName, setMyNewName] = useState('Diego Pereira Ramirez');
   const [myNewEmail, setMyNewEmail] = useState('diegopereiraramirez@gmail.com');
-  const [myNewPassword, setMyNewPassword] = useState('1234');
+  const [myNewPassword, setMyNewPassword] = useState('DiegoPer1.');
   const [profileSuccessMsg, setProfileSuccessMsg] = useState('');
 
   // Modales
@@ -153,30 +136,14 @@ export default function App() {
   const [isExplotacionModalOpen, setIsExplotacionModalOpen] = useState(false);
   const [isResetConfirmOpen, setIsResetConfirmOpen] = useState(false);
 
-  // Estados específicos de la pantalla de Riego
-  const [isModalRiegoOpen, setIsModalRiegoOpen] = useState(false);
-  const [editingRiego, setEditingRiego] = useState<RegistroRiegoSector | null>(null);
-  const [riegoFecha, setRiegoFecha] = useState(new Date().toISOString().slice(0, 10));
-  const [riegoHora, setRiegoHora] = useState('08:00');
-  const [riegoSector, setRiegoSector] = useState('Huerto de Kiwi (General)');
-  const [riegoModalidad, setRiegoModalidad] = useState<'Solo Riego por Goteo' | 'Fertirriego'>('Solo Riego por Goteo');
-  const [riegoFuente, setRiegoFuente] = useState('Tranque acumulador');
-  const [riegoDuracion, setRiegoDuracion] = useState<number>(4.0);
-  const [riegoVolumen, setRiegoVolumen] = useState<number>(250);
-  const [riegoFertilizante, setRiegoFertilizante] = useState('Nitrato de Calcio');
-  const [riegoDosis, setRiegoDosis] = useState<number>(35);
-  const [riegoObservaciones, setRiegoObservaciones] = useState('');
-
-  // 1. CARGA AUTOMÁTICA DESDE SUPABASE
+  // 1. CARGA AUTOMÁTICA EN VIVO DESDE SUPABASE
   const cargarDesdeSupabase = async () => {
     setDbStatus('cargando');
     setDbMessage('Descargando datos de Supabase...');
 
     try {
       const res = await fetch(`${SUPABASE_URL}/rest/v1/fundo_datos?id=eq.fundo_la_cabana&select=datos`, {
-        headers: {
-          'apikey': SUPABASE_ANON_KEY
-        }
+        headers: { 'apikey': SUPABASE_ANON_KEY }
       });
 
       if (!res.ok) {
@@ -298,7 +265,7 @@ export default function App() {
     } catch (err: any) {
       console.error('Error guardando en Supabase:', err);
       setDbStatus('error');
-      setDbMessage('Error al conectar con Supabase');
+      setDbMessage('Error al enviar a Supabase');
     }
   };
 
@@ -334,7 +301,7 @@ export default function App() {
     polinizacion
   ]);
 
-  // LOGIN DIRECTO CON SUPABASE
+  // LOGIN EN VIVO
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoginError('');
@@ -375,7 +342,7 @@ export default function App() {
       );
 
       if (!user) {
-        setLoginError(`El correo "${loginEmail}" no está registrado.`);
+        setLoginError('Usuario no encontrado. Por favor selecciona tu nombre.');
         setIsLoggingIn(false);
         return;
       }
@@ -433,7 +400,7 @@ export default function App() {
 
     localStorage.setItem('fundo_sesion_id', updatedUser.id);
 
-    guardarEnSupabase({
+    const payloadActualizado = {
       explotacion,
       parcelas,
       labores,
@@ -449,7 +416,9 @@ export default function App() {
       horasFrio,
       fenologia,
       polinizacion
-    });
+    };
+
+    guardarEnSupabase(payloadActualizado);
 
     setProfileSuccessMsg('¡Correo y contraseña guardados con éxito!');
     setTimeout(() => {
@@ -573,36 +542,9 @@ export default function App() {
     guardarEnSupabase({ ...defaults, riegosSector: [] });
   };
 
-  // Manejo de guardar riego
-  const handleSaveRiegoModal = (e: React.FormEvent) => {
-    e.preventDefault();
-    const lts = (Number(riegoVolumen) || 0) * 1000;
-    const nuevoRiego: RegistroRiegoSector = {
-      id: editingRiego ? editingRiego.id : `rieg-${Date.now()}`,
-      fecha: riegoFecha,
-      horaInicio: riegoHora,
-      sectorDestino: riegoSector,
-      tipoRiego: riegoModalidad,
-      fuenteAgua: riegoFuente,
-      duracionHoras: Number(riegoDuracion) || 0,
-      volumenM3: Number(riegoVolumen) || 0,
-      litrosTotales: lts,
-      productoFertilizante: riegoModalidad === 'Fertirriego' ? riegoFertilizante : undefined,
-      dosisKgHa: riegoModalidad === 'Fertirriego' ? Number(riegoDosis) || 0 : undefined,
-      operador: activeUser.nombre,
-      observaciones: riegoObservaciones || undefined
-    };
-
-    if (editingRiego) {
-      setRiegosSector(prev => prev.map(r => r.id === editingRiego.id ? nuevoRiego : r));
-    } else {
-      setRiegosSector(prev => [nuevoRiego, ...prev]);
-    }
-    setIsModalRiegoOpen(false);
-  };
-
   const lowStockCount = inventario.filter((i) => i.stockActual <= i.stockMinimo).length;
 
+  // PANTALLA DE ACCESO / LOGIN (SIN MOSTRAR CORREO AL LADO DEL NOMBRE)
   if (!loggedInUser) {
     return (
       <div className="min-h-screen bg-stone-900 flex items-center justify-center p-4">
@@ -629,26 +571,19 @@ export default function App() {
               <label className="block text-stone-700 font-bold mb-1">
                 Selecciona tu Nombre de Usuario *
               </label>
+              
+              {/* SELECTOR LIMPIO: SOLO MUESTRA EL NOMBRE DEL USUARIO (SIN EL CORREO) */}
               <select
                 value={loginEmail}
                 onChange={(e) => setLoginEmail(e.target.value)}
-                className="w-full p-2.5 rounded-lg border border-stone-300 font-medium bg-white text-stone-900 mb-2 cursor-pointer"
+                className="w-full p-3 rounded-xl border border-stone-300 font-bold bg-stone-50 text-stone-900 text-sm cursor-pointer focus:ring-2 focus:ring-emerald-700 focus:outline-none"
               >
                 {usuarios.map((u) => (
                   <option key={u.id} value={u.email}>
-                    {u.nombre} ({u.email})
+                    {u.nombre}
                   </option>
                 ))}
               </select>
-
-              <input
-                type="email"
-                required
-                value={loginEmail}
-                onChange={(e) => setLoginEmail(e.target.value)}
-                placeholder="correo@ejemplo.com"
-                className="w-full p-2.5 rounded-lg border border-stone-300"
-              />
             </div>
 
             <div>
@@ -661,7 +596,7 @@ export default function App() {
                 value={loginPassword}
                 onChange={(e) => setLoginPassword(e.target.value)}
                 placeholder="Escribe tu clave aquí"
-                className="w-full p-2.5 rounded-lg border border-stone-300 text-sm font-mono"
+                className="w-full p-3 rounded-xl border border-stone-300 text-sm font-mono focus:ring-2 focus:ring-emerald-700 focus:outline-none"
               />
             </div>
 
@@ -690,7 +625,7 @@ export default function App() {
 
   return (
     <div className="min-h-screen bg-stone-50 flex flex-col font-sans text-stone-900 pb-16 sm:pb-0">
-      {/* BARRA SUPERIOR CON SUPABASE */}
+      {/* BARRA SUPERIOR DE CONEXIÓN CON SUPABASE */}
       <div className="bg-stone-900 text-white px-4 py-2 border-b border-stone-800 text-xs flex flex-wrap items-center justify-between gap-3 sticky top-0 z-50">
         <div className="flex items-center gap-2">
           <Database className="w-4 h-4 text-emerald-400" />
@@ -796,11 +731,12 @@ export default function App() {
           />
         )}
 
-        {/* USUARIOS */}
+        {/* USUARIOS CON PRIVACIDAD REFORZADA */}
         {activeTab === 'usuarios' && (
           <UsuariosView
             usuarios={usuarios}
             activeUserId={activeUserId}
+            loggedInUser={loggedInUser}
             onSetActiveUser={setActiveUserId}
             onAddUsuario={(u) => {
               const userWithPass = { ...u, clave: (u as any).clave || '1234' };
@@ -960,145 +896,16 @@ export default function App() {
           />
         )}
 
-        {/* PESTAÑA SEPARADA: RIEGO Y FERTIRRIEGO INTEGRADO */}
+        {/* RIEGO INDEPENDIENTE */}
         {activeTab === 'riego' && (
-          <div className="space-y-6">
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-2 border-b border-stone-200">
-              <div>
-                <h1 className="text-xl font-bold tracking-tight text-stone-900 flex items-center gap-2">
-                  <Waves className="w-5 h-5 text-blue-700" />
-                  Control de Riego y Fertirriego
-                </h1>
-                <p className="text-xs text-stone-500">
-                  Registro independiente de distribución hídrica, abonos inyectados y fuentes de agua
-                </p>
-              </div>
-
-              <button
-                onClick={() => {
-                  setEditingRiego(null);
-                  setRiegoFecha(new Date().toISOString().slice(0, 10));
-                  setRiegoHora('08:00');
-                  setRiegoModalidad('Solo Riego por Goteo');
-                  setRiegoFuente('Tranque acumulador');
-                  setRiegoDuracion(4.0);
-                  setRiegoVolumen(250);
-                  setIsModalRiegoOpen(true);
-                }}
-                className="px-4 py-2.5 bg-blue-700 hover:bg-blue-600 text-white font-bold rounded-xl text-xs sm:text-sm transition-all shadow-sm flex items-center gap-2 cursor-pointer active:scale-95"
-              >
-                <Plus className="w-4 h-4" />
-                + Registrar Riego / Fertirriego
-              </button>
-            </div>
-
-            {/* Tarjetas KPI Riego */}
-            <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
-              <div className="p-4 bg-white rounded-xl border border-stone-200 shadow-2xs">
-                <span className="text-[11px] font-semibold uppercase text-stone-500">Horas Totales</span>
-                <div className="text-2xl font-extrabold text-stone-900 mt-1">
-                  {riegosSector.reduce((a, b) => a + Number(b.duracionHoras || 0), 0).toFixed(1)} hrs
-                </div>
-              </div>
-
-              <div className="p-4 bg-white rounded-xl border border-stone-200 shadow-2xs">
-                <span className="text-[11px] font-semibold uppercase text-blue-700">Volumen Distribuido</span>
-                <div className="text-2xl font-extrabold text-blue-900 mt-1">
-                  {riegosSector.reduce((a, b) => a + Number(b.volumenM3 || 0), 0).toLocaleString()} m³
-                </div>
-              </div>
-
-              <div className="p-4 bg-white rounded-xl border border-stone-200 shadow-2xs">
-                <span className="text-[11px] font-semibold uppercase text-emerald-700">Fertirriego</span>
-                <div className="text-2xl font-extrabold text-emerald-800 mt-1">
-                  {riegosSector.filter(r => r.tipoRiego === 'Fertirriego').length} eventos
-                </div>
-              </div>
-
-              <div className="p-4 bg-white rounded-xl border border-stone-200 shadow-2xs">
-                <span className="text-[11px] font-semibold uppercase text-sky-700">Solo Goteo</span>
-                <div className="text-2xl font-extrabold text-sky-800 mt-1">
-                  {riegosSector.filter(r => r.tipoRiego === 'Solo Riego por Goteo').length} eventos
-                </div>
-              </div>
-            </div>
-
-            {/* Tabla de Riegos */}
-            <div className="bg-white border border-stone-200 rounded-xl shadow-xs overflow-hidden">
-              <div className="overflow-x-auto">
-                <table className="w-full text-left text-xs">
-                  <thead className="bg-stone-50 border-b border-stone-200 text-stone-600 font-bold uppercase text-[10px]">
-                    <tr>
-                      <th className="p-3">Fecha & Hora</th>
-                      <th className="p-3">Sector</th>
-                      <th className="p-3">Tipo</th>
-                      <th className="p-3">Fuente Agua</th>
-                      <th className="p-3">Horas / m³</th>
-                      <th className="p-3">Abono Inyectado</th>
-                      <th className="p-3">Regador</th>
-                      <th className="p-3 text-center">Acciones</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-stone-100">
-                    {riegosSector.map((rg) => (
-                      <tr key={rg.id} className="hover:bg-stone-50/70">
-                        <td className="p-3 font-mono">{rg.fecha} {rg.horaInicio}</td>
-                        <td className="p-3 font-bold">{rg.sectorDestino}</td>
-                        <td className="p-3">
-                          <span className={`px-2 py-0.5 rounded text-[10px] font-bold ${
-                            rg.tipoRiego === 'Fertirriego' ? 'bg-emerald-100 text-emerald-950' : 'bg-blue-100 text-blue-950'
-                          }`}>
-                            {rg.tipoRiego}
-                          </span>
-                        </td>
-                        <td className="p-3 text-stone-600">{rg.fuenteAgua}</td>
-                        <td className="p-3 font-mono font-bold text-blue-950">{rg.duracionHoras} hrs ({rg.volumenM3} m³)</td>
-                        <td className="p-3 text-emerald-900 font-medium">
-                          {rg.productoFertilizante ? `${rg.productoFertilizante} (${rg.dosisKgHa} kg/ha)` : 'Solo agua'}
-                        </td>
-                        <td className="p-3">{rg.operador}</td>
-                        <td className="p-3 text-center whitespace-nowrap">
-                          <button
-                            onClick={() => {
-                              setEditingRiego(rg);
-                              setRiegoFecha(rg.fecha);
-                              setRiegoHora(rg.horaInicio);
-                              setRiegoSector(rg.sectorDestino);
-                              setRiegoModalidad(rg.tipoRiego === 'Fertirriego' ? 'Fertirriego' : 'Solo Riego por Goteo');
-                              setRiegoFuente(rg.fuenteAgua);
-                              setRiegoDuracion(rg.duracionHoras);
-                              setRiegoVolumen(rg.volumenM3);
-                              setRiegoFertilizante(rg.productoFertilizante || 'Nitrato de Calcio');
-                              setRiegoDosis(rg.dosisKgHa || 35);
-                              setIsModalRiegoOpen(true);
-                            }}
-                            className="p-1 text-blue-700 hover:bg-blue-50 rounded mr-1 cursor-pointer"
-                          >
-                            <Edit2 className="w-3.5 h-3.5" />
-                          </button>
-                          <button
-                            onClick={() => {
-                              setRiegosSector(prev => prev.filter(item => item.id !== rg.id));
-                            }}
-                            className="p-1 text-red-700 hover:bg-red-50 rounded cursor-pointer"
-                          >
-                            <Trash2 className="w-3.5 h-3.5" />
-                          </button>
-                        </td>
-                      </tr>
-                    ))}
-                    {riegosSector.length === 0 && (
-                      <tr>
-                        <td colSpan={8} className="p-8 text-center text-stone-400">
-                          No hay riegos registrados. Haz clic en <strong>"+ Registrar Riego / Fertirriego"</strong> para agregar el primero.
-                        </td>
-                      </tr>
-                    )}
-                  </tbody>
-                </table>
-              </div>
-            </div>
-          </div>
+          <RiegoView
+            riegos={riegosSector}
+            parcelas={parcelas}
+            onAddRiego={(r) => setRiegosSector((prev) => [r, ...prev])}
+            onUpdateRiego={(r) => setRiegosSector((prev) => prev.map((item) => item.id === r.id ? r : item))}
+            onDeleteRiego={(id) => setRiegosSector((prev) => prev.filter((item) => item.id !== id))}
+            activeUserName={activeUser?.nombre}
+          />
         )}
 
         {activeTab === 'clima' && (
@@ -1166,184 +973,6 @@ export default function App() {
           />
         )}
       </main>
-
-      {/* MODAL NUEVO / EDITAR RIEGO */}
-      {isModalRiegoOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-stone-900/60 backdrop-blur-xs text-xs">
-          <div className="bg-white rounded-2xl shadow-xl w-full max-w-xl overflow-hidden border border-stone-200">
-            <div className="px-6 py-4 border-b border-stone-200 bg-blue-950 text-white flex justify-between items-center">
-              <h3 className="font-bold text-sm flex items-center gap-2">
-                <Waves className="w-4 h-4 text-blue-300" />
-                {editingRiego ? 'Editar Riego' : 'Registrar Riego / Fertirriego'}
-              </h3>
-              <button onClick={() => setIsModalRiegoOpen(false)} className="text-blue-200 hover:text-white cursor-pointer">
-                <X className="w-5 h-5" />
-              </button>
-            </div>
-
-            <form onSubmit={handleSaveRiegoModal} className="p-6 space-y-4 max-h-[85vh] overflow-y-auto">
-              <div>
-                <label className="block font-bold text-stone-800 mb-1.5 uppercase tracking-wide">Modalidad de Riego *</label>
-                <div className="grid grid-cols-2 gap-3">
-                  <button
-                    type="button"
-                    onClick={() => setRiegoModalidad('Solo Riego por Goteo')}
-                    className={`p-3 rounded-xl border text-left font-bold cursor-pointer ${
-                      riegoModalidad === 'Solo Riego por Goteo'
-                        ? 'bg-blue-900 text-white border-blue-900 shadow-sm'
-                        : 'bg-stone-50 text-stone-700 border-stone-200 hover:bg-stone-100'
-                    }`}
-                  >
-                    <div className="flex items-center gap-2">
-                      <Droplet className="w-4 h-4 text-blue-400" />
-                      <span>Solo Goteo (Agua Limpia)</span>
-                    </div>
-                  </button>
-
-                  <button
-                    type="button"
-                    onClick={() => setRiegoModalidad('Fertirriego')}
-                    className={`p-3 rounded-xl border text-left font-bold cursor-pointer ${
-                      riegoModalidad === 'Fertirriego'
-                        ? 'bg-emerald-900 text-white border-emerald-900 shadow-sm'
-                        : 'bg-stone-50 text-stone-700 border-stone-200 hover:bg-stone-100'
-                    }`}
-                  >
-                    <div className="flex items-center gap-2">
-                      <Wheat className="w-4 h-4 text-emerald-300" />
-                      <span>Fertirriego (Con Abono)</span>
-                    </div>
-                  </button>
-                </div>
-              </div>
-
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="block font-semibold text-stone-700 mb-1">Sector / Cuartel *</label>
-                  <select
-                    value={riegoSector}
-                    onChange={(e) => setRiegoSector(e.target.value)}
-                    className="w-full p-2.5 bg-white border rounded-lg font-bold"
-                  >
-                    {parcelas.map(p => (
-                      <option key={p.id} value={p.nombre}>{p.nombre}</option>
-                    ))}
-                    <option value="Huerto de Kiwi (General)">Huerto de Kiwi (General)</option>
-                    <option value="Casa patronal / Jardines">🏡 Casa patronal / Jardines</option>
-                    <option value="Quinta frutal">🍎 Quinta frutal</option>
-                    <option value="Control de praderas">🌾 Control de praderas</option>
-                    <option value="Vivero">🌱 Vivero de plantas</option>
-                  </select>
-                </div>
-
-                <div>
-                  <label className="block font-semibold text-stone-700 mb-1">Fuente del Agua *</label>
-                  <select
-                    value={riegoFuente}
-                    onChange={(e) => setRiegoFuente(e.target.value)}
-                    className="w-full p-2.5 bg-white border rounded-lg"
-                  >
-                    <option value="Tranque acumulador">🌊 Tranque acumulador</option>
-                    <option value="Canal de regadío">💧 Canal de regadío / Canalistas</option>
-                    <option value="Red presurizada">⚙️ Red presurizada / Matriz</option>
-                    <option value="Pozo profundo">🏗️ Pozo profundo</option>
-                    <option value="Otra fuente">📍 Otra fuente</option>
-                  </select>
-                </div>
-              </div>
-
-              {riegoModalidad === 'Fertirriego' && (
-                <div className="p-3.5 bg-emerald-50 rounded-xl border border-emerald-300 grid grid-cols-2 gap-3">
-                  <div>
-                    <label className="block font-bold text-emerald-950 mb-1">Fertilizante Inyectado *</label>
-                    <input
-                      type="text"
-                      required
-                      value={riegoFertilizante}
-                      onChange={(e) => setRiegoFertilizante(e.target.value)}
-                      placeholder="Ej: Nitrato de Calcio"
-                      className="w-full p-2 border border-emerald-300 rounded-lg bg-white"
-                    />
-                  </div>
-                  <div>
-                    <label className="block font-bold text-emerald-950 mb-1">Dosis (kg/ha o L/ha) *</label>
-                    <input
-                      type="number"
-                      step="0.1"
-                      required
-                      value={riegoDosis}
-                      onChange={(e) => setRiegoDosis(parseFloat(e.target.value) || 0)}
-                      className="w-full p-2 border border-emerald-300 rounded-lg bg-white font-mono font-bold"
-                    />
-                  </div>
-                </div>
-              )}
-
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="block font-semibold text-stone-700 mb-1">Duración (Horas) *</label>
-                  <input
-                    type="number"
-                    step="0.5"
-                    required
-                    value={riegoDuracion}
-                    onChange={(e) => setRiegoDuracion(parseFloat(e.target.value) || 0)}
-                    className="w-full p-2 border rounded-lg font-mono font-bold"
-                  />
-                </div>
-                <div>
-                  <label className="block font-semibold text-stone-700 mb-1">Volumen Estimado (m³) *</label>
-                  <input
-                    type="number"
-                    required
-                    value={riegoVolumen}
-                    onChange={(e) => setRiegoVolumen(parseFloat(e.target.value) || 0)}
-                    className="w-full p-2 border rounded-lg font-mono font-bold"
-                  />
-                </div>
-              </div>
-
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="block font-semibold text-stone-700 mb-1">Fecha *</label>
-                  <input
-                    type="date"
-                    required
-                    value={riegoFecha}
-                    onChange={(e) => setRiegoFecha(e.target.value)}
-                    className="w-full p-2 border rounded-lg font-mono"
-                  />
-                </div>
-                <div>
-                  <label className="block font-semibold text-stone-700 mb-1">Hora Inicio</label>
-                  <input
-                    type="time"
-                    value={riegoHora}
-                    onChange={(e) => setRiegoHora(e.target.value)}
-                    className="w-full p-2 border rounded-lg font-mono"
-                  />
-                </div>
-              </div>
-
-              <div className="pt-3 border-t flex justify-end gap-2">
-                <button
-                  type="button"
-                  onClick={() => setIsModalRiegoOpen(false)}
-                  className="px-4 py-2 border rounded-lg cursor-pointer"
-                >
-                  Cancelar
-                </button>
-                <button
-                  type="submit"
-                  className="px-5 py-2 bg-blue-800 text-white font-bold rounded-lg cursor-pointer hover:bg-blue-700"
-                >
-                  Guardar Riego
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
 
       {/* MODAL MI PERFIL */}
       {isProfileModalOpen && (
