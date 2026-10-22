@@ -135,7 +135,7 @@ export default function App() {
   const [isExplotacionModalOpen, setIsExplotacionModalOpen] = useState(false);
   const [isResetConfirmOpen, setIsResetConfirmOpen] = useState(false);
 
-  // 1. CARGA DESDE SUPABASE
+  // 1. CARGA DESDE SUPABASE (SOLO CABECERA 'apikey' - SIN AUTHORIZATION BEARER)
   const cargarDesdeSupabase = async () => {
     setDbStatus('cargando');
     setDbMessage('Descargando datos de Supabase...');
@@ -147,7 +147,11 @@ export default function App() {
         }
       });
 
-      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      if (!res.ok) {
+        const errDetail = await res.text();
+        throw new Error(`HTTP ${res.status}: ${errDetail.slice(0, 40)}`);
+      }
+
       const filas = await res.json();
 
       if (Array.isArray(filas) && filas.length > 0 && filas[0].datos) {
@@ -199,7 +203,7 @@ export default function App() {
     }
   }, []);
 
-  // 2. GUARDAR EN SUPABASE
+  // 2. GUARDAR EN SUPABASE (SOLO CABECERA 'apikey' - RESOLVIENDO DUPLICADOS)
   const guardarEnSupabase = async (datosPersonalizados?: any) => {
     setDbStatus('guardando');
     setDbMessage('Guardando en Supabase...');
@@ -262,7 +266,7 @@ export default function App() {
     } catch (err: any) {
       console.error('Error guardando en Supabase:', err);
       setDbStatus('error');
-      setDbMessage('Error al conectar');
+      setDbMessage(err.message || 'Error al conectar');
     }
   };
 
@@ -298,7 +302,7 @@ export default function App() {
     polinizacion
   ]);
 
-  // LOGIN
+  // LOGIN EN VIVO
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoginError('');
@@ -353,7 +357,6 @@ export default function App() {
     setLoginPassword('');
   };
 
-  // GUARDAR PERFIL
   const handleSaveMyProfile = (e: React.FormEvent) => {
     e.preventDefault();
     if (!loggedInUser) return;
@@ -851,9 +854,10 @@ export default function App() {
           />
         )}
 
+        {/* LABORES (SOLO FITOSANITARIOS, FERTILIZACIÓN, COSECHA, PODA Y MONITOREO) */}
         {activeTab === 'labores' && (
           <LaboresView
-            labores={labores}
+            labores={labores.filter(l => l.tipoLabor !== 'riego')}
             parcelas={parcelas}
             onOpenNewLabor={handleOpenNewLabor}
             onEditLabor={handleEditLabor}
@@ -870,7 +874,7 @@ export default function App() {
           />
         )}
 
-        {/* PESTAÑA 1: POZO PROFUNDO EXCLUSIVO (DGA) */}
+        {/* PESTAÑA EXCLUSIVA POZO PROFUNDO */}
         {activeTab === 'pozo' && (
           <PozoView
             registrosPozo={registrosPozo}
@@ -880,7 +884,7 @@ export default function App() {
           />
         )}
 
-        {/* PESTAÑA 2: RIEGO INDEPENDIENTE (DISTRIBUCIÓN Y FERTIRRIEGO) */}
+        {/* PESTAÑA EXCLUSIVA RIEGO Y FERTIRRIEGO */}
         {activeTab === 'riego' && (
           <RiegoView
             riegos={riegosSector}
@@ -1010,7 +1014,7 @@ export default function App() {
                 <button
                   type="button"
                   onClick={() => setIsProfileModalOpen(false)}
-                  className="px-4 py-2 border rounded-lg text-stone-600 hover:bg-stone-50"
+                  className="px-4 py-2 border rounded-lg text-stone-600 hover:bg-stone-50 cursor-pointer"
                 >
                   Cancelar
                 </button>
