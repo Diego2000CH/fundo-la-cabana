@@ -11,18 +11,13 @@ import {
   Check, 
   AlertCircle,
   Clock,
-  KeyRound,
-  ShieldAlert,
-  ShieldCheck,
-  Eye,
-  EyeOff
+  KeyRound
 } from 'lucide-react';
 import { UsuarioPredio, RolUsuario } from '../types/campo';
 
 interface UsuariosViewProps {
   usuarios: (UsuarioPredio & { clave?: string })[];
   activeUserId: string;
-  loggedInUser?: (UsuarioPredio & { clave?: string }) | null;
   onSetActiveUser: (userId: string) => void;
   onAddUsuario: (usuario: UsuarioPredio & { clave?: string }) => void;
   onUpdateUsuario: (usuario: UsuarioPredio & { clave?: string }) => void;
@@ -32,7 +27,6 @@ interface UsuariosViewProps {
 export const UsuariosView: React.FC<UsuariosViewProps> = ({
   usuarios,
   activeUserId,
-  loggedInUser,
   onSetActiveUser,
   onAddUsuario,
   onUpdateUsuario,
@@ -40,9 +34,12 @@ export const UsuariosView: React.FC<UsuariosViewProps> = ({
 }) => {
   const [searchTerm, setSearchTerm] = useState('');
   const [roleFilter, setRoleFilter] = useState<string>('todos');
+
+  // Identificar al usuario actual conectado
+  const currentUser = usuarios.find((u) => u.id === activeUserId) || usuarios[0];
   
   // Eres Administrador si tu rol es administrador o tu correo es diegopereiraramirez@gmail.com
-  const isAdmin = loggedInUser?.rol === 'administrador' || loggedInUser?.email === 'diegopereiraramirez@gmail.com';
+  const isAdmin = currentUser?.rol === 'administrador' || currentUser?.email === 'diegopereiraramirez@gmail.com';
 
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingUser, setEditingUser] = useState<(UsuarioPredio & { clave?: string }) | null>(null);
@@ -83,9 +80,8 @@ export const UsuariosView: React.FC<UsuariosViewProps> = ({
   };
 
   const openEditUserModal = (u: UsuarioPredio & { clave?: string }) => {
-    // Si no es admin y no es su propio perfil, no puede editar
-    if (!isAdmin && u.id !== loggedInUser?.id) {
-      alert('Solo el administrador puede editar a otros usuarios.');
+    if (!isAdmin && u.id !== activeUserId) {
+      alert('Solo el administrador puede modificar a otros usuarios.');
       return;
     }
 
@@ -236,11 +232,52 @@ export const UsuariosView: React.FC<UsuariosViewProps> = ({
         )}
       </div>
 
+      {/* Buscador */}
+      <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 bg-white p-3.5 rounded-xl border border-stone-200 shadow-xs">
+        <div className="relative flex-1">
+          <Search className="w-4 h-4 text-stone-400 absolute left-3 top-1/2 -translate-y-1/2" />
+          <input
+            type="text"
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            placeholder="Buscar usuario por nombre o correo..."
+            className="w-full pl-9 pr-4 py-2 bg-stone-50 border border-stone-200 rounded-lg text-xs"
+          />
+        </div>
+
+        <div className="flex items-center gap-1.5 overflow-x-auto text-xs">
+          <button
+            onClick={() => setRoleFilter('todos')}
+            className={`px-3 py-1.5 rounded-lg font-medium whitespace-nowrap transition-colors cursor-pointer ${
+              roleFilter === 'todos' ? 'bg-stone-900 text-white' : 'bg-stone-100 text-stone-600 hover:bg-stone-200'
+            }`}
+          >
+            Todos ({usuarios.length})
+          </button>
+          <button
+            onClick={() => setRoleFilter('agronomos')}
+            className={`px-3 py-1.5 rounded-lg font-medium whitespace-nowrap transition-colors cursor-pointer ${
+              roleFilter === 'agronomos' ? 'bg-emerald-800 text-white' : 'bg-stone-100 text-stone-600 hover:bg-stone-200'
+            }`}
+          >
+            Agrónomos
+          </button>
+          <button
+            onClick={() => setRoleFilter('operadores')}
+            className={`px-3 py-1.5 rounded-lg font-medium whitespace-nowrap transition-colors cursor-pointer ${
+              roleFilter === 'operadores' ? 'bg-amber-800 text-white' : 'bg-stone-100 text-stone-600 hover:bg-stone-200'
+            }`}
+          >
+            Campo & Riego
+          </button>
+        </div>
+      </div>
+
       {/* Grid de Usuarios */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
         {filteredUsuarios.map((u) => {
           const badge = getRoleBadge(u.rol);
-          const esMiCuenta = u.id === loggedInUser?.id;
+          const esMiCuenta = u.id === activeUserId || u.email === currentUser?.email;
           const puedeVerClave = isAdmin || esMiCuenta;
 
           return (
@@ -272,7 +309,6 @@ export const UsuariosView: React.FC<UsuariosViewProps> = ({
                     </div>
                   </div>
 
-                  {/* Botones de acción (Solo admin o el propio usuario) */}
                   {(isAdmin || esMiCuenta) && (
                     <div className="flex items-center gap-1 shrink-0">
                       <button
@@ -285,4 +321,189 @@ export const UsuariosView: React.FC<UsuariosViewProps> = ({
                       {isAdmin && !esMiCuenta && (
                         <button
                           onClick={() => setUserToDelete(u)}
-                          className="
+                          className="p-1.5 text-stone-400 hover:text-red-700 rounded hover:bg-red-50 cursor-pointer"
+                          title="Eliminar usuario"
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </button>
+                      )}
+                    </div>
+                  )}
+                </div>
+
+                <div className="mt-4 pt-3 border-t border-stone-100 space-y-2 text-xs">
+                  <div className="flex items-center gap-2 text-stone-600">
+                    <Mail className="w-3.5 h-3.5 text-stone-400 shrink-0" />
+                    <span className="font-medium text-stone-800 truncate">{u.email}</span>
+                  </div>
+
+                  {/* Visualización de clave */}
+                  <div className={`p-2 rounded-xl border flex items-center justify-between text-[11px] mt-2 ${
+                    puedeVerClave ? 'bg-amber-50/60 border-amber-200' : 'bg-stone-50 border-stone-200'
+                  }`}>
+                    <span className="text-stone-600 flex items-center gap-1 font-semibold">
+                      <KeyRound className="w-3.5 h-3.5 text-amber-700" />
+                      Clave de ingreso:
+                    </span>
+
+                    {puedeVerClave ? (
+                      <strong className="font-mono text-stone-900 bg-white px-2 py-0.5 rounded border border-amber-300">
+                        {u.clave || '1234'}
+                      </strong>
+                    ) : (
+                      <span className="font-mono text-stone-400 italic">
+                        •••••••• (Protegida)
+                      </span>
+                    )}
+                  </div>
+                </div>
+              </div>
+
+              <div className="mt-4 pt-3 border-t border-stone-100 flex items-center justify-between text-[11px]">
+                <span className="text-stone-400">Alta: {u.fechaAlta}</span>
+                {(isAdmin || esMiCuenta) && (
+                  <button
+                    onClick={() => openEditUserModal(u)}
+                    className="text-emerald-800 font-bold hover:underline cursor-pointer"
+                  >
+                    {esMiCuenta ? 'Modificar mi clave' : 'Editar clave de usuario'}
+                  </button>
+                )}
+              </div>
+            </div>
+          );
+        })}
+      </div>
+
+      {/* Modal crear / editar usuario */}
+      {isModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-xs p-4 overflow-y-auto text-xs">
+          <div className="bg-white rounded-2xl max-w-lg w-full p-6 shadow-xl border border-stone-200 my-8">
+            <div className="flex items-center justify-between border-b border-stone-200 pb-3">
+              <h3 className="font-bold text-sm text-stone-900 flex items-center gap-2">
+                <Users className="w-4 h-4 text-emerald-800" />
+                {editingUser ? `Editar Usuario: ${editingUser.nombre}` : 'Crear Nuevo Usuario de Acceso'}
+              </h3>
+              <button onClick={() => setIsModalOpen(false)} className="text-stone-400 hover:text-stone-700 cursor-pointer">
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            {formError && (
+              <div className="mt-3 p-2.5 bg-red-50 border border-red-200 rounded-lg text-red-700 flex items-center gap-2 font-medium">
+                <AlertCircle className="w-4 h-4 shrink-0" />
+                {formError}
+              </div>
+            )}
+
+            <form onSubmit={handleSaveUser} className="space-y-4 mt-4">
+              <div>
+                <label className="font-bold text-stone-800 block mb-1">Nombre Completo *</label>
+                <input
+                  type="text"
+                  required
+                  value={nombre}
+                  onChange={(e) => setNombre(e.target.value)}
+                  placeholder="Ej: Carlos Manqui"
+                  className="w-full p-2.5 border border-stone-300 rounded-lg"
+                />
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 p-3 bg-emerald-50/50 rounded-xl border border-emerald-200">
+                <div>
+                  <label className="font-bold text-emerald-950 block mb-1">
+                    Correo Electrónico (Usuario) *
+                  </label>
+                  <input
+                    type="email"
+                    required
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    placeholder="trabajador@gmail.com"
+                    className="w-full p-2.5 border border-emerald-300 rounded-lg bg-white"
+                  />
+                </div>
+
+                <div>
+                  <label className="font-bold text-emerald-950 block mb-1 flex items-center gap-1">
+                    <KeyRound className="w-3.5 h-3.5 text-emerald-700" />
+                    Contraseña Personal *
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    value={clave}
+                    onChange={(e) => setClave(e.target.value)}
+                    placeholder="Ej: campo2026"
+                    className="w-full p-2.5 border border-emerald-300 rounded-lg bg-white font-mono font-bold text-emerald-950"
+                  />
+                </div>
+              </div>
+
+              {isAdmin && (
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div>
+                    <label className="font-semibold text-stone-800 block mb-1">Rol en el Fundo</label>
+                    <select
+                      value={rol}
+                      onChange={(e) => setRol(e.target.value as RolUsuario)}
+                      className="w-full p-2.5 border border-stone-300 rounded-lg bg-white font-medium"
+                    >
+                      <option value="agronomo_predio">Agrónomo a Cargo del Predio</option>
+                      <option value="jefe_campo">Jefe de Campo / Administrador</option>
+                      <option value="aplicador_calificado">Aplicador con Carnet SAG</option>
+                      <option value="operador_riego">Operador de Riego & Pozo</option>
+                      <option value="asesor_externo">Asesor Externo</option>
+                      <option value="administrador">Administrador de la App</option>
+                    </select>
+                  </div>
+
+                  <div>
+                    <label className="font-semibold text-stone-800 block mb-1">Cargo / Especialidad</label>
+                    <input
+                      type="text"
+                      value={tituloProfesional}
+                      onChange={(e) => setTituloProfesional(e.target.value)}
+                      placeholder="Ej: Tractorista / Regador"
+                      className="w-full p-2.5 border border-stone-300 rounded-lg"
+                    />
+                  </div>
+                </div>
+              )}
+
+              <div className="pt-3 border-t flex justify-end gap-2">
+                <button
+                  type="button"
+                  onClick={() => setIsModalOpen(false)}
+                  className="px-4 py-2 border rounded-lg text-stone-700 font-medium hover:bg-stone-50 cursor-pointer"
+                >
+                  Cancelar
+                </button>
+                <button
+                  type="submit"
+                  className="px-5 py-2 bg-emerald-800 hover:bg-emerald-900 text-white font-bold rounded-lg shadow-sm cursor-pointer"
+                >
+                  Guardar Datos
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Modal eliminar */}
+      {userToDelete && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-3 bg-stone-900/60 backdrop-blur-xs text-xs">
+          <div className="bg-white rounded-2xl shadow-xl w-full max-w-md border border-stone-200 p-5 space-y-3">
+            <h3 className="font-bold text-sm text-stone-900">¿Eliminar usuario?</h3>
+            <p className="text-stone-600">Se eliminará el acceso de <strong>{userToDelete.nombre}</strong> ({userToDelete.email}).</p>
+            <div className="pt-3 border-t flex justify-end gap-2">
+              <button onClick={() => setUserToDelete(null)} className="px-4 py-2 border rounded-lg cursor-pointer">Cancelar</button>
+              <button onClick={handleConfirmDelete} className="px-4 py-2 bg-red-700 text-white font-bold rounded-lg cursor-pointer">Eliminar</button>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+};
