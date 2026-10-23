@@ -65,17 +65,23 @@ import {
   RegistroPolinizacion
 } from './types/campo';
 import { initialClimaLaCabana } from './data/initialData';
-import { RotateCcw, X, CheckCircle2, Loader2, Save, RefreshCw, Database, Lock, LogIn, AlertCircle, LogOut, UserCog, Waves, Plus, Droplet, Wheat, Edit2, Trash2 } from 'lucide-react';
+import { RotateCcw, X, CheckCircle2, Loader2, Save, RefreshCw, Database, Lock, LogIn, AlertCircle, LogOut, UserCog, Waves, Plus, Droplet, Wheat, Edit2, Trash2, Settings2 } from 'lucide-react';
 
 const SUPABASE_URL = 'https://zvtolionewlulqmtdaty.supabase.co';
 const SUPABASE_ANON_KEY = 'sb_publishable_s1vQx_x3_f3fDHHkdjVxZw_GTMkiU8I';
 
-// LOS 4 SECTORES EXCLUSIVOS DE RIEGO (SUMAN 13.1 HA)
-const SECTORES_RIEGO = [
-  { id: 'sec-1', nombre: 'Sector 1', ha: 3.8 },
-  { id: 'sec-2', nombre: 'Sector 2', ha: 3.2 },
-  { id: 'sec-3', nombre: 'Sector 3', ha: 3.5 },
-  { id: 'sec-4', nombre: 'Sector 4', ha: 2.6 }
+export interface SectorRiegoItem {
+  id: string;
+  nombre: string;
+  ha: number;
+  descripcion?: string;
+}
+
+const SECTORES_INICIALES: SectorRiegoItem[] = [
+  { id: 'sec-1', nombre: 'Sector 1', ha: 3.8, descripcion: 'Lado Norte' },
+  { id: 'sec-2', nombre: 'Sector 2', ha: 3.2, descripcion: 'Lado Este' },
+  { id: 'sec-3', nombre: 'Sector 3', ha: 3.5, descripcion: 'Lado Sur' },
+  { id: 'sec-4', nombre: 'Sector 4', ha: 2.6, descripcion: 'Lado Poniente' }
 ];
 
 interface RegistroRiegoSector {
@@ -119,6 +125,11 @@ export default function App() {
   const [inventario, setInventario] = useState<InsumoInventario[]>(getStoredInventario);
   const [registrosPozo, setRegistrosPozo] = useState<RegistroExtraccionPozo[]>(getStoredRegistrosPozo);
   const [riegosSector, setRiegosSector] = useState<RegistroRiegoSector[]>([]);
+  
+  // ESTADO DE LOS 4 SECTORES EDITABLES
+  const [sectoresRiego, setSectoresRiego] = useState<SectorRiegoItem[]>(SECTORES_INICIALES);
+  const [editingSectorModal, setEditingSectorModal] = useState<SectorRiegoItem | null>(null);
+
   const [lugares, setLugares] = useState<LugarPredio[]>(getStoredLugares);
   const [usuarios, setUsuarios] = useState<(UsuarioPredio & { clave?: string })[]>([
     { ...USUARIO_INICIAL_ADMIN, clave: 'DiegoPer1.' }
@@ -161,7 +172,7 @@ export default function App() {
   const [isExplotacionModalOpen, setIsExplotacionModalOpen] = useState(false);
   const [isResetConfirmOpen, setIsResetConfirmOpen] = useState(false);
 
-  // ESTADOS DEL FORMULARIO DE RIEGO (SOLO SECTORES 1, 2, 3, 4)
+  // Estados Formulario Riego
   const [isModalRiegoOpen, setIsModalRiegoOpen] = useState(false);
   const [editingRiego, setEditingRiego] = useState<RegistroRiegoSector | null>(null);
   const [riegoFecha, setRiegoFecha] = useState(new Date().toISOString().slice(0, 10));
@@ -200,6 +211,12 @@ export default function App() {
         if (Array.isArray(datos.inventario)) setInventario(datos.inventario);
         if (Array.isArray(datos.registrosPozo)) setRegistrosPozo(datos.registrosPozo);
         if (Array.isArray(datos.riegosSector)) setRiegosSector(datos.riegosSector);
+        
+        // Cargar los sectores de riego editados
+        if (Array.isArray(datos.sectoresRiego) && datos.sectoresRiego.length > 0) {
+          setSectoresRiego(datos.sectoresRiego);
+        }
+
         if (Array.isArray(datos.lugares)) setLugares(datos.lugares);
         if (Array.isArray(datos.usuarios) && datos.usuarios.length > 0) {
           setUsuarios(datos.usuarios);
@@ -253,6 +270,7 @@ export default function App() {
       inventario,
       registrosPozo,
       riegosSector,
+      sectoresRiego,
       lugares,
       usuarios,
       activeUserId,
@@ -329,6 +347,7 @@ export default function App() {
     inventario,
     registrosPozo,
     riegosSector,
+    sectoresRiego,
     lugares,
     usuarios,
     activeUserId,
@@ -365,6 +384,7 @@ export default function App() {
           if (Array.isArray(datos.inventario)) setInventario(datos.inventario);
           if (Array.isArray(datos.registrosPozo)) setRegistrosPozo(datos.registrosPozo);
           if (Array.isArray(datos.riegosSector)) setRiegosSector(datos.riegosSector);
+          if (Array.isArray(datos.sectoresRiego)) setSectoresRiego(datos.sectoresRiego);
           if (Array.isArray(datos.lugares)) setLugares(datos.lugares);
           if (Array.isArray(datos.muestreosMadurez)) setMuestreosMadurez(datos.muestreosMadurez);
           if (Array.isArray(datos.cosechasLote)) setCosechasLote(datos.cosechasLote);
@@ -446,6 +466,7 @@ export default function App() {
       inventario,
       registrosPozo,
       riegosSector,
+      sectoresRiego,
       lugares,
       usuarios: nuevosUsuarios,
       activeUserId: updatedUser.id,
@@ -566,6 +587,7 @@ export default function App() {
     setInventario(defaults.inventario);
     setRegistrosPozo(defaults.registrosPozo);
     setRiegosSector([]);
+    setSectoresRiego(SECTORES_INICIALES);
     setLugares(defaults.lugares);
     setUsuarios(defaults.usuarios);
     setMuestreosMadurez(defaults.muestreosMadurez);
@@ -576,24 +598,21 @@ export default function App() {
     setPolinizacion(defaults.polinizacion);
     setActiveUserId(defaults.usuarios[0]?.id || 'usr-admin-diego');
     setIsResetConfirmOpen(false);
-    guardarEnSupabase({ ...defaults, riegosSector: [] });
+    guardarEnSupabase({ ...defaults, riegosSector: [], sectoresRiego: SECTORES_INICIALES });
   };
 
-  // CÁLCULO DE RIEGO EXCLUSIVAMENTE PARA SECTOR 1, 2, 3 O 4
-  const sectorSeleccionadoObj = SECTORES_RIEGO.find(s => s.nombre === riegoSector) || SECTORES_RIEGO[0];
-  const sectorHa = sectorSeleccionadoObj.ha;
+  // CÁLCULO DE RIEGO EXCLUSIVO PARA EL SECTOR SELECCIONADO
+  const sectorActualObj = sectoresRiego.find(s => s.nombre === riegoSector) || sectoresRiego[0];
+  const sectorHa = sectorActualObj ? sectorActualObj.ha : 3.8;
   
-  // Lámina = m3 / (10 * ha)
   const laminaMmCalculada = (riegoVolumen > 0 && sectorHa > 0) 
     ? Number((riegoVolumen / (10 * sectorHa)).toFixed(2)) 
     : 0;
 
-  // Fertilizante total = dosisKgHa * ha
   const fertilizanteTotalKg = (riegoDosis > 0 && sectorHa > 0)
     ? Number((riegoDosis * sectorHa).toFixed(1))
     : 0;
 
-  // Guardar Riego
   const handleSaveRiegoModal = (e: React.FormEvent) => {
     e.preventDefault();
     const lts = (Number(riegoVolumen) || 0) * 1000;
@@ -601,7 +620,7 @@ export default function App() {
       id: editingRiego ? editingRiego.id : `rieg-${Date.now()}`,
       fecha: riegoFecha,
       horaInicio: riegoHora,
-      sectorDestino: sectorSeleccionadoObj.nombre,
+      sectorDestino: sectorActualObj.nombre,
       superficieHa: sectorHa,
       tipoRiego: riegoModalidad,
       fuenteAgua: riegoFuente,
@@ -622,6 +641,38 @@ export default function App() {
       setRiegosSector(prev => [nuevoRiego, ...prev]);
     }
     setIsModalRiegoOpen(false);
+  };
+
+  // GUARDAR EDICIÓN DE UN SECTOR DE RIEGO ESPECÍFICO
+  const handleSaveSingleSector = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editingSectorModal) return;
+
+    const nuevaLista = sectoresRiego.map(s => 
+      s.id === editingSectorModal.id ? editingSectorModal : s
+    );
+
+    setSectoresRiego(nuevaLista);
+    guardarEnSupabase({
+      explotacion,
+      parcelas,
+      labores,
+      inventario,
+      registrosPozo,
+      riegosSector,
+      sectoresRiego: nuevaLista,
+      lugares,
+      usuarios,
+      activeUserId,
+      muestreosMadurez,
+      cosechasLote,
+      ordenesTrabajo,
+      horasFrio,
+      fenologia,
+      polinizacion
+    });
+
+    setEditingSectorModal(null);
   };
 
   const lowStockCount = inventario.filter((i) => i.stockActual <= i.stockMinimo).length;
@@ -812,7 +863,7 @@ export default function App() {
           />
         )}
 
-        {/* USUARIOS CON PRIVACIDAD TOTAL */}
+        {/* USUARIOS */}
         {activeTab === 'usuarios' && (
           <UsuariosView
             usuarios={usuarios}
@@ -830,6 +881,7 @@ export default function App() {
                 inventario,
                 registrosPozo,
                 riegosSector,
+                sectoresRiego,
                 lugares,
                 usuarios: nuevaLista,
                 activeUserId,
@@ -851,6 +903,7 @@ export default function App() {
                 inventario,
                 registrosPozo,
                 riegosSector,
+                sectoresRiego,
                 lugares,
                 usuarios: nuevaLista,
                 activeUserId,
@@ -872,6 +925,7 @@ export default function App() {
                 inventario,
                 registrosPozo,
                 riegosSector,
+                sectoresRiego,
                 lugares,
                 usuarios: nuevaLista,
                 activeUserId,
@@ -947,7 +1001,7 @@ export default function App() {
           />
         )}
 
-        {/* LABORES (SIN RIEGO NI POZO) */}
+        {/* LABORES */}
         {activeTab === 'labores' && (
           <LaboresView
             labores={labores.filter(l => l.tipoLabor !== 'riego')}
@@ -967,7 +1021,7 @@ export default function App() {
           />
         )}
 
-        {/* PESTAÑA EXCLUSIVA POZO PROFUNDO (DGA) */}
+        {/* POZO PROFUNDO DGA EXCLUSIVO */}
         {activeTab === 'pozo' && (
           <PozoView
             registrosPozo={registrosPozo}
@@ -977,7 +1031,7 @@ export default function App() {
           />
         )}
 
-        {/* PESTAÑA RIEGO EXCLUSIVA: SOLO SECTORES 1, 2, 3, 4 */}
+        {/* PESTAÑA RIEGO EXCLUSIVA: CON EDICIÓN DIRECTA EN CADA SECTOR */}
         {activeTab === 'riego' && (
           <div className="space-y-6 text-xs">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-2 border-b border-stone-200">
@@ -987,7 +1041,7 @@ export default function App() {
                   Control de Riego y Fertirriego por Sectores
                 </h1>
                 <p className="text-xs text-stone-500">
-                  Riego distribuido exclusivamente en los 4 sectores del fundo. Cálculo automático de lámina (mm) y fertilizantes.
+                  Riego distribuido exclusivamente en los 4 sectores del fundo. Puedes editar las hectáreas de cada sector directamente en sus tarjetas [1, 2].
                 </p>
               </div>
 
@@ -996,7 +1050,7 @@ export default function App() {
                   setEditingRiego(null);
                   setRiegoFecha(new Date().toISOString().slice(0, 10));
                   setRiegoHora('08:00');
-                  setRiegoSector('Sector 1');
+                  setRiegoSector(sectoresRiego[0]?.nombre || 'Sector 1');
                   setRiegoModalidad('Solo Riego por Goteo');
                   setRiegoFuente('Tranque acumulador');
                   setRiegoDuracion(4.0);
@@ -1013,26 +1067,48 @@ export default function App() {
               </button>
             </div>
 
-            {/* LAS 4 TARJETAS EXCLUSIVAS DE LOS SECTORES 1, 2, 3, 4 */}
+            {/* LAS 4 TARJETAS CON BOTÓN DE EDITAR EN CADA UNA */}
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-              {SECTORES_RIEGO.map((sec) => {
+              {sectoresRiego.map((sec) => {
                 const riegosSectorActual = riegosSector.filter(r => r.sectorDestino === sec.nombre);
                 const m3Sector = riegosSectorActual.reduce((a, b) => a + Number(b.volumenM3 || 0), 0);
 
                 return (
-                  <div key={sec.id} className="p-4 bg-white rounded-2xl border border-blue-200 shadow-2xs space-y-1">
-                    <div className="flex justify-between items-center">
-                      <strong className="text-blue-950 font-bold text-sm">{sec.nombre}</strong>
-                      <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-blue-100 text-blue-900">
-                        {sec.ha} ha
-                      </span>
+                  <div key={sec.id} className="p-4 bg-white rounded-2xl border border-blue-200 shadow-2xs space-y-2 flex flex-col justify-between">
+                    <div>
+                      <div className="flex justify-between items-start gap-1">
+                        <div>
+                          <strong className="text-blue-950 font-bold text-sm block">{sec.nombre}</strong>
+                          <span className="text-[10px] text-stone-400 block">{sec.descripcion || 'Sector de Riego'}</span>
+                        </div>
+                        
+                        {/* BOTÓN EDITAR DIRECTO EN CADA SECTOR */}
+                        <button
+                          onClick={() => setEditingSectorModal(sec)}
+                          className="p-1.5 text-blue-700 hover:bg-blue-50 rounded-lg cursor-pointer border border-blue-200/60"
+                          title={`Editar nombre o hectáreas de ${sec.nombre}`}
+                        >
+                          <Edit2 className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
+
+                      <div className="mt-2 flex items-baseline gap-1">
+                        <span className="text-2xl font-extrabold text-stone-900 font-mono">
+                          {sec.ha}
+                        </span>
+                        <span className="text-xs font-bold text-blue-900">hectáreas</span>
+                      </div>
                     </div>
-                    <div className="text-2xl font-extrabold text-stone-900 font-mono mt-1">
-                      {m3Sector.toLocaleString()} <span className="text-xs text-stone-500 font-normal">m³</span>
+
+                    <div className="pt-2 border-t border-stone-100 flex justify-between items-center text-[10px]">
+                      <span className="text-stone-500 font-mono font-bold">{m3Sector.toLocaleString()} m³ regados</span>
+                      <button
+                        onClick={() => setEditingSectorModal(sec)}
+                        className="text-blue-700 font-bold hover:underline cursor-pointer"
+                      >
+                        Ajustar ha
+                      </button>
                     </div>
-                    <p className="text-[10px] text-stone-400">
-                      {riegosSectorActual.length} riegos aplicados
-                    </p>
                   </div>
                 );
               })}
@@ -1176,6 +1252,7 @@ export default function App() {
                     if (parsed.inventario) setInventario(parsed.inventario);
                     if (parsed.registrosPozo) setRegistrosPozo(parsed.registrosPozo);
                     if (parsed.riegosSector) setRiegosSector(parsed.riegosSector);
+                    if (parsed.sectoresRiego) setSectoresRiego(parsed.sectoresRiego);
                     if (parsed.lugares) setLugares(parsed.lugares);
                     if (parsed.usuarios) setUsuarios(parsed.usuarios);
                     if (parsed.muestreosMadurez) setMuestreosMadurez(parsed.muestreosMadurez);
@@ -1196,7 +1273,83 @@ export default function App() {
         )}
       </main>
 
-      {/* MODAL REGISTRAR RIEGO AL SECTOR (SOLO SECTORES 1, 2, 3, 4) */}
+      {/* MODAL EDITAR UN SECTOR DE RIEGO ESPECÍFICO */}
+      {editingSectorModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-3 bg-stone-900/60 backdrop-blur-xs text-xs">
+          <div className="bg-white rounded-2xl shadow-xl w-full max-w-md border overflow-hidden p-6 space-y-4">
+            <div className="flex justify-between items-center border-b pb-2">
+              <h3 className="font-bold text-sm text-stone-900 flex items-center gap-2">
+                <Edit2 className="w-4 h-4 text-blue-700" />
+                Editar Dimensiones: {editingSectorModal.nombre}
+              </h3>
+              <button onClick={() => setEditingSectorModal(null)} className="text-stone-400 hover:text-stone-700 cursor-pointer">
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <form onSubmit={handleSaveSingleSector} className="space-y-4">
+              <div>
+                <label className="block font-bold text-stone-700 mb-1">Nombre del Sector *</label>
+                <input
+                  type="text"
+                  required
+                  value={editingSectorModal.nombre}
+                  onChange={(e) => setEditingSectorModal({ ...editingSectorModal, nombre: e.target.value })}
+                  className="w-full p-2.5 border rounded-lg font-bold text-stone-900"
+                />
+              </div>
+
+              <div>
+                <label className="block font-bold text-stone-700 mb-1">Superficie / Hectáreas *</label>
+                <div className="flex items-center gap-2">
+                  <input
+                    type="number"
+                    step="0.1"
+                    min="0.1"
+                    required
+                    value={editingSectorModal.ha}
+                    onChange={(e) => setEditingSectorModal({ ...editingSectorModal, ha: parseFloat(e.target.value) || 0.1 })}
+                    className="w-full p-2.5 border rounded-lg font-bold text-blue-900 text-base font-mono"
+                  />
+                  <span className="font-bold text-sm text-stone-600">ha</span>
+                </div>
+                <span className="text-[10px] text-stone-400 mt-1 block">
+                  *(Se usará para calcular la lámina de agua en mm y los kilos de fertilizante)*
+                </span>
+              </div>
+
+              <div>
+                <label className="block font-semibold text-stone-700 mb-1">Descripción o Ubicación</label>
+                <input
+                  type="text"
+                  value={editingSectorModal.descripcion || ''}
+                  onChange={(e) => setEditingSectorModal({ ...editingSectorModal, descripcion: e.target.value })}
+                  placeholder="Ej: Lado Norte, hileras 1 a 25"
+                  className="w-full p-2 border rounded-lg"
+                />
+              </div>
+
+              <div className="pt-3 border-t flex justify-end gap-2">
+                <button
+                  type="button"
+                  onClick={() => setEditingSectorModal(null)}
+                  className="px-4 py-2 border rounded-lg text-stone-600 hover:bg-stone-50 cursor-pointer"
+                >
+                  Cancelar
+                </button>
+                <button
+                  type="submit"
+                  className="px-5 py-2 bg-blue-800 hover:bg-blue-700 text-white font-bold rounded-lg cursor-pointer"
+                >
+                  Guardar en Supabase
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* MODAL REGISTRAR RIEGO AL SECTOR */}
       {isModalRiegoOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-stone-900/60 backdrop-blur-xs text-xs">
           <div className="bg-white rounded-2xl shadow-xl w-full max-w-lg overflow-hidden border">
@@ -1220,7 +1373,7 @@ export default function App() {
                   onChange={(e) => setRiegoSector(e.target.value)}
                   className="w-full p-2.5 bg-white border border-blue-300 rounded-lg font-bold text-stone-900 text-sm cursor-pointer"
                 >
-                  {SECTORES_RIEGO.map(s => (
+                  {sectoresRiego.map(s => (
                     <option key={s.id} value={s.nombre}>
                       {s.nombre} ({s.ha} hectáreas)
                     </option>
@@ -1304,14 +1457,14 @@ export default function App() {
                   <div className="text-xl font-extrabold text-blue-900 font-mono mt-1">
                     {laminaMmCalculada} mm
                   </div>
-                  <span className="text-[10px] text-stone-500">Para {sectorHa} ha del {sectorSeleccionadoObj.nombre}</span>
+                  <span className="text-[10px] text-stone-500">Para {sectorHa} ha del {sectorActualObj.nombre}</span>
                 </div>
               </div>
 
               {/* FERTIRRIEGO */}
               {riegoModalidad === 'Fertirriego' && (
                 <div className="p-3.5 bg-emerald-50 rounded-xl border border-emerald-300 space-y-3">
-                  <strong className="text-emerald-950 block">Fertirriego en {sectorSeleccionadoObj.nombre}</strong>
+                  <strong className="text-emerald-950 block">Fertirriego en {sectorActualObj.nombre}</strong>
                   <div className="grid grid-cols-2 gap-3">
                     <div>
                       <label className="block font-semibold text-stone-700 mb-1">Producto / Abono *</label>
