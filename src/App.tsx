@@ -67,11 +67,12 @@ import {
   RegistroPolinizacion
 } from './types/campo';
 import { initialClimaLaCabana } from './data/initialData';
-import { RotateCcw, X, CheckCircle2, Loader2, Save, RefreshCw, Database, Lock, LogIn, AlertCircle, LogOut, UserCog, User } from 'lucide-react';
+import { RotateCcw, X, CheckCircle2, Loader2, Save, RefreshCw, Database, Lock, LogIn, AlertCircle, LogOut, UserCog } from 'lucide-react';
 
 const SUPABASE_URL = 'https://zvtolionewlulqmtdaty.supabase.co';
 const SUPABASE_ANON_KEY = 'sb_publishable_s1vQx_x3_f3fDHHkdjVxZw_GTMkiU8I';
 
+// USUARIO PRINCIPAL ADMINISTRADOR
 const USUARIO_INICIAL_ADMIN: UsuarioPredio & { clave?: string } = {
   id: 'usr-admin-diego',
   nombre: 'Diego Pereira Ramirez',
@@ -143,7 +144,9 @@ export default function App() {
 
     try {
       const res = await fetch(`${SUPABASE_URL}/rest/v1/fundo_datos?id=eq.fundo_la_cabana&select=datos`, {
-        headers: { 'apikey': SUPABASE_ANON_KEY }
+        headers: {
+          'apikey': SUPABASE_ANON_KEY
+        }
       });
 
       if (!res.ok) {
@@ -265,7 +268,7 @@ export default function App() {
     } catch (err: any) {
       console.error('Error guardando en Supabase:', err);
       setDbStatus('error');
-      setDbMessage('Error al enviar a Supabase');
+      setDbMessage('Error al conectar');
     }
   };
 
@@ -342,7 +345,7 @@ export default function App() {
       );
 
       if (!user) {
-        setLoginError('Usuario no encontrado. Por favor selecciona tu nombre.');
+        setLoginError(`El correo "${loginEmail}" no está registrado.`);
         setIsLoggingIn(false);
         return;
       }
@@ -400,7 +403,7 @@ export default function App() {
 
     localStorage.setItem('fundo_sesion_id', updatedUser.id);
 
-    const payloadActualizado = {
+    guardarEnSupabase({
       explotacion,
       parcelas,
       labores,
@@ -416,9 +419,7 @@ export default function App() {
       horasFrio,
       fenologia,
       polinizacion
-    };
-
-    guardarEnSupabase(payloadActualizado);
+    });
 
     setProfileSuccessMsg('¡Correo y contraseña guardados con éxito!');
     setTimeout(() => {
@@ -544,7 +545,7 @@ export default function App() {
 
   const lowStockCount = inventario.filter((i) => i.stockActual <= i.stockMinimo).length;
 
-  // PANTALLA DE ACCESO / LOGIN (SIN MOSTRAR CORREO AL LADO DEL NOMBRE)
+  // PANTALLA DE ACCESO / LOGIN (SOLO MUESTRA EL NOMBRE LIMPIO, SIN CORREO AL LADO)
   if (!loggedInUser) {
     return (
       <div className="min-h-screen bg-stone-900 flex items-center justify-center p-4">
@@ -571,8 +572,6 @@ export default function App() {
               <label className="block text-stone-700 font-bold mb-1">
                 Selecciona tu Nombre de Usuario *
               </label>
-              
-              {/* SELECTOR LIMPIO: SOLO MUESTRA EL NOMBRE DEL USUARIO (SIN EL CORREO) */}
               <select
                 value={loginEmail}
                 onChange={(e) => setLoginEmail(e.target.value)}
@@ -625,7 +624,7 @@ export default function App() {
 
   return (
     <div className="min-h-screen bg-stone-50 flex flex-col font-sans text-stone-900 pb-16 sm:pb-0">
-      {/* BARRA SUPERIOR DE CONEXIÓN CON SUPABASE */}
+      {/* BARRA SUPERIOR CON SUPABASE */}
       <div className="bg-stone-900 text-white px-4 py-2 border-b border-stone-800 text-xs flex flex-wrap items-center justify-between gap-3 sticky top-0 z-50">
         <div className="flex items-center gap-2">
           <Database className="w-4 h-4 text-emerald-400" />
@@ -655,6 +654,7 @@ export default function App() {
         </div>
 
         <div className="flex items-center gap-2">
+          {/* BOTÓN MI PERFIL */}
           <button
             onClick={() => {
               setMyNewName(activeUser.nombre);
@@ -886,7 +886,7 @@ export default function App() {
           />
         )}
 
-        {/* POZO PROFUNDO */}
+        {/* PESTAÑA EXCLUSIVA POZO PROFUNDO */}
         {activeTab === 'pozo' && (
           <PozoView
             registrosPozo={registrosPozo}
@@ -896,14 +896,74 @@ export default function App() {
           />
         )}
 
-        {/* RIEGO INDEPENDIENTE */}
+        {/* PESTAÑA EXCLUSIVA RIEGO Y FERTIRRIEGO (4 SECTORES) */}
         {activeTab === 'riego' && (
           <RiegoView
             riegos={riegosSector}
             parcelas={parcelas}
-            onAddRiego={(r) => setRiegosSector((prev) => [r, ...prev])}
-            onUpdateRiego={(r) => setRiegosSector((prev) => prev.map((item) => item.id === r.id ? r : item))}
-            onDeleteRiego={(id) => setRiegosSector((prev) => prev.filter((item) => item.id !== id))}
+            onAddRiego={(r) => {
+              const nuevaLista = [r, ...riegosSector];
+              setRiegosSector(nuevaLista);
+              guardarEnSupabase({
+                explotacion,
+                parcelas,
+                labores,
+                inventario,
+                registrosPozo,
+                riegosSector: nuevaLista,
+                lugares,
+                usuarios,
+                activeUserId,
+                muestreosMadurez,
+                cosechasLote,
+                ordenesTrabajo,
+                horasFrio,
+                fenologia,
+                polinizacion
+              });
+            }}
+            onUpdateRiego={(r) => {
+              const nuevaLista = riegosSector.map((item) => item.id === r.id ? r : item);
+              setRiegosSector(nuevaLista);
+              guardarEnSupabase({
+                explotacion,
+                parcelas,
+                labores,
+                inventario,
+                registrosPozo,
+                riegosSector: nuevaLista,
+                lugares,
+                usuarios,
+                activeUserId,
+                muestreosMadurez,
+                cosechasLote,
+                ordenesTrabajo,
+                horasFrio,
+                fenologia,
+                polinizacion
+              });
+            }}
+            onDeleteRiego={(id) => {
+              const nuevaLista = riegosSector.filter((item) => item.id !== id);
+              setRiegosSector(nuevaLista);
+              guardarEnSupabase({
+                explotacion,
+                parcelas,
+                labores,
+                inventario,
+                registrosPozo,
+                riegosSector: nuevaLista,
+                lugares,
+                usuarios,
+                activeUserId,
+                muestreosMadurez,
+                cosechasLote,
+                ordenesTrabajo,
+                horasFrio,
+                fenologia,
+                polinizacion
+              });
+            }}
             activeUserName={activeUser?.nombre}
           />
         )}
