@@ -6,10 +6,7 @@ import {
   Edit2, 
   Trash2, 
   CheckCircle2, 
-  X,
-  Layers,
-  Clock,
-  Compass
+  X
 } from 'lucide-react';
 import { RegistroExtraccionPozo } from '../types/campo';
 
@@ -26,8 +23,6 @@ export const PozoView: React.FC<PozoViewProps> = ({
   onUpdateRegistroPozo,
   onDeleteRegistroPozo
 }) => {
-  const [activeTabPozo, setActiveTabPozo] = useState<'pozo' | 'riego'>('pozo');
-
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingRegistro, setEditingRegistro] = useState<RegistroExtraccionPozo | null>(null);
   const [registroToDelete, setRegistroToDelete] = useState<RegistroExtraccionPozo | null>(null);
@@ -141,190 +136,167 @@ export const PozoView: React.FC<PozoViewProps> = ({
   };
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 text-xs">
       {toastMessage && (
-        <div className="fixed bottom-5 right-5 z-50 bg-emerald-950 text-white px-4 py-3 rounded-2xl shadow-xl border border-emerald-600 flex items-center gap-2.5 text-xs font-semibold animate-in fade-in slide-in-from-bottom-2">
+        <div className="fixed bottom-5 right-5 z-50 bg-emerald-950 text-white px-4 py-3 rounded-2xl shadow-xl border border-emerald-600 flex items-center gap-2.5 text-xs font-semibold animate-in fade-in">
           <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
           <span>{toastMessage}</span>
         </div>
       )}
 
-      {/* Header */}
+      {/* Header Limpio Exclusivo Pozo DGA */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-2 border-b border-stone-200">
         <div>
-          <h1 className="text-xl font-bold tracking-tight text-stone-900">
-            Gestión Hídrica: Pozo Profundo y Riego
+          <h1 className="text-xl font-bold tracking-tight text-stone-900 flex items-center gap-2">
+            <Droplet className="w-5 h-5 text-sky-700" />
+            Control de Pozo Profundo (Extracciones DGA)
           </h1>
-          <p className="text-xs text-stone-500">
-            Control separado de extracciones desde el pozo profundo (DGA) y de distribución de riego por cuartel
+          <p className="text-stone-500 mt-0.5">
+            Monitoreo oficial de extracciones hídricas efectivas, lecturas del flujómetro y control de cuota de agua autorizada
           </p>
         </div>
 
         <button
           onClick={openNewModal}
-          className="px-3.5 py-2 text-xs font-semibold text-white bg-sky-800 rounded-lg hover:bg-sky-900 shadow-sm transition-colors flex items-center gap-1.5 whitespace-nowrap self-start sm:self-auto cursor-pointer"
+          className="px-4 py-2.5 text-xs font-bold text-white bg-sky-800 rounded-xl hover:bg-sky-700 shadow-sm transition-colors flex items-center gap-1.5 whitespace-nowrap self-start sm:self-auto cursor-pointer"
         >
           <Plus className="w-4 h-4" />
-          Registrar Lectura de Pozo
+          + Registrar Lectura de Pozo
         </button>
       </div>
 
-      {/* DOS PESTAÑAS SEPARADAS */}
-      <div className="flex items-center gap-2 border-b border-stone-200 pb-2">
-        <button
-          onClick={() => setActiveTabPozo('pozo')}
-          className={`px-4 py-2 rounded-xl text-xs sm:text-sm font-semibold transition-all flex items-center gap-2 cursor-pointer ${
-            activeTabPozo === 'pozo' ? 'bg-sky-900 text-white shadow-xs' : 'bg-stone-100 text-stone-600 hover:bg-stone-200'
-          }`}
-        >
-          <Droplet className="w-4 h-4 text-sky-400" />
-          1. Pozo Profundo (Extracciones & Flujómetro DGA)
-        </button>
+      {/* Tarjetas KPI de Pozo */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+        <div className="p-4 bg-white border border-stone-200 rounded-xl shadow-xs">
+          <div className="text-stone-500 font-bold uppercase text-[10px]">Volumen Total Extraído</div>
+          <div className="mt-1 flex items-baseline gap-2">
+            <span className="text-2xl font-bold tracking-tight text-sky-950 tabular-nums">
+              {totalM3.toLocaleString()}
+            </span>
+            <span className="text-xs text-stone-500">m³</span>
+          </div>
+          <div className="mt-1 text-[11px] text-sky-800 font-bold font-mono">
+            {totalLitros.toLocaleString()} Litros
+          </div>
+        </div>
 
-        <button
-          onClick={() => setActiveTabPozo('riego')}
-          className={`px-4 py-2 rounded-xl text-xs sm:text-sm font-semibold transition-all flex items-center gap-2 cursor-pointer ${
-            activeTabPozo === 'riego' ? 'bg-emerald-900 text-white shadow-xs' : 'bg-stone-100 text-stone-600 hover:bg-stone-200'
-          }`}
-        >
-          <Gauge className="w-4 h-4 text-emerald-400" />
-          2. Riego (Distribución de Agua por Sectores)
-        </button>
+        <div className="p-4 bg-white border border-stone-200 rounded-xl shadow-xs">
+          <div className="text-stone-500 font-bold uppercase text-[10px]">Horas de Bombeo</div>
+          <div className="mt-1 flex items-baseline gap-2">
+            <span className="text-2xl font-bold tracking-tight text-stone-900 tabular-nums">
+              {totalHoras.toFixed(1)}
+            </span>
+            <span className="text-xs text-stone-500">horas</span>
+          </div>
+        </div>
+
+        <div className="p-4 bg-white border border-stone-200 rounded-xl shadow-xs">
+          <div className="text-stone-500 font-bold uppercase text-[10px]">Caudal Promedio Medido</div>
+          <div className="mt-1 flex items-baseline gap-2">
+            <span className="text-2xl font-bold tracking-tight text-emerald-800 tabular-nums">
+              {caudalPromedio.toFixed(1)}
+            </span>
+            <span className="text-xs text-stone-500">L/s</span>
+          </div>
+        </div>
+
+        <div className="p-4 bg-white border border-stone-200 rounded-xl shadow-xs">
+          <div className="text-stone-500 font-bold uppercase text-[10px]">Consumo Cuota Hídrica</div>
+          <div className="mt-1 flex items-baseline gap-2">
+            <span className="text-2xl font-bold tracking-tight text-stone-900 tabular-nums">
+              {porcentajeCuotaUtilizada.toFixed(1)}%
+            </span>
+            <span className="text-xs text-stone-500">de cuota anual</span>
+          </div>
+        </div>
       </div>
 
-      {/* VISTA 1: POZO PROFUNDO */}
-      {activeTabPozo === 'pozo' && (
-        <div className="space-y-6">
-          <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-            <div className="p-4 bg-white border border-stone-200 rounded-xl shadow-xs">
-              <div className="text-xs text-stone-500 font-medium">Volumen Total Extraído</div>
-              <div className="mt-1 flex items-baseline gap-2">
-                <span className="text-2xl font-bold tracking-tight text-sky-950 tabular-nums">
-                  {totalM3.toLocaleString()}
-                </span>
-                <span className="text-xs text-stone-500">m³</span>
-              </div>
-              <div className="mt-1 text-[11px] text-sky-800 font-bold font-mono">
-                {totalLitros.toLocaleString()} Litros
-              </div>
-            </div>
-
-            <div className="p-4 bg-white border border-stone-200 rounded-xl shadow-xs">
-              <div className="text-xs text-stone-500 font-medium">Horas de Bombeo</div>
-              <div className="mt-1 flex items-baseline gap-2">
-                <span className="text-2xl font-bold tracking-tight text-stone-900 tabular-nums">
-                  {totalHoras.toFixed(1)}
-                </span>
-                <span className="text-xs text-stone-500">horas</span>
-              </div>
-            </div>
-
-            <div className="p-4 bg-white border border-stone-200 rounded-xl shadow-xs">
-              <div className="text-xs text-stone-500 font-medium">Caudal Promedio Medido</div>
-              <div className="mt-1 flex items-baseline gap-2">
-                <span className="text-2xl font-bold tracking-tight text-emerald-800 tabular-nums">
-                  {caudalPromedio.toFixed(1)}
-                </span>
-                <span className="text-xs text-stone-500">L/s</span>
-              </div>
-            </div>
-
-            <div className="p-4 bg-white border border-stone-200 rounded-xl shadow-xs">
-              <div className="text-xs text-stone-500 font-medium">Consumo Cuota Hídrica</div>
-              <div className="mt-1 flex items-baseline gap-2">
-                <span className="text-2xl font-bold tracking-tight text-stone-900 tabular-nums">
-                  {porcentajeCuotaUtilizada.toFixed(1)}%
-                </span>
-                <span className="text-xs text-stone-500">de cuota anual</span>
-              </div>
-            </div>
+      {/* Banner Técnico DGA */}
+      <div className="p-4 bg-sky-50 border border-sky-200 rounded-xl flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div className="space-y-0.5">
+          <div className="font-bold text-sky-950 flex items-center gap-1.5 text-xs">
+            <Gauge className="w-4 h-4 text-sky-800" />
+            Pozo Profundo N°1 - Fundo La Cabaña (Resolución DGA N° 412/2016)
           </div>
-
-          <div className="bg-white border border-stone-200 rounded-xl shadow-xs overflow-hidden">
-            <div className="overflow-x-auto">
-              <table className="w-full text-left text-xs">
-                <thead className="bg-stone-50 border-b border-stone-200 text-stone-600 font-semibold uppercase tracking-wider text-[11px]">
-                  <tr>
-                    <th className="py-3 px-4">Fecha & Hora</th>
-                    <th className="py-3 px-4">Flujómetro Inicial / Final</th>
-                    <th className="py-3 px-4">Metros Cúbicos</th>
-                    <th className="py-3 px-4">Litros Totales</th>
-                    <th className="py-3 px-4">Horas / Caudal</th>
-                    <th className="py-3 px-4">Operador Bomba</th>
-                    <th className="py-3 px-4 text-center">Acciones</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-stone-100">
-                  {registrosPozo.map((r) => (
-                    <tr key={r.id} className="hover:bg-stone-50/70 transition-colors">
-                      <td className="py-3 px-4 font-mono whitespace-nowrap">
-                        <div className="font-semibold text-stone-900">{r.fecha}</div>
-                        <div className="text-[10px] text-stone-400">{r.hora}</div>
-                      </td>
-                      <td className="py-3 px-4 font-mono text-stone-700">
-                        <div>Ini: {r.lecturaInicialM3.toLocaleString()} m³</div>
-                        <div>Fin: {r.lecturaFinalM3.toLocaleString()} m³</div>
-                      </td>
-                      <td className="py-3 px-4 font-bold text-sky-950">
-                        {r.metrosCubicosExtraidos.toLocaleString()} m³
-                      </td>
-                      <td className="py-3 px-4 font-bold text-emerald-800">
-                        {r.litrosTotales.toLocaleString()} L
-                      </td>
-                      <td className="py-3 px-4 font-mono">
-                        <div>{r.horasBombeo} hrs</div>
-                        <div className="text-[10px] text-stone-400">{r.caudalPromedioLs} L/s</div>
-                      </td>
-                      <td className="py-3 px-4">{r.operadorBomba}</td>
-                      <td className="py-3 px-4 text-center whitespace-nowrap">
-                        <div className="inline-flex items-center gap-1">
-                          <button
-                            onClick={() => openEditModal(r)}
-                            className="p-1.5 text-sky-800 hover:bg-sky-50 rounded cursor-pointer"
-                          >
-                            <Edit2 className="w-3.5 h-3.5" />
-                          </button>
-                          <button
-                            onClick={() => setRegistroToDelete(r)}
-                            className="p-1.5 text-red-700 hover:bg-red-50 rounded cursor-pointer"
-                          >
-                            <Trash2 className="w-3.5 h-3.5" />
-                          </button>
-                        </div>
-                      </td>
-                    </tr>
-                  ))}
-                  {registrosPozo.length === 0 && (
-                    <tr>
-                      <td colSpan={7} className="text-center p-8 text-stone-400">
-                        No hay lecturas registradas. Haz clic en <strong>"+ Registrar Lectura de Pozo"</strong> para ingresar la primera.
-                      </td>
-                    </tr>
-                  )}
-                </tbody>
-              </table>
-            </div>
-          </div>
+          <p className="text-sky-900 text-[11px]">
+            Profundidad: 64 metros · Diámetro: 12 pulgadas · Bomba sumergible 30 HP · Medidor electromagnético homologado por la DGA.
+          </p>
         </div>
-      )}
-
-      {/* VISTA 2: RIEGO */}
-      {activeTabPozo === 'riego' && (
-        <div className="space-y-4">
-          <div className="p-4 bg-emerald-50 rounded-xl border border-emerald-200 text-xs">
-            <h4 className="font-bold text-emerald-950 mb-1">Distribución de Riego Tecnificado</h4>
-            <p className="text-emerald-900">
-              Registra los riegos aplicados a los cuarteles de kiwi o a las demás zonas del fundo (casa patronal, quinta frutal, praderas).
-            </p>
-          </div>
-
-          <div className="bg-white rounded-xl border border-stone-200 p-8 text-center text-xs text-stone-500">
-            💡 Puedes registrar un nuevo riego hacia cualquier cuartel o sector directamente desde el botón verde <strong>"+ Nueva Labor"</strong> arriba a la derecha, seleccionando el tipo <strong>"Riego Pozo"</strong> y especificando el destino (Huerto, Casa patronal, Quinta frutal, etc.).
-          </div>
+        <div className="shrink-0 font-mono text-[11px] text-sky-900 bg-white p-2 rounded-lg border border-sky-200 font-bold">
+          Última lectura: {latestReading.toLocaleString()} m³
         </div>
-      )}
+      </div>
 
-      {/* MODAL POZO */}
+      {/* Tabla Oficial de Extracciones de Pozo */}
+      <div className="bg-white border border-stone-200 rounded-xl shadow-xs overflow-hidden">
+        <div className="overflow-x-auto">
+          <table className="w-full text-left">
+            <thead className="bg-stone-50 border-b border-stone-200 text-stone-600 font-bold uppercase text-[10px]">
+              <tr>
+                <th className="py-3 px-4">Fecha & Hora</th>
+                <th className="py-3 px-4">Flujómetro Inicial / Final</th>
+                <th className="py-3 px-4">Metros Cúbicos</th>
+                <th className="py-3 px-4">Litros Totales</th>
+                <th className="py-3 px-4">Horas / Caudal</th>
+                <th className="py-3 px-4">Operador Bomba</th>
+                <th className="py-3 px-4 text-center">Acciones</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-stone-100">
+              {registrosPozo.map((r) => (
+                <tr key={r.id} className="hover:bg-stone-50/70 transition-colors">
+                  <td className="py-3 px-4 font-mono whitespace-nowrap">
+                    <div className="font-bold text-stone-900">{r.fecha}</div>
+                    <div className="text-[10px] text-stone-400">{r.hora}</div>
+                  </td>
+                  <td className="py-3 px-4 font-mono text-stone-700">
+                    <div>Ini: {r.lecturaInicialM3.toLocaleString()} m³</div>
+                    <div>Fin: {r.lecturaFinalM3.toLocaleString()} m³</div>
+                  </td>
+                  <td className="py-3 px-4 font-bold text-sky-950 font-mono">
+                    {r.metrosCubicosExtraidos.toLocaleString()} m³
+                  </td>
+                  <td className="py-3 px-4 font-bold text-emerald-800 font-mono">
+                    {r.litrosTotales.toLocaleString()} L
+                  </td>
+                  <td className="py-3 px-4 font-mono">
+                    <div>{r.horasBombeo} hrs</div>
+                    <div className="text-[10px] text-stone-400">{r.caudalPromedioLs} L/s</div>
+                  </td>
+                  <td className="py-3 px-4">{r.operadorBomba}</td>
+                  <td className="py-3 px-4 text-center whitespace-nowrap">
+                    <div className="inline-flex items-center gap-1">
+                      <button
+                        onClick={() => openEditModal(r)}
+                        className="p-1.5 text-sky-800 hover:bg-sky-50 rounded cursor-pointer"
+                        title="Editar lectura"
+                      >
+                        <Edit2 className="w-3.5 h-3.5" />
+                      </button>
+                      <button
+                        onClick={() => setRegistroToDelete(r)}
+                        className="p-1.5 text-red-700 hover:bg-red-50 rounded cursor-pointer"
+                        title="Eliminar lectura"
+                      >
+                        <Trash2 className="w-3.5 h-3.5" />
+                      </button>
+                    </div>
+                  </td>
+                </tr>
+              ))}
+              {registrosPozo.length === 0 && (
+                <tr>
+                  <td colSpan={7} className="text-center p-8 text-stone-400">
+                    No hay lecturas registradas. Haz clic en <strong>"+ Registrar Lectura de Pozo"</strong> para ingresar la primera.
+                  </td>
+                </tr>
+              )}
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      {/* Modal Agregar / Editar Pozo */}
       {isModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-stone-900/60 backdrop-blur-xs text-xs">
           <div className="bg-white rounded-2xl shadow-xl w-full max-w-lg overflow-hidden border border-stone-200">
@@ -369,7 +341,7 @@ export const PozoView: React.FC<PozoViewProps> = ({
                     required
                     value={lecturaInicialM3}
                     onChange={(e) => setLecturaInicialM3(e.target.value === '' ? '' : Number(e.target.value))}
-                    className="w-full p-2 border rounded-lg font-mono"
+                    className="w-full p-2 border rounded-lg font-mono font-bold"
                   />
                 </div>
                 <div>
@@ -379,7 +351,7 @@ export const PozoView: React.FC<PozoViewProps> = ({
                     required
                     value={lecturaFinalM3}
                     onChange={(e) => setLecturaFinalM3(e.target.value === '' ? '' : Number(e.target.value))}
-                    className="w-full p-2 border rounded-lg font-mono"
+                    className="w-full p-2 border rounded-lg font-mono font-bold"
                   />
                 </div>
               </div>
@@ -391,7 +363,7 @@ export const PozoView: React.FC<PozoViewProps> = ({
                 </span>
               </div>
 
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-3 gap-3">
                 <div>
                   <label className="block font-semibold text-stone-700 mb-1">Horas de Bombeo</label>
                   <input
@@ -403,14 +375,35 @@ export const PozoView: React.FC<PozoViewProps> = ({
                   />
                 </div>
                 <div>
-                  <label className="block font-semibold text-stone-700 mb-1">Operador Bomba</label>
+                  <label className="block font-semibold text-stone-700 mb-1">Nivel Estático (m)</label>
                   <input
-                    type="text"
-                    value={operadorBomba}
-                    onChange={(e) => setOperadorBomba(e.target.value)}
-                    className="w-full p-2 border rounded-lg"
+                    type="number"
+                    step="0.1"
+                    value={nivelEstaticoMetros}
+                    onChange={(e) => setNivelEstaticoMetros(e.target.value === '' ? '' : Number(e.target.value))}
+                    className="w-full p-2 border rounded-lg font-mono"
                   />
                 </div>
+                <div>
+                  <label className="block font-semibold text-stone-700 mb-1">Nivel Dinámico (m)</label>
+                  <input
+                    type="number"
+                    step="0.1"
+                    value={nivelDinamicoMetros}
+                    onChange={(e) => setNivelDinamicoMetros(e.target.value === '' ? '' : Number(e.target.value))}
+                    className="w-full p-2 border rounded-lg font-mono"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="block font-semibold text-stone-700 mb-1">Operador Bomba</label>
+                <input
+                  type="text"
+                  value={operadorBomba}
+                  onChange={(e) => setOperadorBomba(e.target.value)}
+                  className="w-full p-2 border rounded-lg"
+                />
               </div>
 
               <div>
@@ -433,7 +426,7 @@ export const PozoView: React.FC<PozoViewProps> = ({
                 </button>
                 <button
                   type="submit"
-                  className="px-5 py-2 bg-sky-800 text-white font-bold rounded-lg cursor-pointer hover:bg-sky-900"
+                  className="px-5 py-2 bg-sky-800 text-white font-bold rounded-lg cursor-pointer hover:bg-sky-700"
                 >
                   Guardar Lectura
                 </button>
@@ -443,10 +436,10 @@ export const PozoView: React.FC<PozoViewProps> = ({
         </div>
       )}
 
-      {/* MODAL ELIMINAR */}
+      {/* Modal Eliminar */}
       {registroToDelete && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-3 bg-stone-900/60 backdrop-blur-xs text-xs">
-          <div className="bg-white rounded-2xl shadow-xl w-full max-w-md p-5 border border-stone-200 space-y-3">
+          <div className="bg-white rounded-2xl shadow-xl w-full max-w-md p-5 border space-y-3">
             <h3 className="font-bold text-sm text-stone-900">¿Eliminar lectura de pozo?</h3>
             <p className="text-stone-600">
               Se eliminará la extracción de <strong>{registroToDelete.metrosCubicosExtraidos} m³</strong> ({registroToDelete.fecha}).
