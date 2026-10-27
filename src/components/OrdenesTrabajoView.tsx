@@ -213,7 +213,7 @@ export const OrdenesTrabajoView: React.FC<OrdenesTrabajoViewProps> = ({
     if (!executingOrden) return;
     const firmaTexto = execFirmaAplicador.trim() 
       ? execFirmaAplicador 
-      : `APLICACIÓN CONFORME - ${executingOrden.aplicadorAsignadoNombre || 'Aplicador'} (${new Date().toLocaleDateString('es-CL')})`;
+      : `APLICACIÓN CONFORME - ${executingOrden.aplicadorAsignadoNombre || 'Carlos Manqui'} (${new Date().toLocaleDateString('es-CL')})`;
     
     onExecuteOrden(
       executingOrden.id, 
