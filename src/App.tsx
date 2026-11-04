@@ -953,6 +953,7 @@ export default function App() {
           />
         )}
 
+        {/* ORDENES DE TRABAJO ACTUALIZADO PARA MULTIPLES PRODUCTOS */}
         {activeTab === 'ordenes' && (
           <OrdenesTrabajoView
             ordenes={ordenesTrabajo}
@@ -961,23 +962,36 @@ export default function App() {
             usuarios={usuarios}
             activeUser={activeUser}
             onAddOrden={(o) => setOrdenesTrabajo((prev) => [o, ...prev])}
+            onUpdateOrden={(o) => setOrdenesTrabajo((prev) => prev.map((item) => item.id === o.id ? o : item))}
             onExecuteOrden={(ordenId, aplicadorNombre, firma) => {
               const orden = ordenesTrabajo.find((o) => o.id === ordenId);
               if (!orden) return;
-              if (!orden.descontadoInventario && orden.insumoId) {
-                setInventario((prev) =>
-                  prev.map((item) => {
-                    if (item.id === orden.insumoId) {
-                      return {
-                        ...item,
-                        stockActual: Math.max(0, Number((item.stockActual - orden.totalProductoRequerido).toFixed(2))),
-                        consumoHistoricoAcumulado: Number((item.consumoHistoricoAcumulado + orden.totalProductoRequerido).toFixed(2))
-                      };
+              
+              // Lógica para descontar múltiples productos del inventario
+              if (!orden.descontadoInventario && orden.productos && orden.productos.length > 0) {
+                setInventario((prevInventario) => {
+                  let nuevoInventario = [...prevInventario];
+                  
+                  orden.productos.forEach((prod) => {
+                    if (prod.insumoId) {
+                      nuevoInventario = nuevoInventario.map((item) => {
+                        if (item.id === prod.insumoId) {
+                          return {
+                            ...item,
+                            stockActual: Math.max(0, Number((item.stockActual - prod.totalProductoRequerido).toFixed(2))),
+                            consumoHistoricoAcumulado: Number((item.consumoHistoricoAcumulado + prod.totalProductoRequerido).toFixed(2))
+                          };
+                        }
+                        return item;
+                      });
                     }
-                    return item;
-                  })
-                );
+                  });
+                  
+                  return nuevoInventario;
+                });
               }
+              
+              // Marcar la orden como completada
               setOrdenesTrabajo((prev) =>
                 prev.map((o) => o.id === ordenId ? { ...o, estado: 'completada', aplicadorFirma: firma, descontadoInventario: true } : o)
               );
