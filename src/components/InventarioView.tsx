@@ -322,13 +322,15 @@ export const InventarioView: React.FC<InventarioViewProps> = ({
                     <option value="Fungicida">Fungicida </option>
                     <option value="Insecticida">Insecticida</option>
                     <option value="Acaricida">Acaricida </option>
-                    <option value="Bactericida">Bactericida (Psa)</option>
+                    <option value="Bactericida">Bactericida</option>
                     <option value="Herbicida">Herbicida</option>
-                    <option value="Fitorregulador">Fitorregulador </option>
-                    <option value="Bioestimulante">Bioestimulante / Algas</option>
+                    <option value="Fitorregulador">Fitorregulador</option>
+                    <option value="Bioestimulante">Bioestimulante</option>
                     <option value="Fertilizante">Fertilizante</option>
-                    <option value="Coadyuvante">Coadyuvante </option>
+                    <option value="Coadyuvante">Coadyuvante</option>
                     <option value="Desinfectante">Desinfectante de Herramientas</option>
+                    <option value="Fungicida-Bactericida"></option>Fungicida-Bactericida</option>
+                  <option value="Elicitor PSA"></option>Elicitor Biotico</option>
                     <option value="Otro">Otro</option>
                   </select>
                 </div>
