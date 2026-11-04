@@ -202,16 +202,18 @@ export const InventarioView: React.FC<InventarioViewProps> = ({
           className="px-3 py-1.5 bg-stone-50 border border-stone-200 rounded-lg font-medium text-stone-800"
         >
           <option value="all">Todas las categorías ({inventario.length})</option>
-          <option value="Fungicida">Fungicidas (Botrytis / Oídio)</option>
+          <option value="Fungicida">Fungicidas</option>
           <option value="Insecticida">Insecticidas</option>
-          <option value="Acaricida">Acaricidas (Falsa Arañita)</option>
-          <option value="Bactericida">Bactericidas (Cobres / Psa)</option>
+          <option value="Acaricida">Acaricidas</option>
+          <option value="Bactericida">Bactericidas</option>
           <option value="Herbicida">Herbicidas</option>
-          <option value="Fitorregulador">Fitorreguladores / Rompedores de Dormancia</option>
-          <option value="Bioestimulante">Bioestimulantes / Algas</option>
-          <option value="Fertilizante">Fertilizantes & Nutrientes</option>
-          <option value="Coadyuvante">Coadyuvantes & Adherentes</option>
+          <option value="Fitorregulador">Fitorreguladore</option>
+          <option value="Bioestimulante">Bioestimulantes</option>
+          <option value="Fertilizante">Fertilizantes</option>
+          <option value="Coadyuvante">Coadyuvantes</option>
           <option value="Desinfectante">Desinfectantes de Herramientas</option>
+          <option value="Fungicida-Bactericida"></option>Fungicida-Bactericida</option>
+        <option value="Elicitor PSA"></option>Elicitor Biotico</option>
           <option value="Otro">Otros</option>
         </select>
       </div>
@@ -319,9 +321,9 @@ export const InventarioView: React.FC<InventarioViewProps> = ({
                     onChange={(e) => setCategoria(e.target.value as CategoriaInsumo)}
                     className="w-full p-2 border rounded-lg bg-white font-semibold text-stone-800"
                   >
-                    <option value="Fungicida">Fungicida </option>
+                    <option value="Fungicida">Fungicida</option>
                     <option value="Insecticida">Insecticida</option>
-                    <option value="Acaricida">Acaricida </option>
+                    <option value="Acaricida">Acaricida</option>
                     <option value="Bactericida">Bactericida</option>
                     <option value="Herbicida">Herbicida</option>
                     <option value="Fitorregulador">Fitorregulador</option>
