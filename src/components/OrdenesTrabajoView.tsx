@@ -212,7 +212,7 @@ export const OrdenesTrabajoView: React.FC<OrdenesTrabajoViewProps> = ({
           </p>
         </div>
         <button onClick={openNewModal} className="px-4 py-2.5 bg-emerald-600 hover:bg-emerald-500 text-white font-bold rounded-xl text-xs transition-all shadow-sm flex items-center gap-2 shrink-0 cursor-pointer">
-          <Plus className="w-4 h-4" /> + Emitir Nueva Receta
+          <Plus className="w-4 h-4" />  Emitir Nueva Receta
         </button>
       </div>
 
