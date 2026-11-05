@@ -2,9 +2,7 @@ import React, { useState } from 'react';
 import { 
   Plus, 
   Search, 
-  Filter, 
   Calendar, 
-  Tag, 
   User, 
   Edit2, 
   Trash2, 
@@ -58,7 +56,7 @@ export const LaboresView: React.FC<LaboresViewProps> = ({
   const handleExportCSV = () => {
     if (labores.length === 0) return alert('No hay labores para exportar.');
     
-    const headers = ['ID', 'Fecha', 'Cuartel', 'Tipo Labor', 'Descripción', 'Operador', 'Insumo', 'Dosis/Ha', 'Total Utilizado'];
+    const headers = ['ID', 'Fecha', 'Cuartel / Destino', 'Tipo Labor', 'Descripción', 'Operador', 'Insumo', 'Dosis/Ha', 'Total Utilizado'];
     const rows = labores.map(l => [
       l.id,
       l.fecha,
@@ -120,7 +118,7 @@ export const LaboresView: React.FC<LaboresViewProps> = ({
           <Search className="w-4 h-4 text-stone-400 absolute left-3 top-2.5" />
           <input
             type="text"
-            placeholder="Buscar por labor, producto comercial, plaga, materia activa o cuartel..."
+            placeholder="Buscar por labor, producto comercial, materia activa o cuartel..."
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
             className="w-full pl-9 pr-3 py-2 bg-stone-50 border border-stone-300 rounded-xl text-xs font-medium focus:outline-none focus:ring-2 focus:ring-emerald-700"
