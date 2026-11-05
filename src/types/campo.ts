@@ -1,19 +1,75 @@
-// 1. Actualizar InsumoInventario (Bodega) para las fechas
+// ==========================================
+// TIPOS GENERALES Y CATEGORÍAS DE BODEGA
+// ==========================================
+
+export type CategoriaInsumo = 
+  | 'Fungicida'
+  | 'Bactericida'
+  | 'Fungicida y Bactericida'
+  | 'Elicitor PSA'
+  | 'Insecticida'
+  | 'Acariicida'
+  | 'Herbicida'
+  | 'Fertilizante'
+  | 'Bioestimulante'
+  | 'Adyuvante / Coadyuvante'
+  | 'Insumo de Riego'
+  | 'Otro';
+
+export type DestinoUso = 
+  | 'Kiwis' 
+  | 'Vivero' 
+  | 'Quinta frutal' 
+  | 'Casa patronal' 
+  | 'Uso General';
+
+export type DestinoAplicacion = 
+  | 'Huerto de Kiwi' 
+  | 'Casa patronal' 
+  | 'Quinta frutal' 
+  | 'Control de praderas' 
+  | 'Vivero' 
+  | 'Caminos y cercos' 
+  | 'Otro destino';
+
+export type EstadoFormaFertilizante = 'Líquido' | 'Granulado';
+export type SolubilidadFertilizante = 'Soluble' | 'No soluble';
+
+// ==========================================
+// 1. INVENTARIO / BODEGA
+// ==========================================
+
 export interface InsumoInventario {
   id: string;
   nombreComercial: string;
-  materiaActiva: string;
+  materiaActiva: string; // O ingrediente activo
   numeroRegistroSAG?: string;
-  categoria: string;
+  categoria: CategoriaInsumo;
   stockActual: number;
   unidad: 'L' | 'kg' | 'g' | 'cc';
-  fechaElaboracion?: string; // <-- NUEVO
-  fechaVencimiento?: string; // <-- NUEVO
+  
+  // Fechas de control
+  fechaElaboracion?: string;
+  fechaVencimiento?: string;
+  
+  // Destino específico del producto
+  destinoEspecifico?: DestinoUso;
+  
+  // Campos específicos para Fertilizantes
+  composicionQuimica?: string; // Ej: NPK 15-15-15, Calcio soluble 15%, etc.
+  formaFertilizante?: EstadoFormaFertilizante; // Líquido o Granulado
+  solubilidad?: SolubilidadFertilizante; // Soluble o No soluble
+  
+  // Observaciones adicionales de bodega
+  observaciones?: string;
 }
 
-// 2. Crear un tipo para los productos múltiples en la orden
+// ==========================================
+// 2. ÓRDENES DE TRABAJO (APLICACIONES)
+// ==========================================
+
 export interface ProductoOrden {
-  insumoId?: string;
+  insumoId?: string; // Para vincularlo con la bodega y descontar stock
   productoComercial: string;
   materiaActiva: string;
   numeroRegistroSAG: string;
@@ -23,24 +79,25 @@ export interface ProductoOrden {
   unidadProducto: string;
 }
 
-// 3. Actualizar la Orden de Trabajo
 export interface OrdenTrabajoFitosanitaria {
   id: string;
   numeroOrden: string;
   fechaEmision: string;
   fechaProgramada: string;
   
-  // CAMBIOS AQUÍ: De 1 parcela a múltiples
-  parcelaIds: string[]; 
-  parcelaNombres: string; // Ej: "Cuartel 1, Cuartel 2"
-  superficieTratarHa: number; // Suma de hectáreas
-  
+  // Destino de la orden (Kiwis, Vivero, Quinta Frutal, Casa Patronal, etc.)
   destinoAplicacion: DestinoAplicacion;
+  
+  // Selección múltiple de cuarteles para Kiwis (Cuartel 1, Cuartel 2, Cuartel 3)
+  parcelaIds: string[]; // Ej: ['c1', 'c2'] o ['c1', 'c2', 'c3']
+  parcelaNombres: string; // Ej: "Cuartel 1, Cuartel 2"
+  superficieTratarHa: number; // Suma de hectáreas tratadas
+  
   estado: 'emitida' | 'en_ejecucion' | 'completada';
   plagaObjetivo: string;
   
-  // CAMBIOS AQUÍ: De 1 producto a un arreglo de productos
-  productos: ProductoOrden[]; 
+  // Múltiples productos por Orden de Trabajo
+  productos: ProductoOrden[];
   
   mojamientoLHa: number;
   caldoTotalLitros: number;
@@ -64,12 +121,54 @@ export interface OrdenTrabajoFitosanitaria {
   aplicadorFirma?: string;
 }
 
-// Asegúrate de que DestinoAplicacion tenga estas opciones
-export type DestinoAplicacion = 
-  | 'Huerto de Kiwi' 
-  | 'Casa patronal' 
-  | 'Quinta frutal' 
-  | 'Control de praderas' 
-  | 'Vivero' 
-  | 'Caminos y cercos' 
-  | 'Otro destino';
+// ==========================================
+// 3. REGISTRO DE RIEGO Y SECTORES
+// ==========================================
+
+export type TipoRiego = 'Solo Riego por Goteo' | 'Fertirriego';
+export type FuenteAguaRiego = 'Tranque acumulador' | 'Canal de regadío' | 'Red presurizada' | 'Pozo profundo' | 'Otra fuente';
+
+export interface SectorRiegoConfig {
+  id: string;
+  nombre: string;
+  superficieHa: number;
+  descripcion?: string;
+}
+
+export interface RegistroRiegoSector {
+  id: string;
+  fecha: string;
+  horaInicio: string;
+  sectorId: string;
+  sectorDestino: string;
+  superficieHa: number;
+  tipoRiego: TipoRiego;
+  fuenteAgua: FuenteAguaRiego;
+  duracionHoras: number;
+  volumenM3: number;
+  litrosTotales: number;
+  laminaMm: number;
+  
+  // Fertirriego específico
+  productoFertilizante?: string;
+  dosisKgHa?: number;
+  totalFertilizanteKg?: number;
+  conductividadElectrica?: number;
+  phSolucion?: number;
+  
+  operador: string;
+  observaciones?: string;
+}
+
+// ==========================================
+// 4. PARCELAS Y CUARTELES
+// ==========================================
+
+export interface Parcela {
+  id: string;
+  nombre: string;
+  superficieHa: number;
+  variedad?: string;
+  anoPlantacion?: number;
+  descripcion?: string;
+}
