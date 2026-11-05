@@ -15,12 +15,12 @@ interface ModalLaborProps {
   isOpen: boolean;
   onClose: () => void;
   onSave: (labor: RegistroLabor) => void;
+  labor?: RegistroLabor | null;
   parcelas: Parcela[];
   inventario: InsumoInventario[];
   climaActual?: ClimaCondiciones;
   usuarios?: UsuarioPredio[];
   activeUserId?: string;
-  initialLabor?: RegistroLabor | null;
   defaultParcelaId?: string;
   defaultTipoLabor?: TipoLabor;
 }
@@ -29,18 +29,17 @@ export const ModalLabor: React.FC<ModalLaborProps> = ({
   isOpen,
   onClose,
   onSave,
-  parcelas,
-  inventario,
-  climaActual,
+  labor,
+  parcelas = [],
+  inventario = [],
   usuarios = [],
   activeUserId,
-  initialLabor,
   defaultParcelaId,
   defaultTipoLabor
 }) => {
-  const isEditing = Boolean(initialLabor);
+  const isEditing = Boolean(labor);
 
-  const [tipoLabor, setTipoLabor] = useState<TipoLabor>('fitosanitario');
+  const [tipoLabor, setTipoLabor] = useState<TipoLabor>('Aplicacion Fitosanitaria');
   const [parcelaId, setParcelaId] = useState<string>('');
   const [destinoAplicacion, setDestinoAplicacion] = useState<DestinoAplicacion>('Huerto de Kiwi');
   const [fecha, setFecha] = useState<string>('');
@@ -59,67 +58,43 @@ export const ModalLabor: React.FC<ModalLaborProps> = ({
   const [totalInsumoUtilizado, setTotalInsumoUtilizado] = useState<number | ''>('');
   const [plazoSeguridadDias, setPlazoSeguridadDias] = useState<number | ''>(14);
   const [plazoReingresoHoras, setPlazoReingresoHoras] = useState<number | ''>(12);
-  const [maquinariaEquipo, setMaquinariaEquipo] = useState<string>('Nebulizadora Hardi 2000L');
-  const [aplicadorNombre, setAplicadorNombre] = useState<string>('Carlos Morales Vega');
+  const [maquinariaEquipo, setMaquinariaEquipo] = useState<string>('Pulverizadora 2000L');
+  const [aplicadorNombre, setAplicadorNombre] = useState<string>('');
   const [carnetAplicador, setCarnetAplicador] = useState<string>('APL-SAG-8921');
   
   // Fertilización
   const [abonoProducto, setAbonoProducto] = useState<string>('');
   const [formulacionNPK, setFormulacionNPK] = useState<string>('');
   const [dosisAbonoKgHa, setDosisAbonoKgHa] = useState<number | ''>('');
-  const [metodoAplicacionAbono, setMetodoAplicacionAbono] = useState<'Fertirriego' | 'Foliar' | 'Al voleo / Fondo' | 'Localizado en hilera'>('Foliar');
-
-  // ENMIENDA AGRÍCOLA
-  const [tipoEnmienda, setTipoEnmienda] = useState<any>('Banda Enmienda Orgánica (BEO)');
-  const [dosisToneladasHa, setDosisToneladasHa] = useState<number | ''>(8.0);
 
   // Cosecha
   const [kilosRecolectados, setKilosRecolectados] = useState<number | ''>('');
   const [calibreCalidad, setCalibreCalidad] = useState<string>('Exportación Calibre 30-33');
-  const [destinoProducto, setDestinoProducto] = useState<'Exportación Fresco' | 'Mercado Interno' | 'Agroindustria / Proceso'>('Exportación Fresco');
-  const [loteTrazabilidad, setLoteTrazabilidad] = useState<string>('');
+  const [destinoProducto, setDestinoProducto] = useState<string>('Exportación Fresco');
 
   // Metadata
   const [observaciones, setObservaciones] = useState<string>('');
-  const [registradoPor, setRegistradoPor] = useState<string>('Diego Pereira');
+  const [registradoPor, setRegistradoPor] = useState<string>('');
 
   useEffect(() => {
     if (isOpen) {
-      if (initialLabor) {
-        setTipoLabor(initialLabor.tipoLabor === 'riego' ? 'fitosanitario' : initialLabor.tipoLabor);
-        setParcelaId(initialLabor.parcelaId || (parcelas[0]?.id ?? ''));
-        setDestinoAplicacion(initialLabor.destinoAplicacion || 'Huerto de Kiwi');
-        setFecha(initialLabor.fecha);
-        setHora(initialLabor.hora || '08:00');
-        setDescripcionGeneral(initialLabor.descripcionGeneral || '');
-        setSelectedInsumoId(initialLabor.insumoId || '');
-        setProductoComercial(initialLabor.productoComercial || '');
-        setMateriaActiva(initialLabor.materiaActiva || '');
-        setNumeroRegistroSAG(initialLabor.numeroRegistroSAG || '');
-        setPlagaObjetivo(initialLabor.plagaObjetivo || '');
-        setDosisPorHa(initialLabor.dosisPorHa ?? '');
-        setUnidadDosis(initialLabor.unidadDosis || 'kg/ha');
-        setVolumenCaldoLHa(initialLabor.volumenCaldoLHa ?? 1200);
-        setTotalInsumoUtilizado(initialLabor.totalInsumoUtilizado ?? '');
-        setPlazoSeguridadDias(initialLabor.plazoSeguridadDias ?? 14);
-        setPlazoReingresoHoras(initialLabor.plazoReingresoHoras ?? 12);
-        setMaquinariaEquipo(initialLabor.maquinariaEquipo || '');
-        setAplicadorNombre(initialLabor.aplicadorNombre || '');
-        setCarnetAplicador(initialLabor.carnetAplicador || '');
-        setAbonoProducto(initialLabor.abonoProducto || '');
-        setFormulacionNPK(initialLabor.formulacionNPK || '');
-        setDosisAbonoKgHa(initialLabor.dosisAbonoKgHa ?? '');
-        setTipoEnmienda(initialLabor.tipoEnmienda || 'Banda Enmienda Orgánica (BEO)');
-        setDosisToneladasHa(initialLabor.dosisToneladasHa ?? 8.0);
-        setKilosRecolectados(initialLabor.kilosRecolectados ?? '');
-        setCalibreCalidad(initialLabor.calibreCalidad || 'Exportación Calibre 30-33');
-        setDestinoProducto(initialLabor.destinoProducto || 'Exportación Fresco');
-        setLoteTrazabilidad(initialLabor.loteTrazabilidad || '');
-        setObservaciones(initialLabor.observaciones || '');
-        setRegistradoPor(initialLabor.registradoPor || 'Diego Pereira');
+      const currentUser = usuarios.find(u => u.id === activeUserId);
+      const defaultUserNombre = currentUser?.nombre || 'Diego Pereira Ramirez';
+
+      if (labor) {
+        setTipoLabor(labor.tipoLabor);
+        setParcelaId(labor.parcelaId || (parcelas[0]?.id ?? ''));
+        setFecha(labor.fecha);
+        setDescripcionGeneral(labor.descripcion || '');
+        setSelectedInsumoId(labor.insumoId || '');
+        setProductoComercial(labor.insumoNombre || '');
+        setDosisPorHa(labor.dosisPorHa ?? '');
+        setTotalInsumoUtilizado(labor.totalInsumoUtilizado ?? '');
+        setObservaciones(labor.observaciones || '');
+        setRegistradoPor(labor.operadorNombre || defaultUserNombre);
       } else {
         const defParcId = defaultParcelaId || parcelas[0]?.id || '';
-        const defTipo = (defaultTipoLabor === 'riego' ? 'fitosanitario' : defaultTipoLabor) || 'fitosanitario';
+        const defTipo = defaultTipoLabor || 'Aplicacion Fitosanitaria';
         setTipoLabor(defTipo);
         setParcelaId(defParcId);
         setDestinoAplicacion('Huerto de Kiwi');
@@ -137,19 +112,17 @@ export const ModalLabor: React.FC<ModalLaborProps> = ({
         setTotalInsumoUtilizado('');
         setPlazoSeguridadDias(14);
         setPlazoReingresoHoras(12);
-        setMaquinariaEquipo('Nebulizadora Hardi 2000L');
+        setMaquinariaEquipo('Pulverizadora 2000L');
         setAbonoProducto('');
         setFormulacionNPK('');
         setDosisAbonoKgHa('');
-        setTipoEnmienda('Banda Enmienda Orgánica (BEO)');
-        setDosisToneladasHa(8.0);
         setKilosRecolectados('');
         setObservaciones('');
-        const currentUser = usuarios.find(u => u.id === activeUserId);
-        setRegistradoPor(currentUser?.nombre || 'Diego Pereira');
+        setRegistradoPor(defaultUserNombre);
+        setAplicadorNombre(defaultUserNombre);
       }
     }
-  }, [isOpen, initialLabor, defaultParcelaId, defaultTipoLabor, activeUserId]);
+  }, [isOpen, labor, defaultParcelaId, defaultTipoLabor, activeUserId, parcelas, usuarios]);
 
   if (!isOpen) return null;
 
@@ -176,45 +149,36 @@ export const ModalLabor: React.FC<ModalLaborProps> = ({
     e.preventDefault();
     const parcelaNombre = currentParcela ? currentParcela.nombre : 'Sector General';
 
+    const insumoNombreFinal = productoComercial || (inventario.find(i => i.id === selectedInsumoId)?.nombreComercial) || abonoProducto;
+
     const laborData: RegistroLabor = {
-      id: initialLabor ? initialLabor.id : `lab-${Date.now()}`,
+      id: labor ? labor.id : `lab-${Date.now()}`,
       fecha: fecha || new Date().toISOString().slice(0, 10),
-      hora: hora || '08:00',
-      parcelaId: currentParcela?.id || parcelaId,
+      parcelaId: currentParcela?.id || parcelaId || 'c1',
       parcelaNombre,
       tipoLabor,
-      destinoAplicacion,
-      descripcionGeneral: descripcionGeneral.trim() || `${tipoLabor} en ${destinoAplicacion} (${parcelaNombre})`,
+      descripcion: descripcionGeneral.trim() || `${tipoLabor} en ${parcelaNombre}`,
+      operadorNombre: registradoPor || aplicadorNombre || 'Operador Predio',
       insumoId: selectedInsumoId || undefined,
-      productoComercial: productoComercial || undefined,
-      materiaActiva: materiaActiva || undefined,
-      numeroRegistroSAG: numeroRegistroSAG || undefined,
-      plagaObjetivo: plagaObjetivo || undefined,
+      insumoNombre: insumoNombreFinal || undefined,
       dosisPorHa: dosisPorHa !== '' ? Number(dosisPorHa) : undefined,
-      unidadDosis,
-      volumenCaldoLHa: volumenCaldoLHa !== '' ? Number(volumenCaldoLHa) : undefined,
       totalInsumoUtilizado: totalInsumoUtilizado !== '' ? Number(totalInsumoUtilizado) : undefined,
-      plazoSeguridadDias: plazoSeguridadDias !== '' ? Number(plazoSeguridadDias) : undefined,
-      plazoReingresoHoras: plazoReingresoHoras !== '' ? Number(plazoReingresoHoras) : undefined,
-      maquinariaEquipo: maquinariaEquipo || undefined,
-      aplicadorNombre: aplicadorNombre || undefined,
-      carnetAplicador: carnetAplicador || undefined,
-      abonoProducto: abonoProducto || undefined,
-      formulacionNPK: formulacionNPK || undefined,
-      dosisAbonoKgHa: dosisAbonoKgHa !== '' ? Number(dosisAbonoKgHa) : undefined,
-      metodoAplicacionAbono,
-      tipoEnmienda: tipoLabor === 'enmienda' ? tipoEnmienda : undefined,
-      dosisToneladasHa: tipoLabor === 'enmienda' && dosisToneladasHa !== '' ? Number(dosisToneladasHa) : undefined,
-      kilosRecolectados: kilosRecolectados !== '' ? Number(kilosRecolectados) : undefined,
-      calibreCalidad,
-      destinoProducto,
-      loteTrazabilidad,
-      observaciones: observaciones || undefined,
-      registradoPor: registradoPor || 'Diego Pereira'
+      unidadInsumo: unidadDosis,
+      observaciones: observaciones || undefined
     };
 
     onSave(laborData);
+    onClose();
   };
+
+  const tiposOpciones: { id: TipoLabor; label: string; icon: any }[] = [
+    { id: 'Aplicacion Fitosanitaria', label: 'Fitosanitario', icon: ShieldCheck },
+    { id: 'Fertilizacion', label: 'Fertilización', icon: Layers },
+    { id: 'Poda', label: 'Poda / Cultural', icon: Scissors },
+    { id: 'Cosecha', label: 'Cosecha Kiwis', icon: Apple },
+    { id: 'Desmalezado', label: 'Desmalezado', icon: Sprout },
+    { id: 'Otra', label: 'Otra / Monitoreo', icon: Bug }
+  ];
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-stone-900/60 backdrop-blur-xs overflow-y-auto text-xs">
@@ -227,7 +191,7 @@ export const ModalLabor: React.FC<ModalLaborProps> = ({
               {isEditing ? 'Editar Labor Agrícola' : 'Registrar Nueva Labor / Aplicación'}
             </h2>
             <p className="text-xs text-emerald-200 mt-0.5">
-              Control de destino de aplicación, descuento automático de bodega y cuaderno SAG
+              Registro de labores del predio y descuento de insumos en inventario
             </p>
           </div>
           <button type="button" onClick={onClose} className="text-emerald-200 hover:text-white cursor-pointer">
@@ -238,27 +202,20 @@ export const ModalLabor: React.FC<ModalLaborProps> = ({
         {/* Form Body */}
         <form onSubmit={handleSubmit} className="overflow-y-auto p-5 sm:p-6 space-y-4">
           
-          {/* TIPO DE LABOR CON ENMIENDA AGRÍCOLA INCLUIDA */}
+          {/* TIPO DE LABOR */}
           <div>
             <label className="block font-bold text-stone-800 uppercase mb-1.5">
               Tipo de Labor Agrícola *
             </label>
             <div className="grid grid-cols-2 sm:grid-cols-6 gap-2">
-              {[
-                { id: 'fitosanitario', label: 'Fitosanitario', icon: ShieldCheck },
-                { id: 'fertilizacion', label: 'Fertilización', icon: Layers },
-                { id: 'enmienda', label: 'Enmienda Agrícola', icon: Sprout },
-                { id: 'cosecha', label: 'Cosecha Kiwis', icon: Apple },
-                { id: 'labor_cultural', label: 'Poda / Cultural', icon: Scissors },
-                { id: 'monitoreo', label: 'Monitoreo', icon: Bug },
-              ].map((item) => {
+              {tiposOpciones.map((item) => {
                 const IconComponent = item.icon;
                 const isSelected = tipoLabor === item.id;
                 return (
                   <button
                     type="button"
                     key={item.id}
-                    onClick={() => setTipoLabor(item.id as TipoLabor)}
+                    onClick={() => setTipoLabor(item.id)}
                     className={`p-2.5 rounded-xl border text-center flex flex-col items-center gap-1 font-semibold cursor-pointer ${
                       isSelected
                         ? 'bg-emerald-800 text-white border-emerald-800 shadow-sm'
@@ -297,7 +254,7 @@ export const ModalLabor: React.FC<ModalLaborProps> = ({
 
             <div>
               <label className="block font-bold text-stone-800 mb-1">
-                Cuartel Específico
+                Cuartel Específico *
               </label>
               <select
                 value={parcelaId}
@@ -343,56 +300,15 @@ export const ModalLabor: React.FC<ModalLaborProps> = ({
             <input
               type="text"
               required
-              placeholder="Ej: Aplicación de enmienda orgánica en banda (BEO) sobre camellón"
+              placeholder="Ej: Aplicación foliar preventiva de fungicida en brotación"
               value={descripcionGeneral}
               onChange={(e) => setDescripcionGeneral(e.target.value)}
               className="w-full p-2 border rounded-lg"
             />
           </div>
 
-          {/* ENMIENDA AGRÍCOLA (NUEVO FORMULARIO ESPECÍFICO) */}
-          {tipoLabor === 'enmienda' && (
-            <div className="space-y-3 p-3.5 bg-emerald-50 rounded-xl border border-emerald-300">
-              <div className="font-bold text-emerald-950 flex items-center gap-1.5">
-                <Sprout className="w-4 h-4 text-emerald-700" />
-                Parámetros de Enmienda Agrícola (Suelo y Vitalización)
-              </div>
-
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="block font-semibold text-stone-700 mb-1">Tipo de Enmienda *</label>
-                  <select
-                    value={tipoEnmienda}
-                    onChange={(e) => setTipoEnmienda(e.target.value)}
-                    className="w-full p-2.5 rounded-lg border bg-white font-medium"
-                  >
-                    <option value="Banda Enmienda Orgánica (BEO)">Banda Enmienda Orgánica (BEO - Camellón)</option>
-                    <option value="Compost Maduro">Compost Maduro Certificado</option>
-                    <option value="Enmienda Húmica/Fúlvica">Ácidos Húmicos y Fúlvicos</option>
-                    <option value="Yeso Agrícola">Yeso Agrícola (Calcio / Desulfuración)</option>
-                    <option value="Cal / Carbonato">Cal Agrícola (Corrector de pH)</option>
-                    <option value="Cubierta Herbácea (CHM)">Cubierta Herbácea Multiespecies (CHM)</option>
-                  </select>
-                </div>
-
-                <div>
-                  <label className="block font-semibold text-stone-700 mb-1">Dosis Aplicada (t/ha) *</label>
-                  <input
-                    type="number"
-                    step="0.5"
-                    required
-                    value={dosisToneladasHa}
-                    onChange={(e) => setDosisToneladasHa(parseFloat(e.target.value) || 0)}
-                    placeholder="Ej: 8.0 t/ha"
-                    className="w-full p-2.5 rounded-lg border bg-white font-bold"
-                  />
-                </div>
-              </div>
-            </div>
-          )}
-
           {/* FITOSANITARIO */}
-          {tipoLabor === 'fitosanitario' && (
+          {tipoLabor === 'Aplicacion Fitosanitaria' && (
             <div className="space-y-3 p-3.5 bg-stone-50 rounded-xl border border-stone-200">
               <div>
                 <label className="block font-bold text-stone-800 mb-1">
@@ -414,10 +330,9 @@ export const ModalLabor: React.FC<ModalLaborProps> = ({
 
               <div className="grid grid-cols-3 gap-3">
                 <div>
-                  <label className="block font-semibold text-stone-700 mb-1">Producto Comercial *</label>
+                  <label className="block font-semibold text-stone-700 mb-1">Producto Comercial</label>
                   <input
                     type="text"
-                    required
                     value={productoComercial}
                     onChange={(e) => setProductoComercial(e.target.value)}
                     className="w-full p-2 border rounded-lg bg-white"
@@ -478,7 +393,7 @@ export const ModalLabor: React.FC<ModalLaborProps> = ({
           )}
 
           {/* FERTILIZACIÓN */}
-          {tipoLabor === 'fertilizacion' && (
+          {tipoLabor === 'Fertilizacion' && (
             <div className="space-y-3 p-3.5 bg-emerald-50 rounded-xl border border-emerald-200">
               <div className="grid grid-cols-2 gap-3">
                 <div>
@@ -507,7 +422,7 @@ export const ModalLabor: React.FC<ModalLaborProps> = ({
           )}
 
           {/* COSECHA */}
-          {tipoLabor === 'cosecha' && (
+          {tipoLabor === 'Cosecha' && (
             <div className="grid grid-cols-2 gap-3 p-3.5 bg-purple-50 rounded-xl border border-purple-200">
               <div>
                 <label className="block font-semibold text-stone-700 mb-1">Kilos Cosechados *</label>
