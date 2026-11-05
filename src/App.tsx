@@ -2,25 +2,26 @@ import React, { useState } from 'react';
 import { 
   Sprout, 
   Package, 
-  Droplet, 
-  Waves, 
-  Sun, 
-  Bug, 
   Calculator, 
   FileText, 
-  Plus, 
-  Bell,
-  Layers
+  Plus
 } from 'lucide-react';
 
-import { Parcela, InsumoInventario, UsuarioPredio, RegistroLabor, OrdenTrabajoFitosanitaria, CondicionClima } from './types/campo';
+import { 
+  Parcela, 
+  InsumoInventario, 
+  UsuarioPredio, 
+  RegistroLabor, 
+  OrdenTrabajoFitosanitaria 
+} from './types/campo';
+
 import { LaboresView } from './components/LaboresView';
 import { BodegaView } from './components/BodegaView';
 import { CalculadoraView } from './components/CalculadoraView';
 import { OrdenesTrabajoView } from './components/OrdenesTrabajoView';
 import { ModalLabor } from './components/ModalLabor';
 
-// Datos Iniciales de Ejemplo
+// DATOS INICIALES DE EJEMPLO
 const INITIAL_PARCELAS: Parcela[] = [
   { id: 'c1', nombre: 'Cuartel 1 - Kiwi Hayward', superficieHa: 2.8, variedad: 'Kiwi Hayward', anoPlantacion: 2015 },
   { id: 'c2', nombre: 'Cuartel 2 - Kiwi Hayward', superficieHa: 4.9, variedad: 'Kiwi Hayward', anoPlantacion: 2017 },
@@ -28,15 +29,15 @@ const INITIAL_PARCELAS: Parcela[] = [
 ];
 
 const INITIAL_INVENTARIO: InsumoInventario[] = [
-  { id: 'ins-1', nombreComercial: 'Cobre Hidróxido 50 WP', materiaActiva: 'Hidróxido de Cobre', categoria: 'Fungicida', stockActual: 45, unidad: 'kg', numeroRegistroSAG: '1234-SAG' },
+  { id: 'ins-1', nombreComercial: 'Cobre Hidróxido 50 WP', materiaActiva: 'Hidróxido de Cobre', categoria: 'Fungicida y Bactericida', stockActual: 45, unidad: 'kg', numeroRegistroSAG: '1234-SAG' },
   { id: 'ins-2', nombreComercial: 'Spirotetramat 240 SC', materiaActiva: 'Spirotetramat', categoria: 'Insecticida', stockActual: 12, unidad: 'L', numeroRegistroSAG: '5678-SAG' },
   { id: 'ins-3', nombreComercial: 'Nitrato de Calcio', materiaActiva: 'Nitrato de Calcio', categoria: 'Fertilizante', stockActual: 500, unidad: 'kg' },
   { id: 'ins-4', nombreComercial: 'Glifosato 480 SL', materiaActiva: 'Glifosato', categoria: 'Herbicida', stockActual: 30, unidad: 'L', numeroRegistroSAG: '9912-SAG' }
 ];
 
 const INITIAL_USUARIOS: UsuarioPredio[] = [
-  { id: 'usr-1', nombre: 'Diego Pereira Ramirez', rol: 'Agronomo', numeroRegistroSAG: 'SAG-8921-CL' },
-  { id: 'usr-2', nombre: 'Juan Pérez', rol: 'Aplicador', numeroRegistroSAG: 'APL-SAG-3312' }
+  { id: 'usr-1', nombre: 'Diego Pereira Ramirez', email: 'diego@fundolacabana.cl', rol: 'administrador', numeroRegistroSAG: 'SAG-8921-CL', estado: 'activo', fechaAlta: '2026-01-01' },
+  { id: 'usr-2', nombre: 'Juan Pérez', email: 'juan@fundolacabana.cl', rol: 'operador', numeroRegistroSAG: 'APL-SAG-3312', estado: 'activo', fechaAlta: '2026-01-01' }
 ];
 
 const INITIAL_LABORES: RegistroLabor[] = [
@@ -85,10 +86,12 @@ const INITIAL_ORDENES: OrdenTrabajoFitosanitaria[] = [
     caldoTotalLitros: 3360,
     plazoReingresoHoras: 24,
     plazoCarenciaDias: 14,
-    eppObligatorio: ['Máscara respiratoria', 'Buzo impermeble', 'Guantes nitrilo'],
+    eppObligatorio: ['Máscara respiratoria', 'Buzo impermeable', 'Guantes nitrilo'],
+    condicionesClimaticasRequeridas: 'Viento menor a 10 km/h, sin lluvias',
     agronomoEmisorId: 'usr-1',
     agronomoEmisorNombre: 'Diego Pereira Ramirez',
     agronomoRegistroSAG: 'SAG-8921-CL',
+    agronomoFirmaDigital: 'FIRMADO DIGITALMENTE - Diego Pereira Ramirez',
     aplicadorAsignadoId: 'usr-2',
     aplicadorAsignadoNombre: 'Juan Pérez',
     maquinariaTractor: 'Tractor John Deere + Pulverizadora 2000L',
@@ -97,12 +100,8 @@ const INITIAL_ORDENES: OrdenTrabajoFitosanitaria[] = [
 ];
 
 export function App() {
-  // Estado de Pestañas
-  const [activeTab, setActiveTab] = useState<
-    'labores' | 'bodega' | 'calculadora' | 'ordenes'
-  >('labores');
+  const [activeTab, setActiveTab] = useState<'labores' | 'bodega' | 'calculadora' | 'ordenes'>('labores');
 
-  // Datos globales de la aplicación
   const [parcelas] = useState<Parcela[]>(INITIAL_PARCELAS);
   const [inventario, setInventario] = useState<InsumoInventario[]>(INITIAL_INVENTARIO);
   const [usuarios] = useState<UsuarioPredio[]>(INITIAL_USUARIOS);
@@ -110,34 +109,25 @@ export function App() {
   const [ordenes, setOrdenes] = useState<OrdenTrabajoFitosanitaria[]>(INITIAL_ORDENES);
   const [activeUserId] = useState<string>('usr-1');
 
-  // Control del Modal de Labores
   const [isLaborModalOpen, setIsLaborModalOpen] = useState(false);
   const [editingLabor, setEditingLabor] = useState<RegistroLabor | null>(null);
-  const [defaultParcelaId, setDefaultParcelaId] = useState<string>('');
-  const [defaultTipoLabor, setDefaultTipoLabor] = useState<any>('Aplicacion Fitosanitaria');
 
-  // Abrir Modal de Nueva Labor
   const handleOpenNewLabor = () => {
     setEditingLabor(null);
-    setDefaultParcelaId(parcelas[0]?.id || '');
-    setDefaultTipoLabor('Aplicacion Fitosanitaria');
     setIsLaborModalOpen(true);
   };
 
-  // Abrir Modal para Editar Labor
   const handleEditLabor = (labor: RegistroLabor) => {
     setEditingLabor(labor);
     setIsLaborModalOpen(true);
   };
 
-  // Guardar / Crear / Editar Labor
   const handleSaveLabor = (laborGuardar: RegistroLabor) => {
     if (editingLabor) {
       setLabores(labores.map(l => l.id === laborGuardar.id ? laborGuardar : l));
     } else {
       setLabores([laborGuardar, ...labores]);
       
-      // Si incluye descuento de insumo
       if (laborGuardar.insumoId && laborGuardar.totalInsumoUtilizado) {
         setInventario(prev => prev.map(item => {
           if (item.id === laborGuardar.insumoId) {
@@ -152,14 +142,12 @@ export function App() {
     setEditingLabor(null);
   };
 
-  // Eliminar Labor
   const handleDeleteLabor = (id: string) => {
-    if (confirm('¿Estás seguro de eliminar este registro de labor?')) {
+    if (window.confirm('¿Estás seguro de eliminar este registro de labor?')) {
       setLabores(labores.filter(l => l.id !== id));
     }
   };
 
-  // Manejo de Órdenes de Trabajo (Recetas)
   const handleAddOrden = (nuevaOrden: OrdenTrabajoFitosanitaria) => {
     setOrdenes([nuevaOrden, ...ordenes]);
   };
@@ -169,7 +157,7 @@ export function App() {
   };
 
   const handleDeleteOrden = (ordenId: string) => {
-    if (confirm('¿Eliminar esta receta / orden de trabajo?')) {
+    if (window.confirm('¿Eliminar esta receta / orden de trabajo?')) {
       setOrdenes(ordenes.filter(o => o.id !== ordenId));
     }
   };
@@ -197,7 +185,22 @@ export function App() {
       });
     }
 
-    // Actualizar estado de la Orden
+    // Registrar labor en el Cuaderno SAG
+    const productosNombres = (orden.productos || []).map(p => p.productoComercial).join(', ');
+    const nuevaLaborDesdeOrden: RegistroLabor = {
+      id: `lab-ot-${Date.now()}`,
+      fecha: new Date().toISOString().slice(0, 10),
+      parcelaId: orden.parcelaIds[0] || 'general',
+      parcelaNombre: orden.parcelaNombres,
+      tipoLabor: 'Aplicacion Fitosanitaria',
+      descripcion: `[Ejecutado Receta ${orden.numeroOrden}] ${orden.plagaObjetivo}`,
+      operadorNombre: aplicadorNombre,
+      insumoNombre: productosNombres,
+      observaciones: `Orden de Trabajo ${orden.numeroOrden} completada. Firma: ${firma}`
+    };
+
+    setLabores(prev => [nuevaLaborDesdeOrden, ...prev]);
+
     setOrdenes(ordenes.map(o => {
       if (o.id === ordenId) {
         return {
@@ -212,7 +215,6 @@ export function App() {
     }));
   };
 
-  // Manejo del Inventario (Bodega)
   const handleAddInsumo = (nuevo: InsumoInventario) => {
     setInventario([...inventario, nuevo]);
   };
@@ -222,7 +224,7 @@ export function App() {
   };
 
   const handleDeleteInsumo = (id: string) => {
-    if (confirm('¿Eliminar este producto de bodega?')) {
+    if (window.confirm('¿Eliminar este producto de bodega?')) {
       setInventario(inventario.filter(i => i.id !== id));
     }
   };
@@ -231,11 +233,8 @@ export function App() {
 
   return (
     <div className="min-h-screen bg-stone-100 text-stone-900 flex flex-col font-sans">
-      
-      {/* NAVBAR SUPERIOR */}
       <header className="bg-emerald-950 text-white sticky top-0 z-40 shadow-md">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 flex items-center justify-between h-16">
-          
           <div className="flex items-center gap-3">
             <div className="p-2 bg-emerald-800 rounded-xl">
               <Sprout className="w-6 h-6 text-emerald-300" />
@@ -246,7 +245,6 @@ export function App() {
             </div>
           </div>
 
-          {/* MENU NAVEGACIÓN DE PESTAÑAS */}
           <nav className="hidden md:flex items-center gap-1">
             <button
               onClick={() => setActiveTab('labores')}
@@ -288,7 +286,6 @@ export function App() {
             </button>
           </nav>
 
-          {/* BOTÓN NUEVA LABOR RÁPIDO */}
           <div className="flex items-center gap-2">
             <button
               onClick={handleOpenNewLabor}
@@ -297,41 +294,17 @@ export function App() {
               <Plus className="w-4 h-4" /> + Nueva Labor
             </button>
           </div>
-
         </div>
       </header>
 
-      {/* MENU NAVEGACIÓN MÓVIL */}
       <div className="md:hidden flex bg-emerald-900 text-white border-b border-emerald-800 overflow-x-auto p-1.5 gap-1 text-xs">
-        <button 
-          onClick={() => setActiveTab('labores')} 
-          className={`px-3 py-1.5 rounded-lg whitespace-nowrap font-bold ${activeTab === 'labores' ? 'bg-emerald-700' : ''}`}
-        >
-          Labores
-        </button>
-        <button 
-          onClick={() => setActiveTab('ordenes')} 
-          className={`px-3 py-1.5 rounded-lg whitespace-nowrap font-bold ${activeTab === 'ordenes' ? 'bg-emerald-700' : ''}`}
-        >
-          Recetas SAG
-        </button>
-        <button 
-          onClick={() => setActiveTab('bodega')} 
-          className={`px-3 py-1.5 rounded-lg whitespace-nowrap font-bold ${activeTab === 'bodega' ? 'bg-emerald-700' : ''}`}
-        >
-          Bodega ({inventario.length})
-        </button>
-        <button 
-          onClick={() => setActiveTab('calculadora')} 
-          className={`px-3 py-1.5 rounded-lg whitespace-nowrap font-bold ${activeTab === 'calculadora' ? 'bg-emerald-700' : ''}`}
-        >
-          Calculadora
-        </button>
+        <button onClick={() => setActiveTab('labores')} className={`px-3 py-1.5 rounded-lg font-bold ${activeTab === 'labores' ? 'bg-emerald-700' : ''}`}>Labores</button>
+        <button onClick={() => setActiveTab('ordenes')} className={`px-3 py-1.5 rounded-lg font-bold ${activeTab === 'ordenes' ? 'bg-emerald-700' : ''}`}>Recetas SAG</button>
+        <button onClick={() => setActiveTab('bodega')} className={`px-3 py-1.5 rounded-lg font-bold ${activeTab === 'bodega' ? 'bg-emerald-700' : ''}`}>Bodega ({inventario.length})</button>
+        <button onClick={() => setActiveTab('calculadora')} className={`px-3 py-1.5 rounded-lg font-bold ${activeTab === 'calculadora' ? 'bg-emerald-700' : ''}`}>Calculadora</button>
       </div>
 
-      {/* CONTENIDO PRINCIPAL */}
       <main className="max-w-7xl mx-auto px-4 sm:px-6 py-6 flex-1 w-full">
-        
         {activeTab === 'labores' && (
           <LaboresView
             labores={labores}
@@ -373,10 +346,8 @@ export function App() {
             inventario={inventario}
           />
         )}
-
       </main>
 
-      {/* MODAL REGISTRAR / EDITAR LABOR */}
       {isLaborModalOpen && (
         <ModalLabor
           isOpen={isLaborModalOpen}
@@ -385,8 +356,6 @@ export function App() {
           inventario={inventario}
           usuarios={usuarios}
           activeUserId={activeUserId}
-          defaultParcelaId={defaultParcelaId}
-          defaultTipoLabor={defaultTipoLabor}
           onSave={handleSaveLabor}
           onClose={() => {
             setIsLaborModalOpen(false);
@@ -394,7 +363,6 @@ export function App() {
           }}
         />
       )}
-
     </div>
   );
 }
