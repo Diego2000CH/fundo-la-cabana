@@ -4,7 +4,18 @@ import {
   Package, 
   Calculator, 
   FileText, 
-  Plus
+  Plus,
+  Users,
+  Lock,
+  LogOut,
+  Waves,
+  Droplet,
+  Sun,
+  Apple,
+  LayoutDashboard,
+  ShieldCheck,
+  Eye,
+  EyeOff
 } from 'lucide-react';
 
 import { 
@@ -12,16 +23,19 @@ import {
   InsumoInventario, 
   UsuarioPredio, 
   RegistroLabor, 
-  OrdenTrabajoFitosanitaria 
+  OrdenTrabajoFitosanitaria,
+  RegistroRiegoSector,
+  RegistroExtraccionPozo,
+  MuestreoMadurez,
+  RegistroCosechaLote
 } from './types/campo';
 
 import { LaboresView } from './components/LaboresView';
 import { BodegaView } from './components/BodegaView';
-import { CalculadoraView } from './components/CalculadoraView';
 import { OrdenesTrabajoView } from './components/OrdenesTrabajoView';
 import { ModalLabor } from './components/ModalLabor';
 
-// DATOS INICIALES DE EJEMPLO
+// DATOS INICIALES DEL PREDIO
 const INITIAL_PARCELAS: Parcela[] = [
   { id: 'c1', nombre: 'Cuartel 1 - Kiwi Hayward', superficieHa: 2.8, variedad: 'Kiwi Hayward', anoPlantacion: 2015 },
   { id: 'c2', nombre: 'Cuartel 2 - Kiwi Hayward', superficieHa: 4.9, variedad: 'Kiwi Hayward', anoPlantacion: 2017 },
@@ -35,9 +49,38 @@ const INITIAL_INVENTARIO: InsumoInventario[] = [
   { id: 'ins-4', nombreComercial: 'Glifosato 480 SL', materiaActiva: 'Glifosato', categoria: 'Herbicida', stockActual: 30, unidad: 'L', numeroRegistroSAG: '9912-SAG' }
 ];
 
+// USUARIOS CON ROLES Y CLAVES PERSONALES
 const INITIAL_USUARIOS: UsuarioPredio[] = [
-  { id: 'usr-1', nombre: 'Diego Pereira Ramirez', email: 'diego@fundolacabana.cl', rol: 'administrador', numeroRegistroSAG: 'SAG-8921-CL', estado: 'activo', fechaAlta: '2026-01-01' },
-  { id: 'usr-2', nombre: 'Carlos Manqui', email: 'juan@fundolacabana.cl', rol: 'operador', numeroRegistroSAG: 'APL-SAG-3312', estado: 'activo', fechaAlta: '2026-01-01' }
+  { 
+    id: 'usr-1', 
+    nombre: 'Diego Pereira Ramirez', 
+    email: 'admin@fundolacabana.cl', 
+    clave: 'admin123',
+    rol: 'administrador', 
+    numeroRegistroSAG: 'SAG-8921-CL', 
+    estado: 'activo', 
+    fechaAlta: '2026-01-01' 
+  },
+  { 
+    id: 'usr-2', 
+    nombre: 'Juan Pérez', 
+    email: 'operador@fundolacabana.cl', 
+    clave: 'operador123',
+    rol: 'operador', 
+    numeroRegistroSAG: 'APL-SAG-3312', 
+    estado: 'activo', 
+    fechaAlta: '2026-01-01' 
+  },
+  { 
+    id: 'usr-3', 
+    nombre: 'Ing. Agrónomo Asesor', 
+    email: 'agronomo@fundolacabana.cl', 
+    clave: 'agro2026',
+    rol: 'agronomo', 
+    numeroRegistroSAG: 'SAG-4410-AG', 
+    estado: 'activo', 
+    fechaAlta: '2026-01-01' 
+  }
 ];
 
 const INITIAL_LABORES: RegistroLabor[] = [
@@ -100,18 +143,56 @@ const INITIAL_ORDENES: OrdenTrabajoFitosanitaria[] = [
 ];
 
 export function App() {
-  const [activeTab, setActiveTab] = useState<'labores' | 'bodega' | 'calculadora' | 'ordenes'>('labores');
+  // ESTADO DE AUTENTICACIÓN
+  const [currentUser, setCurrentUser] = useState<UsuarioPredio | null>(null);
+  const [loginEmail, setLoginEmail] = useState('');
+  const [loginClave, setLoginClave] = useState('');
+  const [loginError, setLoginError] = useState('');
+  const [showClavesAdmin, setShowClavesAdmin] = useState<Record<string, boolean>>({});
 
+  // ESTADO NAVEGACIÓN COMPLETA
+  const [activeTab, setActiveTab] = useState<
+    'dashboard' | 'labores' | 'ordenes' | 'bodega' | 'riego' | 'pozo' | 'cosecha' | 'usuarios'
+  >('dashboard');
+
+  // ESTADOS GLOBALES DE DATOS
   const [parcelas] = useState<Parcela[]>(INITIAL_PARCELAS);
   const [inventario, setInventario] = useState<InsumoInventario[]>(INITIAL_INVENTARIO);
-  const [usuarios] = useState<UsuarioPredio[]>(INITIAL_USUARIOS);
+  const [usuarios, setUsuarios] = useState<UsuarioPredio[]>(INITIAL_USUARIOS);
   const [labores, setLabores] = useState<RegistroLabor[]>(INITIAL_LABORES);
   const [ordenes, setOrdenes] = useState<OrdenTrabajoFitosanitaria[]>(INITIAL_ORDENES);
-  const [activeUserId] = useState<string>('usr-1');
 
+  // CONTROL MODAL LABOR
   const [isLaborModalOpen, setIsLaborModalOpen] = useState(false);
   const [editingLabor, setEditingLabor] = useState<RegistroLabor | null>(null);
 
+  // INICIO DE SESIÓN
+  const handleLogin = (e: React.FormEvent) => {
+    e.preventDefault();
+    const found = usuarios.find(
+      u => u.email.toLowerCase() === loginEmail.trim().toLowerCase() && u.clave === loginClave
+    );
+
+    if (found) {
+      if (found.estado === 'inactivo') {
+        setLoginError('Usuario inactivo. Contacte al administrador.');
+        return;
+      }
+      setCurrentUser(found);
+      setLoginError('');
+      setActiveTab('dashboard');
+    } else {
+      setLoginError('Credenciales incorrectas. Verifique correo y clave.');
+    }
+  };
+
+  const handleLogout = () => {
+    setCurrentUser(null);
+    setLoginEmail('');
+    setLoginClave('');
+  };
+
+  // MANEJO DE LABORES
   const handleOpenNewLabor = () => {
     setEditingLabor(null);
     setIsLaborModalOpen(true);
@@ -148,6 +229,7 @@ export function App() {
     }
   };
 
+  // MANEJO DE ÓRDENES Y RECETAS SAG
   const handleAddOrden = (nuevaOrden: OrdenTrabajoFitosanitaria) => {
     setOrdenes([nuevaOrden, ...ordenes]);
   };
@@ -166,7 +248,6 @@ export function App() {
     const orden = ordenes.find(o => o.id === ordenId);
     if (!orden) return;
 
-    // Descontar inventario de cada producto
     if (!orden.descontadoInventario && orden.productos) {
       setInventario(prev => {
         let actual = [...prev];
@@ -185,7 +266,6 @@ export function App() {
       });
     }
 
-    // Registrar labor en el Cuaderno SAG
     const productosNombres = (orden.productos || []).map(p => p.productoComercial).join(', ');
     const nuevaLaborDesdeOrden: RegistroLabor = {
       id: `lab-ot-${Date.now()}`,
@@ -215,6 +295,7 @@ export function App() {
     }));
   };
 
+  // MANEJO DE BODEGA
   const handleAddInsumo = (nuevo: InsumoInventario) => {
     setInventario([...inventario, nuevo]);
   };
@@ -229,12 +310,75 @@ export function App() {
     }
   };
 
-  const activeUser = usuarios.find(u => u.id === activeUserId);
+  // PANTALLA DE LOGIN
+  if (!currentUser) {
+    return (
+      <div className="min-h-screen bg-stone-900 text-stone-100 flex items-center justify-center p-4 font-sans">
+        <div className="bg-stone-800 border border-stone-700 p-8 rounded-2xl shadow-2xl w-full max-w-md space-y-6">
+          <div className="text-center space-y-2">
+            <div className="w-16 h-16 bg-emerald-900 text-emerald-300 rounded-2xl flex items-center justify-center mx-auto shadow-inner">
+              <Sprout className="w-10 h-10" />
+            </div>
+            <h1 className="text-2xl font-bold tracking-tight text-white">Fundo La Cabaña</h1>
+            <p className="text-stone-400 text-xs">Sistema Agrícola Integral · 100% Kiwi Hayward</p>
+          </div>
+
+          <form onSubmit={handleLogin} className="space-y-4 text-xs">
+            {loginError && (
+              <div className="p-3 bg-red-950/80 border border-red-700 text-red-200 rounded-xl text-center font-semibold">
+                {loginError}
+              </div>
+            )}
+
+            <div>
+              <label className="block text-stone-300 font-bold mb-1">Correo Electrónico</label>
+              <input
+                type="email"
+                required
+                placeholder="admin@fundolacabana.cl"
+                value={loginEmail}
+                onChange={(e) => setLoginEmail(e.target.value)}
+                className="w-full p-3 bg-stone-900 border border-stone-700 rounded-xl text-white focus:outline-none focus:ring-2 focus:ring-emerald-500 font-medium"
+              />
+            </div>
+
+            <div>
+              <label className="block text-stone-300 font-bold mb-1">Contraseña Personal</label>
+              <input
+                type="password"
+                required
+                placeholder="••••••••"
+                value={loginClave}
+                onChange={(e) => setLoginClave(e.target.value)}
+                className="w-full p-3 bg-stone-900 border border-stone-700 rounded-xl text-white focus:outline-none focus:ring-2 focus:ring-emerald-500 font-medium"
+              />
+            </div>
+
+            <button
+              type="submit"
+              className="w-full py-3 bg-emerald-700 hover:bg-emerald-600 font-bold text-white rounded-xl shadow-lg transition-all cursor-pointer text-sm"
+            >
+              Iniciar Sesión
+            </button>
+          </form>
+
+          <div className="pt-4 border-t border-stone-700/60 text-center text-[11px] text-stone-400">
+            <p>Acceso restringido según rol asignado (Administrador, Agrónomo, Operador).</p>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  const isAdmin = currentUser.rol === 'administrador';
 
   return (
     <div className="min-h-screen bg-stone-100 text-stone-900 flex flex-col font-sans">
+      
+      {/* NAVBAR PRINCIPAL COMPLETA */}
       <header className="bg-emerald-950 text-white sticky top-0 z-40 shadow-md">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 flex items-center justify-between h-16">
+          
           <div className="flex items-center gap-3">
             <div className="p-2 bg-emerald-800 rounded-xl">
               <Sprout className="w-6 h-6 text-emerald-300" />
@@ -245,11 +389,21 @@ export function App() {
             </div>
           </div>
 
-          <nav className="hidden md:flex items-center gap-1">
+          {/* MENÚ DE NAVEGACIÓN DE TODAS LAS PESTAÑAS */}
+          <nav className="hidden lg:flex items-center gap-1 text-xs">
+            <button
+              onClick={() => setActiveTab('dashboard')}
+              className={`px-3 py-2 rounded-xl font-bold flex items-center gap-1.5 cursor-pointer ${
+                activeTab === 'dashboard' ? 'bg-emerald-800 text-white' : 'text-emerald-100 hover:bg-emerald-900/60'
+              }`}
+            >
+              <LayoutDashboard className="w-4 h-4" /> Inicio
+            </button>
+
             <button
               onClick={() => setActiveTab('labores')}
-              className={`px-3.5 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer ${
-                activeTab === 'labores' ? 'bg-emerald-800 text-white shadow-xs' : 'text-emerald-100 hover:bg-emerald-900/60'
+              className={`px-3 py-2 rounded-xl font-bold flex items-center gap-1.5 cursor-pointer ${
+                activeTab === 'labores' ? 'bg-emerald-800 text-white' : 'text-emerald-100 hover:bg-emerald-900/60'
               }`}
             >
               <Sprout className="w-4 h-4" /> Labores
@@ -257,8 +411,8 @@ export function App() {
 
             <button
               onClick={() => setActiveTab('ordenes')}
-              className={`px-3.5 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer ${
-                activeTab === 'ordenes' ? 'bg-emerald-800 text-white shadow-xs' : 'text-emerald-100 hover:bg-emerald-900/60'
+              className={`px-3 py-2 rounded-xl font-bold flex items-center gap-1.5 cursor-pointer ${
+                activeTab === 'ordenes' ? 'bg-emerald-800 text-white' : 'text-emerald-100 hover:bg-emerald-900/60'
               }`}
             >
               <FileText className="w-4 h-4" /> Recetas SAG
@@ -266,45 +420,120 @@ export function App() {
 
             <button
               onClick={() => setActiveTab('bodega')}
-              className={`px-3.5 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer ${
-                activeTab === 'bodega' ? 'bg-emerald-800 text-white shadow-xs' : 'text-emerald-100 hover:bg-emerald-900/60'
+              className={`px-3 py-2 rounded-xl font-bold flex items-center gap-1.5 cursor-pointer ${
+                activeTab === 'bodega' ? 'bg-emerald-800 text-white' : 'text-emerald-100 hover:bg-emerald-900/60'
               }`}
             >
-              <Package className="w-4 h-4" /> Bodega Insumos
-              <span className="ml-1 px-1.5 py-0.2 bg-emerald-700 rounded-full text-[10px]">
-                {inventario.length}
-              </span>
+              <Package className="w-4 h-4" /> Bodega ({inventario.length})
             </button>
 
             <button
-              onClick={() => setActiveTab('calculadora')}
-              className={`px-3.5 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer ${
-                activeTab === 'calculadora' ? 'bg-emerald-800 text-white shadow-xs' : 'text-emerald-100 hover:bg-emerald-900/60'
+              onClick={() => setActiveTab('riego')}
+              className={`px-3 py-2 rounded-xl font-bold flex items-center gap-1.5 cursor-pointer ${
+                activeTab === 'riego' ? 'bg-emerald-800 text-white' : 'text-emerald-100 hover:bg-emerald-900/60'
               }`}
             >
-              <Calculator className="w-4 h-4" /> Calculadora
+              <Droplet className="w-4 h-4" /> Riego
             </button>
+
+            <button
+              onClick={() => setActiveTab('pozo')}
+              className={`px-3 py-2 rounded-xl font-bold flex items-center gap-1.5 cursor-pointer ${
+                activeTab === 'pozo' ? 'bg-emerald-800 text-white' : 'text-emerald-100 hover:bg-emerald-900/60'
+              }`}
+            >
+              <Waves className="w-4 h-4" /> Pozo
+            </button>
+
+            <button
+              onClick={() => setActiveTab('cosecha')}
+              className={`px-3 py-2 rounded-xl font-bold flex items-center gap-1.5 cursor-pointer ${
+                activeTab === 'cosecha' ? 'bg-emerald-800 text-white' : 'text-emerald-100 hover:bg-emerald-900/60'
+              }`}
+            >
+              <Apple className="w-4 h-4" /> Cosecha
+            </button>
+
+            {/* PESTAÑA SOLO PARA ADMINISTRADOR */}
+            {isAdmin && (
+              <button
+                onClick={() => setActiveTab('usuarios')}
+                className={`px-3 py-2 rounded-xl font-bold flex items-center gap-1.5 cursor-pointer border border-emerald-700/50 ${
+                  activeTab === 'usuarios' ? 'bg-emerald-800 text-white' : 'text-emerald-200 hover:bg-emerald-900/60'
+                }`}
+              >
+                <Users className="w-4 h-4" /> Usuarios & Claves
+              </button>
+            )}
           </nav>
 
-          <div className="flex items-center gap-2">
+          {/* PERFIL DE USUARIO LOGUEADO */}
+          <div className="flex items-center gap-3">
+            <div className="text-right hidden sm:block">
+              <span className="block text-xs font-bold">{currentUser.nombre}</span>
+              <span className="block text-[10px] text-emerald-300 capitalize">{currentUser.rol}</span>
+            </div>
+
             <button
-              onClick={handleOpenNewLabor}
-              className="px-3.5 py-2 bg-emerald-600 hover:bg-emerald-500 text-white font-bold rounded-xl text-xs transition-all shadow-sm flex items-center gap-1.5 cursor-pointer"
+              onClick={handleLogout}
+              className="p-2 bg-emerald-900 hover:bg-red-800 text-white rounded-xl transition-colors cursor-pointer"
+              title="Cerrar sesión"
             >
-              <Plus className="w-4 h-4" /> + Nueva Labor
+              <LogOut className="w-4 h-4" />
             </button>
           </div>
+
         </div>
       </header>
 
-      <div className="md:hidden flex bg-emerald-900 text-white border-b border-emerald-800 overflow-x-auto p-1.5 gap-1 text-xs">
-        <button onClick={() => setActiveTab('labores')} className={`px-3 py-1.5 rounded-lg font-bold ${activeTab === 'labores' ? 'bg-emerald-700' : ''}`}>Labores</button>
-        <button onClick={() => setActiveTab('ordenes')} className={`px-3 py-1.5 rounded-lg font-bold ${activeTab === 'ordenes' ? 'bg-emerald-700' : ''}`}>Recetas SAG</button>
-        <button onClick={() => setActiveTab('bodega')} className={`px-3 py-1.5 rounded-lg font-bold ${activeTab === 'bodega' ? 'bg-emerald-700' : ''}`}>Bodega ({inventario.length})</button>
-        <button onClick={() => setActiveTab('calculadora')} className={`px-3 py-1.5 rounded-lg font-bold ${activeTab === 'calculadora' ? 'bg-emerald-700' : ''}`}>Calculadora</button>
+      {/* MENÚ MÓVIL */}
+      <div className="lg:hidden flex bg-emerald-900 text-white border-b border-emerald-800 overflow-x-auto p-2 gap-1 text-xs font-bold">
+        <button onClick={() => setActiveTab('dashboard')} className={`px-3 py-1.5 rounded-lg whitespace-nowrap ${activeTab === 'dashboard' ? 'bg-emerald-700' : ''}`}>Inicio</button>
+        <button onClick={() => setActiveTab('labores')} className={`px-3 py-1.5 rounded-lg whitespace-nowrap ${activeTab === 'labores' ? 'bg-emerald-700' : ''}`}>Labores</button>
+        <button onClick={() => setActiveTab('ordenes')} className={`px-3 py-1.5 rounded-lg whitespace-nowrap ${activeTab === 'ordenes' ? 'bg-emerald-700' : ''}`}>Recetas SAG</button>
+        <button onClick={() => setActiveTab('bodega')} className={`px-3 py-1.5 rounded-lg whitespace-nowrap ${activeTab === 'bodega' ? 'bg-emerald-700' : ''}`}>Bodega</button>
+        <button onClick={() => setActiveTab('riego')} className={`px-3 py-1.5 rounded-lg whitespace-nowrap ${activeTab === 'riego' ? 'bg-emerald-700' : ''}`}>Riego</button>
+        <button onClick={() => setActiveTab('pozo')} className={`px-3 py-1.5 rounded-lg whitespace-nowrap ${activeTab === 'pozo' ? 'bg-emerald-700' : ''}`}>Pozo</button>
+        <button onClick={() => setActiveTab('cosecha')} className={`px-3 py-1.5 rounded-lg whitespace-nowrap ${activeTab === 'cosecha' ? 'bg-emerald-700' : ''}`}>Cosecha</button>
+        {isAdmin && (
+          <button onClick={() => setActiveTab('usuarios')} className={`px-3 py-1.5 rounded-lg whitespace-nowrap ${activeTab === 'usuarios' ? 'bg-emerald-700' : ''}`}>Usuarios</button>
+        )}
       </div>
 
+      {/* CONTENIDO PRINCIPAL */}
       <main className="max-w-7xl mx-auto px-4 sm:px-6 py-6 flex-1 w-full">
+
+        {/* 1. DASHBOARD GENERAL */}
+        {activeTab === 'dashboard' && (
+          <div className="space-y-6 text-xs">
+            <div className="p-6 bg-emerald-950 text-white rounded-2xl shadow-md">
+              <h2 className="text-xl font-bold">Bienvenido, {currentUser.nombre}</h2>
+              <p className="text-emerald-300 mt-1">Panel de control de gestión agronómica - Fundo La Cabaña</p>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+              <div className="p-4 bg-white rounded-xl border border-stone-200 shadow-2xs">
+                <span className="text-stone-500 font-bold block text-[10px] uppercase">Cuarteles Hayward</span>
+                <span className="text-2xl font-extrabold text-stone-900 mt-1 block">{parcelas.length} Sectores</span>
+                <span className="text-xs text-stone-500 font-mono mt-1 block">Total: 13.1 Ha</span>
+              </div>
+              <div className="p-4 bg-white rounded-xl border border-stone-200 shadow-2xs">
+                <span className="text-stone-500 font-bold block text-[10px] uppercase">Productos en Bodega</span>
+                <span className="text-2xl font-extrabold text-stone-900 mt-1 block">{inventario.length} Insumos</span>
+              </div>
+              <div className="p-4 bg-white rounded-xl border border-stone-200 shadow-2xs">
+                <span className="text-stone-500 font-bold block text-[10px] uppercase">Labores SAG</span>
+                <span className="text-2xl font-extrabold text-stone-900 mt-1 block">{labores.length} Registros</span>
+              </div>
+              <div className="p-4 bg-white rounded-xl border border-stone-200 shadow-2xs">
+                <span className="text-stone-500 font-bold block text-[10px] uppercase">Recetas Emitidas</span>
+                <span className="text-2xl font-extrabold text-stone-900 mt-1 block">{ordenes.length} Órdenes</span>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* 2. LABORES Y CUADERNO SAG */}
         {activeTab === 'labores' && (
           <LaboresView
             labores={labores}
@@ -317,13 +546,14 @@ export function App() {
           />
         )}
 
+        {/* 3. RECETAS / ÓRDENES DE TRABAJO */}
         {activeTab === 'ordenes' && (
           <OrdenesTrabajoView
             ordenes={ordenes}
             parcelas={parcelas}
             inventario={inventario}
             usuarios={usuarios}
-            activeUser={activeUser}
+            activeUser={currentUser}
             onAddOrden={handleAddOrden}
             onUpdateOrden={handleUpdateOrden}
             onExecuteOrden={handleExecuteOrden}
@@ -331,6 +561,7 @@ export function App() {
           />
         )}
 
+        {/* 4. BODEGA E INVENTARIO */}
         {activeTab === 'bodega' && (
           <BodegaView
             inventario={inventario}
@@ -340,14 +571,110 @@ export function App() {
           />
         )}
 
-        {activeTab === 'calculadora' && (
-          <CalculadoraView
-            parcelas={parcelas}
-            inventario={inventario}
-          />
+        {/* 5. SECCIÓN RIEGO Y FERTIRRIEGO */}
+        {activeTab === 'riego' && (
+          <div className="bg-white p-6 rounded-2xl border border-stone-200 shadow-2xs space-y-4 text-xs">
+            <h2 className="text-lg font-bold text-stone-900 flex items-center gap-2">
+              <Droplet className="w-5 h-5 text-blue-600" /> Control de Riego y Fertirriego
+            </h2>
+            <p className="text-stone-600">
+              Registro de tiempos de riego, sectores por hectárea, volumen de agua aplicado (m³) e inyección de fertilizantes solubles.
+            </p>
+          </div>
         )}
+
+        {/* 6. SECCIÓN POZO PROFUNDO */}
+        {activeTab === 'pozo' && (
+          <div className="bg-white p-6 rounded-2xl border border-stone-200 shadow-2xs space-y-4 text-xs">
+            <h2 className="text-lg font-bold text-stone-900 flex items-center gap-2">
+              <Waves className="w-5 h-5 text-cyan-600" /> Extracción Pozo Profundo
+            </h2>
+            <p className="text-stone-600">
+              Registro obligatorio de caudales (L/s), niveles freáticos (m) y volumen total extraído.
+            </p>
+          </div>
+        )}
+
+        {/* 7. SECCIÓN COSECHA */}
+        {activeTab === 'cosecha' && (
+          <div className="bg-white p-6 rounded-2xl border border-stone-200 shadow-2xs space-y-4 text-xs">
+            <h2 className="text-lg font-bold text-stone-900 flex items-center gap-2">
+              <Apple className="w-5 h-5 text-purple-600" /> Registros de Cosecha & Bins
+            </h2>
+            <p className="text-stone-600">
+              Control de kilos cosechados por cuartel, conteo de bins, calibres promedio y lote de exportación.
+            </p>
+          </div>
+        )}
+
+        {/* 8. GESTIÓN DE USUARIOS Y CLAVES (SOLO VISIBLE PARA ADMINISTRADOR) */}
+        {activeTab === 'usuarios' && isAdmin && (
+          <div className="space-y-4 text-xs">
+            <div className="p-4 bg-emerald-950 text-white rounded-2xl flex justify-between items-center">
+              <div>
+                <h2 className="text-base font-bold flex items-center gap-2">
+                  <Users className="w-5 h-5 text-emerald-300" /> Administración de Usuarios y Credenciales
+                </h2>
+                <p className="text-emerald-200 text-[11px] mt-0.5">
+                  Exclusivo para Administrador. Permite revisar y modificar las claves personales del personal.
+                </p>
+              </div>
+            </div>
+
+            <div className="bg-white border border-stone-200 rounded-2xl overflow-hidden shadow-2xs">
+              <table className="w-full text-left">
+                <thead className="bg-stone-50 border-b border-stone-200 text-stone-600 font-bold text-[10px] uppercase">
+                  <tr>
+                    <th className="p-3">Nombre</th>
+                    <th className="p-3">Correo</th>
+                    <th className="p-3">Rol</th>
+                    <th className="p-3">Registro SAG</th>
+                    <th className="p-3">Contraseña Personal</th>
+                    <th className="p-3">Estado</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-stone-100">
+                  {usuarios.map((u) => {
+                    const isVisible = showClavesAdmin[u.id];
+                    return (
+                      <tr key={u.id} className="hover:bg-stone-50">
+                        <td className="p-3 font-bold text-stone-900">{u.nombre}</td>
+                        <td className="p-3 text-stone-600 font-mono">{u.email}</td>
+                        <td className="p-3">
+                          <span className="px-2 py-0.5 rounded font-bold uppercase text-[10px] bg-stone-100 text-stone-800">
+                            {u.rol}
+                          </span>
+                        </td>
+                        <td className="p-3 font-mono text-stone-600">{u.numeroRegistroSAG || 'N/A'}</td>
+                        <td className="p-3 font-mono font-bold">
+                          <div className="flex items-center gap-2">
+                            <span>{isVisible ? u.clave : '••••••••'}</span>
+                            <button
+                              type="button"
+                              onClick={() => setShowClavesAdmin(prev => ({ ...prev, [u.id]: !prev[u.id] }))}
+                              className="text-stone-400 hover:text-stone-700 cursor-pointer"
+                            >
+                              {isVisible ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                            </button>
+                          </div>
+                        </td>
+                        <td className="p-3">
+                          <span className={`px-2 py-0.5 rounded font-bold text-[10px] ${u.estado === 'activo' ? 'bg-emerald-100 text-emerald-900' : 'bg-red-100 text-red-900'}`}>
+                            {u.estado}
+                          </span>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        )}
+
       </main>
 
+      {/* MODAL NUEVA / EDITAR LABOR */}
       {isLaborModalOpen && (
         <ModalLabor
           isOpen={isLaborModalOpen}
@@ -355,7 +682,7 @@ export function App() {
           parcelas={parcelas}
           inventario={inventario}
           usuarios={usuarios}
-          activeUserId={activeUserId}
+          activeUserId={currentUser.id}
           onSave={handleSaveLabor}
           onClose={() => {
             setIsLaborModalOpen(false);
