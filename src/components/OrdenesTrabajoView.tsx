@@ -36,7 +36,7 @@ export const OrdenesTrabajoView: React.FC<OrdenesTrabajoViewProps> = ({
   // Estados del Formulario
   const [parcelaIds, setParcelaIds] = useState<string[]>([]);
   const [destinoAplicacion, setDestinoAplicacion] = useState<DestinoAplicacion>('Huerto de Kiwi');
-  const [superficieManual, setSuperficieManual] = useState<number>(0.5); // Para destinos fuera del huerto
+  const [superficieManual, setSuperficieManual] = useState<number>(0.5);
   const [fechaProgramada, setFechaProgramada] = useState(new Date(Date.now() + 86400000).toISOString().slice(0, 10));
   const [plagaObjetivo, setPlagaObjetivo] = useState('Control Fitosanitario / Preventivo');
   
@@ -65,7 +65,6 @@ export const OrdenesTrabajoView: React.FC<OrdenesTrabajoViewProps> = ({
 
   const caldoTotal = Math.round(Number(mojamientoLHa || 1000) * haCalculada);
 
-  // Funciones para manejar los productos
   const agregarProducto = () => {
     setProductos([...productos, {
       productoComercial: '', materiaActiva: '', numeroRegistroSAG: '', dosisPorHa: 1, unidadDosis: 'kg/ha', totalProductoRequerido: 0, unidadProducto: 'kg'
@@ -316,7 +315,6 @@ export const OrdenesTrabajoView: React.FC<OrdenesTrabajoViewProps> = ({
 
             <form onSubmit={handleSubmit} className="p-6 space-y-4 max-h-[85vh] overflow-y-auto">
               
-              {/* DESTINO Y SELECCIÓN CONDICIONAL (CUARTELES VS SUPERFICIE APROXIMADA) */}
               <div className="grid grid-cols-1 gap-3 p-3.5 bg-amber-50 rounded-xl border border-amber-200">
                 <div>
                   <label className="block font-bold text-amber-950 mb-1 flex items-center gap-1.5"><Compass className="w-3.5 h-3.5 text-amber-700" /> Destino de la Aplicación *</label>
@@ -330,7 +328,6 @@ export const OrdenesTrabajoView: React.FC<OrdenesTrabajoViewProps> = ({
                   </select>
                 </div>
 
-                {/* SI ES HUERTO DE KIWI: MOSTRAR CUARTELES */}
                 {esHuerto ? (
                   <div>
                     <label className="block font-bold text-stone-800 mb-2">Selecciona los Cuarteles *</label>
@@ -350,7 +347,6 @@ export const OrdenesTrabajoView: React.FC<OrdenesTrabajoViewProps> = ({
                     </div>
                   </div>
                 ) : (
-                  /* SI ES OTRO DESTINO: INGRESO MANUAL DE SUPERFICIE */
                   <div className="bg-white p-3 rounded-lg border border-amber-300">
                     <label className="block font-bold text-stone-800 mb-1">Superficie Aproximada a Tratar (Hectáreas) *</label>
                     <div className="flex items-center gap-3">
@@ -372,7 +368,6 @@ export const OrdenesTrabajoView: React.FC<OrdenesTrabajoViewProps> = ({
                 )}
               </div>
 
-              {/* MÚLTIPLES PRODUCTOS */}
               <div className="p-3.5 bg-emerald-50 rounded-xl border border-emerald-300 space-y-3">
                 <div className="flex justify-between items-center">
                   <label className="block font-bold text-emerald-950 flex items-center gap-1"><Package className="w-4 h-4 text-emerald-700" /> Productos a Aplicar *</label>
@@ -429,7 +424,6 @@ export const OrdenesTrabajoView: React.FC<OrdenesTrabajoViewProps> = ({
                 ))}
               </div>
 
-              {/* MOJAMIENTO Y CALDO */}
               <div className="grid grid-cols-2 gap-3 p-3.5 bg-blue-50 rounded-xl border border-blue-200">
                 <div>
                   <label className="block font-semibold text-stone-700 mb-1">Mojamiento (L/ha) *</label>
@@ -441,7 +435,6 @@ export const OrdenesTrabajoView: React.FC<OrdenesTrabajoViewProps> = ({
                 </div>
               </div>
 
-              {/* OTROS CAMPOS */}
               <div className="p-3.5 bg-stone-50 rounded-xl border space-y-3">
                 <div className="grid grid-cols-2 gap-3">
                   <div>
