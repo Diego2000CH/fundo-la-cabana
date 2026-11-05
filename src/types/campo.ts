@@ -9,10 +9,14 @@ export type CategoriaInsumo =
   | 'Elicitor PSA'
   | 'Insecticida'
   | 'Acariicida'
+  | 'Acaricida'
   | 'Herbicida'
+  | 'Fitorregulador'
   | 'Fertilizante'
   | 'Bioestimulante'
+  | 'Coadyuvante'
   | 'Adyuvante / Coadyuvante'
+  | 'Desinfectante'
   | 'Insumo de Riego'
   | 'Otro';
 
@@ -34,6 +38,56 @@ export type DestinoAplicacion =
 
 export type EstadoFormaFertilizante = 'Líquido' | 'Granulado';
 export type SolubilidadFertilizante = 'Soluble' | 'No soluble';
+export type RolUsuario = 'administrador' | 'agronomo' | 'operador' | 'consultor';
+export type EstadoUsuario = 'activo' | 'inactivo';
+
+// ==========================================
+// ESTRUCTURAS PRINCIPALES DEL FUNDO
+// ==========================================
+
+export interface ExplotacionAgricola {
+  nombreFundo: string;
+  titular: string;
+  identificacionFiscal: string;
+  comunaRegion: string;
+  direccion: string;
+  asesorAgronomo: string;
+  numeroRegistroAgricola: string;
+  telefonoContacto: string;
+  temporada: string;
+}
+
+export interface Parcela {
+  id: string;
+  nombre: string;
+  superficieHa: number;
+  variedad?: string;
+  anoPlantacion?: number;
+  descripcion?: string;
+}
+
+export interface LugarPredio {
+  id: string;
+  nombre: string;
+  tipo: string;
+  descripcion?: string;
+}
+
+export interface UsuarioPredio {
+  id: string;
+  nombre: string;
+  email: string;
+  telefono?: string;
+  rol: RolUsuario;
+  rutIdentificacion?: string;
+  tituloProfesional?: string;
+  numeroRegistroSAG?: string;
+  estado: EstadoUsuario;
+  fechaAlta: string;
+  avatarColor?: string;
+  notas?: string;
+  clave?: string;
+}
 
 // ==========================================
 // 1. INVENTARIO / BODEGA
@@ -42,25 +96,25 @@ export type SolubilidadFertilizante = 'Soluble' | 'No soluble';
 export interface InsumoInventario {
   id: string;
   nombreComercial: string;
-  materiaActiva: string; // O ingrediente activo
+  materiaActiva: string;
   numeroRegistroSAG?: string;
   categoria: CategoriaInsumo;
   stockActual: number;
   unidad: 'L' | 'kg' | 'g' | 'cc';
+  stockMinimo?: number;
+  ubicacionBodega?: string;
+  costoPorUnidadCLP?: number;
+  consumoHistoricoAcumulado?: number;
   
-  // Fechas de control
+  // Fechas y Control
   fechaElaboracion?: string;
   fechaVencimiento?: string;
-  
-  // Destino específico del producto
   destinoEspecifico?: DestinoUso;
   
-  // Campos específicos para Fertilizantes
-  composicionQuimica?: string; // Ej: NPK 15-15-15, Calcio soluble 15%, etc.
-  formaFertilizante?: EstadoFormaFertilizante; // Líquido o Granulado
-  solubilidad?: SolubilidadFertilizante; // Soluble o No soluble
-  
-  // Observaciones adicionales de bodega
+  // Fertilizante Detalle
+  composicionQuimica?: string;
+  formaFertilizante?: EstadoFormaFertilizante;
+  solubilidad?: SolubilidadFertilizante;
   observaciones?: string;
 }
 
@@ -69,7 +123,7 @@ export interface InsumoInventario {
 // ==========================================
 
 export interface ProductoOrden {
-  insumoId?: string; // Para vincularlo con la bodega y descontar stock
+  insumoId?: string;
   productoComercial: string;
   materiaActiva: string;
   numeroRegistroSAG: string;
@@ -84,46 +138,134 @@ export interface OrdenTrabajoFitosanitaria {
   numeroOrden: string;
   fechaEmision: string;
   fechaProgramada: string;
-  
-  // Destino de la orden (Kiwis, Vivero, Quinta Frutal, Casa Patronal, etc.)
   destinoAplicacion: DestinoAplicacion;
-  
-  // Selección múltiple de cuarteles para Kiwis (Cuartel 1, Cuartel 2, Cuartel 3)
-  parcelaIds: string[]; // Ej: ['c1', 'c2'] o ['c1', 'c2', 'c3']
-  parcelaNombres: string; // Ej: "Cuartel 1, Cuartel 2"
-  superficieTratarHa: number; // Suma de hectáreas tratadas
-  
+  parcelaIds: string[];
+  parcelaNombres: string;
+  superficieTratarHa: number;
   estado: 'emitida' | 'en_ejecucion' | 'completada';
   plagaObjetivo: string;
-  
-  // Múltiples productos por Orden de Trabajo
   productos: ProductoOrden[];
-  
   mojamientoLHa: number;
   caldoTotalLitros: number;
-  
   plazoReingresoHoras: number;
   plazoCarenciaDias: number;
   eppObligatorio: string[];
   condicionesClimaticasRequeridas: string;
-  
   agronomoEmisorId: string;
   agronomoEmisorNombre: string;
   agronomoRegistroSAG: string;
   agronomoFirmaDigital: string;
-  
   aplicadorAsignadoId?: string;
   aplicadorAsignadoNombre?: string;
   maquinariaTractor: string;
-  
   descontadoInventario: boolean;
   observacionesTecnicas?: string;
   aplicadorFirma?: string;
 }
 
 // ==========================================
-// 3. REGISTRO DE RIEGO Y SECTORES
+// 3. LABORES, POZO, CLIMA Y OTROS REGISTROS
 // ==========================================
+
+export type TipoLabor = 'Aplicacion Fitosanitaria' | 'Fertilizacion' | 'Poda' | 'Cosecha' | 'Desmalezado' | 'Riego' | 'Otra';
+
+export interface RegistroLabor {
+  id: string;
+  fecha: string;
+  parcelaId: string;
+  parcelaNombre: string;
+  tipoLabor: TipoLabor;
+  descripcion: string;
+  operadorNombre: string;
+  insumoId?: string;
+  insumoNombre?: string;
+  dosisPorHa?: number;
+  totalInsumoUtilizado?: number;
+  unidadInsumo?: string;
+  observaciones?: string;
+}
+
+export interface RegistroExtraccionPozo {
+  id: string;
+  fecha: string;
+  caudalLps: number;
+  horasOperacion: number;
+  volumenExtraidoM3: number;
+  nivelFreaticoM?: number;
+  operador: string;
+}
+
+export interface ClimaCondiciones {
+  temperaturaC: number;
+  humedadRelativa: number;
+  velocidadVientoKmH: number;
+  vientoDireccion: string;
+  precipitacionMm: number;
+  puntoRocioC: number;
+  presionHpa: number;
+  radiacionUv: number;
+  alertaHelada: boolean;
+  aptoPulverizacion: string;
+  motivoNoApto: string;
+}
+
+export interface MuestreoMadurez {
+  id: string;
+  fecha: string;
+  parcelaId: string;
+  parcelaNombre: string;
+  solidosSolublesBrix: number;
+  firmezaPresionKg: number;
+  colorSemilla: string;
+  estadoAptoCosecha: boolean;
+  observaciones?: string;
+}
+
+export interface RegistroCosechaLote {
+  id: string;
+  fecha: string;
+  parcelaId: string;
+  parcelaNombre: string;
+  kilosTotales: number;
+  binsTotales: number;
+  calibrePromedio: string;
+  destinoExportacion: string;
+  responsableCosecha: string;
+}
+
+export interface CondicionHorasFrio {
+  temporada: string;
+  horasFrioAcumuladas: number;
+  horasFrioMetaHayward: number;
+  porcentajeCumplimiento: number;
+  fechaInicioMedicion: string;
+  fechaUltimaActualizacion: string;
+  temperaturaMinimaRegistradaC: number;
+  rompedorDormanciaRecomendado: string;
+  fechaSugeridaRompedor: string;
+  estadoDormancia: string;
+  observacionesAgronomicas: string;
+}
+
+export interface SeguimientoFenologico {
+  id: string;
+  fecha: string;
+  parcelaId: string;
+  parcelaNombre: string;
+  estadoFenologico: string;
+  porcentajeAvance: number;
+  observaciones?: string;
+}
+
+export interface RegistroPolinizacion {
+  id: string;
+  fecha: string;
+  parcelaId: string;
+  parcelaNombre: string;
+  numeroColmenasHa: number;
+  actividadAbejas: string;
+  observaciones?: string;
+}
 
 export type TipoRiego = 'Solo Riego por Goteo' | 'Fertirriego';
 export type FuenteAguaRiego = 'Tranque acumulador' | 'Canal de regadío' | 'Red presurizada' | 'Pozo profundo' | 'Otra fuente';
@@ -139,7 +281,7 @@ export interface RegistroRiegoSector {
   id: string;
   fecha: string;
   horaInicio: string;
-  sectorId: string;
+  sectorId?: string;
   sectorDestino: string;
   superficieHa: number;
   tipoRiego: TipoRiego;
@@ -147,28 +289,22 @@ export interface RegistroRiegoSector {
   duracionHoras: number;
   volumenM3: number;
   litrosTotales: number;
-  laminaMm: number;
-  
-  // Fertirriego específico
+  laminaMm?: number;
   productoFertilizante?: string;
   dosisKgHa?: number;
   totalFertilizanteKg?: number;
   conductividadElectrica?: number;
   phSolucion?: number;
-  
   operador: string;
   observaciones?: string;
 }
 
-// ==========================================
-// 4. PARCELAS Y CUARTELES
-// ==========================================
-
-export interface Parcela {
-  id: string;
-  nombre: string;
-  superficieHa: number;
-  variedad?: string;
-  anoPlantacion?: number;
-  descripcion?: string;
+export interface PlagaFicha {
+  nombreComun: string;
+  nombreCientifico: string;
+  cultivosAfectados: string[];
+  sintomas: string;
+  umbralEconomico: string;
+  metodoControl: string;
+  periodoAlerta: string;
 }
