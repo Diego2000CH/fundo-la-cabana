@@ -34,8 +34,9 @@ export const OrdenesTrabajoView: React.FC<OrdenesTrabajoViewProps> = ({
   const [editingOrdenItem, setEditingOrdenItem] = useState<OrdenTrabajoFitosanitaria | null>(null);
 
   // Estados del Formulario
-  const [parcelaIds, setParcelaIds] = useState<string[]>([]); // Múltiples cuarteles
+  const [parcelaIds, setParcelaIds] = useState<string[]>([]);
   const [destinoAplicacion, setDestinoAplicacion] = useState<DestinoAplicacion>('Huerto de Kiwi');
+  const [superficieManual, setSuperficieManual] = useState<number>(0.5); // Para destinos fuera del huerto
   const [fechaProgramada, setFechaProgramada] = useState(new Date(Date.now() + 86400000).toISOString().slice(0, 10));
   const [plagaObjetivo, setPlagaObjetivo] = useState('Control Fitosanitario / Preventivo');
   
@@ -55,12 +56,16 @@ export const OrdenesTrabajoView: React.FC<OrdenesTrabajoViewProps> = ({
   const [executingOrden, setExecutingOrden] = useState<OrdenTrabajoFitosanitaria | null>(null);
   const [execFirmaAplicador, setExecFirmaAplicador] = useState('');
 
-  // Cálculos de Hectáreas (Suma de múltiples cuarteles)
+  // Cálculo de Hectáreas
+  const esHuerto = destinoAplicacion === 'Huerto de Kiwi';
   const selectedParcelas = parcelas.filter(p => parcelaIds.includes(p.id));
-  const ha = selectedParcelas.reduce((sum, p) => sum + (p.superficieHa || 0), 0) || 1;
-  const caldoTotal = Math.round(Number(mojamientoLHa || 1000) * ha);
+  const haCalculada = esHuerto 
+    ? (selectedParcelas.reduce((sum, p) => sum + (p.superficieHa || 0), 0) || 1)
+    : (Number(superficieManual) || 0.1);
 
-  // Funciones para manejar el arreglo de productos
+  const caldoTotal = Math.round(Number(mojamientoLHa || 1000) * haCalculada);
+
+  // Funciones para manejar los productos
   const agregarProducto = () => {
     setProductos([...productos, {
       productoComercial: '', materiaActiva: '', numeroRegistroSAG: '', dosisPorHa: 1, unidadDosis: 'kg/ha', totalProductoRequerido: 0, unidadProducto: 'kg'
@@ -77,7 +82,6 @@ export const OrdenesTrabajoView: React.FC<OrdenesTrabajoViewProps> = ({
     const nuevos = [...productos];
     nuevos[index] = { ...nuevos[index], [campo]: valor };
     
-    // Autocompletar si se selecciona de bodega
     if (campo === 'insumoId') {
       const ins = inventario.find(i => i.id === valor);
       if (ins) {
@@ -89,8 +93,7 @@ export const OrdenesTrabajoView: React.FC<OrdenesTrabajoViewProps> = ({
       }
     }
     
-    // Calcular total requerido dinámicamente
-    nuevos[index].totalProductoRequerido = Number((nuevos[index].dosisPorHa * ha).toFixed(2));
+    nuevos[index].totalProductoRequerido = Number((nuevos[index].dosisPorHa * haCalculada).toFixed(2));
     setProductos(nuevos);
   };
 
@@ -110,6 +113,7 @@ export const OrdenesTrabajoView: React.FC<OrdenesTrabajoViewProps> = ({
     setEditingOrdenItem(null);
     setParcelaIds(parcelas.length > 0 ? [parcelas[0].id] : []);
     setDestinoAplicacion('Huerto de Kiwi');
+    setSuperficieManual(0.5);
     setFechaProgramada(new Date(Date.now() + 86400000).toISOString().slice(0, 10));
     setPlagaObjetivo('Control Fitosanitario / Preventivo');
     setProductos([{ productoComercial: '', materiaActiva: '', numeroRegistroSAG: '', dosisPorHa: 1.5, unidadDosis: 'kg/ha', totalProductoRequerido: 0, unidadProducto: 'kg' }]);
@@ -127,6 +131,7 @@ export const OrdenesTrabajoView: React.FC<OrdenesTrabajoViewProps> = ({
     setEditingOrdenItem(o);
     setParcelaIds(o.parcelaIds || []);
     setDestinoAplicacion(o.destinoAplicacion || 'Huerto de Kiwi');
+    setSuperficieManual(o.superficieTratarHa || 0.5);
     setFechaProgramada(o.fechaProgramada);
     setPlagaObjetivo(o.plagaObjetivo);
     setProductos(o.productos || []);
@@ -142,11 +147,12 @@ export const OrdenesTrabajoView: React.FC<OrdenesTrabajoViewProps> = ({
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (parcelaIds.length === 0) return alert("Selecciona al menos un cuartel.");
+    if (esHuerto && parcelaIds.length === 0) return alert("Selecciona al menos un cuartel.");
+    if (!esHuerto && (Number(superficieManual) <= 0)) return alert("Ingresa una superficie válida.");
     if (productos.length === 0 || !productos[0].productoComercial) return alert("Agrega al menos un producto.");
 
     const apl = usuarios.find(u => u.id === aplicadorId);
-    const nombresParcelas = selectedParcelas.map(p => p.nombre).join(', ');
+    const nombresParcelas = esHuerto ? selectedParcelas.map(p => p.nombre).join(', ') : destinoAplicacion;
     const numOrden = editingOrdenItem ? editingOrdenItem.numeroOrden : `OT-2026-${(ordenes.length + 1).toString().padStart(3, '0')}`;
 
     const nuevaOrden: OrdenTrabajoFitosanitaria = {
@@ -154,13 +160,16 @@ export const OrdenesTrabajoView: React.FC<OrdenesTrabajoViewProps> = ({
       numeroOrden: numOrden,
       fechaEmision: editingOrdenItem ? editingOrdenItem.fechaEmision : new Date().toISOString().slice(0, 10),
       fechaProgramada,
-      parcelaIds,
+      parcelaIds: esHuerto ? parcelaIds : [],
       parcelaNombres: nombresParcelas,
-      superficieTratarHa: ha,
+      superficieTratarHa: haCalculada,
       destinoAplicacion,
       estado: editingOrdenItem ? editingOrdenItem.estado : 'emitida',
       plagaObjetivo,
-      productos,
+      productos: productos.map(p => ({
+        ...p,
+        totalProductoRequerido: Number((p.dosisPorHa * haCalculada).toFixed(2))
+      })),
       mojamientoLHa: Number(mojamientoLHa),
       caldoTotalLitros: caldoTotal,
       plazoReingresoHoras: Number(plazoReingreso),
@@ -212,7 +221,7 @@ export const OrdenesTrabajoView: React.FC<OrdenesTrabajoViewProps> = ({
           </p>
         </div>
         <button onClick={openNewModal} className="px-4 py-2.5 bg-emerald-600 hover:bg-emerald-500 text-white font-bold rounded-xl text-xs transition-all shadow-sm flex items-center gap-2 shrink-0 cursor-pointer">
-          <Plus className="w-4 h-4" />  Emitir Nueva Receta
+          <Plus className="w-4 h-4" /> + Emitir Nueva Receta
         </button>
       </div>
 
@@ -242,7 +251,7 @@ export const OrdenesTrabajoView: React.FC<OrdenesTrabajoViewProps> = ({
                 <div className="flex flex-wrap items-center gap-2.5">
                   <span className="px-2.5 py-1 rounded-lg font-mono font-bold bg-stone-900 text-white">{orden.numeroOrden}</span>
                   <strong className="text-base text-stone-900 flex items-center gap-1">
-                    <MapPin className="w-4 h-4 text-stone-500"/> {orden.parcelaNombres || 'Sin cuartel'}
+                    <MapPin className="w-4 h-4 text-stone-500"/> {orden.parcelaNombres || 'Sin destino'}
                   </strong>
                   <span className="px-2.5 py-0.5 rounded-full font-bold bg-blue-100 text-blue-900 border border-blue-200">📍 {orden.destinoAplicacion}</span>
                   <span className={`px-2.5 py-0.5 rounded-full font-bold ${isCompleted ? 'bg-emerald-100 text-emerald-900' : 'bg-amber-100 text-amber-900'}`}>{isCompleted ? '✓ Aplicación Realizada' : '⏳ Pendiente'}</span>
@@ -262,9 +271,9 @@ export const OrdenesTrabajoView: React.FC<OrdenesTrabajoViewProps> = ({
                   <span className="text-stone-600 font-medium block mt-1">Sup. Total: <strong>{orden.superficieTratarHa} ha</strong></span>
                 </div>
                 <div className="md:col-span-2">
-                  <span className="text-stone-400 uppercase font-bold text-[10px] block mb-1">Productos a Aplicar ({orden.productos.length})</span>
+                  <span className="text-stone-400 uppercase font-bold text-[10px] block mb-1">Productos a Aplicar ({(orden.productos || []).length})</span>
                   <div className="space-y-1">
-                    {orden.productos.map((prod, idx) => (
+                    {(orden.productos || []).map((prod, idx) => (
                       <div key={idx} className="flex justify-between items-center bg-white p-1.5 rounded border border-stone-200">
                         <div>
                           <strong className="text-emerald-900">{prod.productoComercial}</strong>
@@ -307,7 +316,7 @@ export const OrdenesTrabajoView: React.FC<OrdenesTrabajoViewProps> = ({
 
             <form onSubmit={handleSubmit} className="p-6 space-y-4 max-h-[85vh] overflow-y-auto">
               
-              {/* DESTINO Y CUARTELES MÚLTIPLES */}
+              {/* DESTINO Y SELECCIÓN CONDICIONAL (CUARTELES VS SUPERFICIE APROXIMADA) */}
               <div className="grid grid-cols-1 gap-3 p-3.5 bg-amber-50 rounded-xl border border-amber-200">
                 <div>
                   <label className="block font-bold text-amber-950 mb-1 flex items-center gap-1.5"><Compass className="w-3.5 h-3.5 text-amber-700" /> Destino de la Aplicación *</label>
@@ -320,23 +329,47 @@ export const OrdenesTrabajoView: React.FC<OrdenesTrabajoViewProps> = ({
                     <option value="Caminos y cercos">🚜 Caminos / Canales</option>
                   </select>
                 </div>
-                <div>
-                  <label className="block font-bold text-stone-800 mb-2">Selecciona los Cuarteles *</label>
-                  <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
-                    {parcelas.map(p => (
-                      <label key={p.id} className={`flex items-center gap-2 p-2 rounded-lg border cursor-pointer transition-colors ${parcelaIds.includes(p.id) ? 'bg-amber-100 border-amber-400' : 'bg-white hover:bg-stone-50'}`}>
-                        <input type="checkbox" checked={parcelaIds.includes(p.id)} onChange={() => toggleParcela(p.id)} className="w-4 h-4 text-amber-600 rounded" />
-                        <div>
-                          <span className="block font-bold text-stone-800 text-[11px]">{p.nombre}</span>
-                          <span className="text-[10px] text-stone-500">{p.superficieHa} ha</span>
-                        </div>
-                      </label>
-                    ))}
+
+                {/* SI ES HUERTO DE KIWI: MOSTRAR CUARTELES */}
+                {esHuerto ? (
+                  <div>
+                    <label className="block font-bold text-stone-800 mb-2">Selecciona los Cuarteles *</label>
+                    <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
+                      {parcelas.map(p => (
+                        <label key={p.id} className={`flex items-center gap-2 p-2 rounded-lg border cursor-pointer transition-colors ${parcelaIds.includes(p.id) ? 'bg-amber-100 border-amber-400' : 'bg-white hover:bg-stone-50'}`}>
+                          <input type="checkbox" checked={parcelaIds.includes(p.id)} onChange={() => toggleParcela(p.id)} className="w-4 h-4 text-amber-600 rounded" />
+                          <div>
+                            <span className="block font-bold text-stone-800 text-[11px]">{p.nombre}</span>
+                            <span className="text-[10px] text-stone-500">{p.superficieHa} ha</span>
+                          </div>
+                        </label>
+                      ))}
+                    </div>
+                    <div className="mt-2 text-right text-amber-900 font-bold">
+                      Superficie Total Seleccionada: <span className="text-sm font-extrabold">{haCalculada.toFixed(2)} ha</span>
+                    </div>
                   </div>
-                  <div className="mt-2 text-right text-amber-900 font-bold">
-                    Superficie Total Seleccionada: <span className="text-sm font-extrabold">{ha.toFixed(2)} ha</span>
+                ) : (
+                  /* SI ES OTRO DESTINO: INGRESO MANUAL DE SUPERFICIE */
+                  <div className="bg-white p-3 rounded-lg border border-amber-300">
+                    <label className="block font-bold text-stone-800 mb-1">Superficie Aproximada a Tratar (Hectáreas) *</label>
+                    <div className="flex items-center gap-3">
+                      <input 
+                        type="number" 
+                        step="0.05" 
+                        min="0.01" 
+                        required 
+                        value={superficieManual} 
+                        onChange={(e) => setSuperficieManual(parseFloat(e.target.value) || 0)} 
+                        className="p-2 border rounded-lg font-mono font-bold w-32 bg-stone-50" 
+                        placeholder="Ej: 0.5" 
+                      />
+                      <span className="text-stone-600 font-medium text-xs">
+                        ha (Ejemplo: 0.5 ha = 5.000 m²)
+                      </span>
+                    </div>
                   </div>
-                </div>
+                )}
               </div>
 
               {/* MÚLTIPLES PRODUCTOS */}
@@ -388,7 +421,7 @@ export const OrdenesTrabajoView: React.FC<OrdenesTrabajoViewProps> = ({
                       <div>
                         <label className="block text-[10px] font-semibold mb-0.5 text-emerald-800 flex items-center gap-1"><Calculator className="w-3 h-3"/> Total a Preparar</label>
                         <div className="p-2 bg-emerald-100 rounded-lg font-bold text-center border border-emerald-300">
-                          {(prod.dosisPorHa * ha).toFixed(2)} {prod.unidadProducto}
+                          {(prod.dosisPorHa * haCalculada).toFixed(2)} {prod.unidadProducto}
                         </div>
                       </div>
                     </div>
@@ -440,7 +473,7 @@ export const OrdenesTrabajoView: React.FC<OrdenesTrabajoViewProps> = ({
         <div className="fixed inset-0 z-50 flex items-center justify-center p-3 bg-stone-900/60 backdrop-blur-xs">
           <div className="bg-white rounded-2xl shadow-xl w-full max-w-md p-6 border space-y-4">
             <h3 className="font-bold text-sm text-stone-900">Confirmar Aplicación & Descontar Bodega</h3>
-            <p className="text-stone-600">Se descontarán automáticamente los <strong>{executingOrden.productos.length} producto(s)</strong> del inventario para <strong>{executingOrden.parcelaNombres}</strong>.</p>
+            <p className="text-stone-600">Se descontarán automáticamente los <strong>{(executingOrden.productos || []).length} producto(s)</strong> del inventario para <strong>{executingOrden.parcelaNombres}</strong>.</p>
             <div>
               <label className="block font-bold text-stone-700 mb-1">Firma / Registro del Aplicador</label>
               <input type="text" value={execFirmaAplicador} onChange={(e) => setExecFirmaAplicador(e.target.value)} className="w-full p-2.5 border rounded-lg font-mono" />
