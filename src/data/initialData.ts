@@ -19,13 +19,13 @@ import {
 // DATOS GENERALES DEL FUNDO
 export const initialExplotacion: ExplotacionAgricola = {
   nombreFundo: 'Fundo La Cabaña',
-  titular: '',
-  identificacionFiscal: '',
-  comunaRegion: '',
-  direccion: '',
-  asesorAgronomo: '',
-  numeroRegistroAgricola: '',
-  telefonoContacto: '',
+  titular: 'Diego Pereira Ramirez',
+  identificacionFiscal: '76.123.456-7',
+  comunaRegion: 'Curicó, Región del Maule',
+  direccion: 'Camino Los Niches Km 12',
+  asesorAgronomo: 'Diego Pereira Ramirez',
+  numeroRegistroAgricola: 'SAG-78945',
+  telefonoContacto: '+56 9 1234 5678',
   temporada: '2026 - 2027'
 };
 
@@ -37,9 +37,11 @@ export const initialParcelas: Parcela[] = [
 ];
 
 // PUNTOS Y ENTRADAS EN BLANCO
-export const initialLugaresPredio: LugarPredio[] = [];
+export const initialLugaresPredio: LugarPredio[] = [
+  { id: 'lug-1', nombre: 'Bodega Principal Fitosanitaria', tipo: 'Bodega', descripcion: 'Manejo de agroquímicos y fertilizantes' }
+];
 
-// BODEGA DE INSUMOS CON EJEMPLOS DE LOS NUEVOS TIPOS Y DETALLES
+// BODEGA DE INSUMOS
 export const initialInventario: InsumoInventario[] = [
   {
     id: 'ins-1',
@@ -49,6 +51,10 @@ export const initialInventario: InsumoInventario[] = [
     categoria: 'Fungicida y Bactericida',
     stockActual: 100,
     unidad: 'kg',
+    stockMinimo: 15,
+    ubicacionBodega: 'Bodega Principal',
+    costoPorUnidadCLP: 8500,
+    consumoHistoricoAcumulado: 0,
     fechaElaboracion: '2025-08-10',
     fechaVencimiento: '2027-08-10',
     destinoEspecifico: 'Kiwis',
@@ -62,6 +68,10 @@ export const initialInventario: InsumoInventario[] = [
     categoria: 'Elicitor PSA',
     stockActual: 50,
     unidad: 'L',
+    stockMinimo: 5,
+    ubicacionBodega: 'Bodega Principal',
+    costoPorUnidadCLP: 45000,
+    consumoHistoricoAcumulado: 0,
     fechaElaboracion: '2025-10-01',
     fechaVencimiento: '2027-10-01',
     destinoEspecifico: 'Kiwis',
@@ -75,6 +85,10 @@ export const initialInventario: InsumoInventario[] = [
     categoria: 'Fertilizante',
     stockActual: 500,
     unidad: 'kg',
+    stockMinimo: 50,
+    ubicacionBodega: 'Bodega Principal',
+    costoPorUnidadCLP: 1200,
+    consumoHistoricoAcumulado: 0,
     fechaElaboracion: '2025-05-15',
     fechaVencimiento: '2028-05-15',
     destinoEspecifico: 'Kiwis',
@@ -97,7 +111,7 @@ export const initialMuestreosMadurez: MuestreoMadurez[] = [];
 // REGISTROS DE COSECHA EN BLANCO
 export const initialCosechasLote: RegistroCosechaLote[] = [];
 
-// ÓRDENES DE TRABAJO CON MÚLTIPLES PRODUCTOS Y MULTI-CUARTEL DE EJEMPLO
+// ÓRDENES DE TRABAJO
 export const initialOrdenesTrabajo: OrdenTrabajoFitosanitaria[] = [
   {
     id: 'ot-101',
@@ -138,10 +152,10 @@ export const initialOrdenesTrabajo: OrdenTrabajoFitosanitaria[] = [
     plazoCarenciaDias: 30,
     eppObligatorio: ['Mascarilla con filtro', 'Guantes de nitrilo', 'Traje Tyvek', 'Antiparras'],
     condicionesClimaticasRequeridas: 'Viento menor a 10 km/h, sin precipitaciones',
-    agronomoEmisorId: 'usr-1',
-    agronomoEmisorNombre: 'Diego',
+    agronomoEmisorId: 'usr-admin-diego',
+    agronomoEmisorNombre: 'Diego Pereira Ramirez',
     agronomoRegistroSAG: 'SAG-AG-9988',
-    agronomoFirmaDigital: 'Diego - Asesor Agrónomo',
+    agronomoFirmaDigital: 'Diego Pereira Ramirez - Asesor Agrónomo',
     maquinariaTractor: 'Tractor John Deere + Pulverizadora 2000L',
     descontadoInventario: false,
     observacionesTecnicas: 'Cubrir bien la vegetación sin chorreo excesivo.'
@@ -184,20 +198,22 @@ export const initialCondicionHorasFrio: CondicionHorasFrio = {
   observacionesAgronomicas: 'Sin registros aún'
 };
 
-// USUARIO ADMINISTRADOR
-export const initialUsuarios: UsuarioPredio[] = [
+// USUARIO ADMINISTRADOR CON CLAVE
+export const initialUsuarios: (UsuarioPredio & { clave?: string })[] = [
   {
-    id: 'usr-1',
-    nombre: 'Diego',
-    email: 'diego@fundolacabana.cl',
-    telefono: '+56 9 ',
+    id: 'usr-admin-diego',
+    nombre: 'Diego Pereira Ramirez',
+    email: 'diegopereiraramirez@gmail.com',
+    telefono: '+56 9 1234 5678',
     rol: 'administrador',
     rutIdentificacion: '',
     tituloProfesional: 'Administrador General',
+    numeroRegistroSAG: 'SAG-AG-9988',
     estado: 'activo',
     fechaAlta: '2026-10-20',
-    avatarColor: 'bg-emerald-700 text-white',
-    notas: 'Administrador del Fundo La Cabaña'
+    avatarColor: 'bg-emerald-800 text-white',
+    notas: 'Administrador del Fundo La Cabaña',
+    clave: 'DiegoPer1.'
   }
 ];
 
