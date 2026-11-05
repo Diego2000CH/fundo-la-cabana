@@ -13,6 +13,7 @@ import { UsuariosView } from './components/UsuariosView';
 import { CosechaMadurezView } from './components/CosechaMadurezView';
 import { OrdenesTrabajoView } from './components/OrdenesTrabajoView';
 import { HorasFrioFenologiaView } from './components/HorasFrioFenologiaView';
+import { RiegoView } from './components/RiegoView';
 import { AlertasStockModal } from './components/AlertasStockModal';
 import { ModalLabor } from './components/ModalLabor';
 import { ModalExplotacion } from './components/ModalExplotacion';
@@ -62,46 +63,22 @@ import {
   OrdenTrabajoFitosanitaria,
   CondicionHorasFrio,
   SeguimientoFenologico,
-  RegistroPolinizacion
+  RegistroPolinizacion,
+  RegistroRiegoSector,
+  SectorRiegoConfig
 } from './types/campo';
 import { initialClimaLaCabana } from './data/initialData';
-import { RotateCcw, X, CheckCircle2, Loader2, Save, RefreshCw, Database, Lock, LogIn, AlertCircle, LogOut, UserCog, Waves, Plus, Droplet, Wheat, Edit2, Trash2, Settings2 } from 'lucide-react';
+import { RotateCcw, X, CheckCircle2, Loader2, Save, Database, Lock, LogIn, AlertCircle, LogOut, UserCog } from 'lucide-react';
 
 const SUPABASE_URL = 'https://zvtolionewlulqmtdaty.supabase.co';
 const SUPABASE_ANON_KEY = 'sb_publishable_s1vQx_x3_f3fDHHkdjVxZw_GTMkiU8I';
 
-export interface SectorRiegoItem {
-  id: string;
-  nombre: string;
-  ha: number;
-  descripcion?: string;
-}
-
-const SECTORES_INICIALES: SectorRiegoItem[] = [
-  { id: 'sec-1', nombre: 'Sector 1', ha: 3.8, descripcion: 'Lado Norte' },
-  { id: 'sec-2', nombre: 'Sector 2', ha: 3.2, descripcion: 'Lado Este' },
-  { id: 'sec-3', nombre: 'Sector 3', ha: 3.5, descripcion: 'Lado Sur' },
-  { id: 'sec-4', nombre: 'Sector 4', ha: 2.6, descripcion: 'Lado Poniente' }
+const SECTORES_INICIALES: SectorRiegoConfig[] = [
+  { id: 'sec-1', nombre: 'Sector 1', superficieHa: 3.8, descripcion: 'Lado Norte' },
+  { id: 'sec-2', nombre: 'Sector 2', superficieHa: 3.2, descripcion: 'Lado Este' },
+  { id: 'sec-3', nombre: 'Sector 3', superficieHa: 3.5, descripcion: 'Lado Sur' },
+  { id: 'sec-4', nombre: 'Sector 4', superficieHa: 2.6, descripcion: 'Lado Poniente' }
 ];
-
-interface RegistroRiegoSector {
-  id: string;
-  fecha: string;
-  horaInicio: string;
-  sectorDestino: string;
-  superficieHa: number;
-  tipoRiego: 'Solo Riego por Goteo' | 'Fertirriego' | 'Microaspersión' | 'Surco / Gravedad';
-  fuenteAgua: string;
-  duracionHoras: number;
-  volumenM3: number;
-  litrosTotales: number;
-  laminaMm?: number;
-  productoFertilizante?: string;
-  dosisKgHa?: number;
-  totalFertilizanteKg?: number;
-  operador: string;
-  observaciones?: string;
-}
 
 const USUARIO_INICIAL_ADMIN: UsuarioPredio & { clave?: string } = {
   id: 'usr-admin-diego',
@@ -125,10 +102,7 @@ export default function App() {
   const [inventario, setInventario] = useState<InsumoInventario[]>(getStoredInventario);
   const [registrosPozo, setRegistrosPozo] = useState<RegistroExtraccionPozo[]>(getStoredRegistrosPozo);
   const [riegosSector, setRiegosSector] = useState<RegistroRiegoSector[]>([]);
-  
-  // ESTADO DE LOS 4 SECTORES EDITABLES
-  const [sectoresRiego, setSectoresRiego] = useState<SectorRiegoItem[]>(SECTORES_INICIALES);
-  const [editingSectorModal, setEditingSectorModal] = useState<SectorRiegoItem | null>(null);
+  const [sectoresRiego, setSectoresRiego] = useState<SectorRiegoConfig[]>(SECTORES_INICIALES);
 
   const [lugares, setLugares] = useState<LugarPredio[]>(getStoredLugares);
   const [usuarios, setUsuarios] = useState<(UsuarioPredio & { clave?: string })[]>([
@@ -172,20 +146,6 @@ export default function App() {
   const [isExplotacionModalOpen, setIsExplotacionModalOpen] = useState(false);
   const [isResetConfirmOpen, setIsResetConfirmOpen] = useState(false);
 
-  // Estados Formulario Riego
-  const [isModalRiegoOpen, setIsModalRiegoOpen] = useState(false);
-  const [editingRiego, setEditingRiego] = useState<RegistroRiegoSector | null>(null);
-  const [riegoFecha, setRiegoFecha] = useState(new Date().toISOString().slice(0, 10));
-  const [riegoHora, setRiegoHora] = useState('08:00');
-  const [riegoSector, setRiegoSector] = useState('Sector 1');
-  const [riegoModalidad, setRiegoModalidad] = useState<'Solo Riego por Goteo' | 'Fertirriego'>('Solo Riego por Goteo');
-  const [riegoFuente, setRiegoFuente] = useState('Tranque acumulador');
-  const [riegoDuracion, setRiegoDuracion] = useState<number>(4.0);
-  const [riegoVolumen, setRiegoVolumen] = useState<number>(250);
-  const [riegoFertilizante, setRiegoFertilizante] = useState('Nitrato de Calcio');
-  const [riegoDosis, setRiegoDosis] = useState<number>(35);
-  const [riegoObservaciones, setRiegoObservaciones] = useState('');
-
   // 1. CARGA AUTOMÁTICA EN VIVO DESDE SUPABASE
   const cargarDesdeSupabase = async () => {
     setDbStatus('cargando');
@@ -211,12 +171,9 @@ export default function App() {
         if (Array.isArray(datos.inventario)) setInventario(datos.inventario);
         if (Array.isArray(datos.registrosPozo)) setRegistrosPozo(datos.registrosPozo);
         if (Array.isArray(datos.riegosSector)) setRiegosSector(datos.riegosSector);
-        
-        // Cargar los sectores de riego editados
         if (Array.isArray(datos.sectoresRiego) && datos.sectoresRiego.length > 0) {
           setSectoresRiego(datos.sectoresRiego);
         }
-
         if (Array.isArray(datos.lugares)) setLugares(datos.lugares);
         if (Array.isArray(datos.usuarios) && datos.usuarios.length > 0) {
           setUsuarios(datos.usuarios);
@@ -521,7 +478,7 @@ export default function App() {
             return {
               ...item,
               stockActual: Number((item.stockActual + revertAmount).toFixed(2)),
-              consumoHistoricoAcumulado: Math.max(0, Number((item.consumoHistoricoAcumulado - revertAmount).toFixed(2)))
+              consumoHistoricoAcumulado: Math.max(0, Number(((item.consumoHistoricoAcumulado || 0) - revertAmount).toFixed(2)))
             };
           }
           return item;
@@ -537,7 +494,7 @@ export default function App() {
             return {
               ...item,
               stockActual: Math.max(0, Number((item.stockActual - deductionAmount).toFixed(2))),
-              consumoHistoricoAcumulado: Number((item.consumoHistoricoAcumulado + deductionAmount).toFixed(2))
+              consumoHistoricoAcumulado: Number(((item.consumoHistoricoAcumulado || 0) + deductionAmount).toFixed(2))
             };
           }
           return item;
@@ -569,7 +526,7 @@ export default function App() {
             return {
               ...item,
               stockActual: Number((item.stockActual + restoreAmount).toFixed(2)),
-              consumoHistoricoAcumulado: Math.max(0, Number((item.consumoHistoricoAcumulado - restoreAmount).toFixed(2)))
+              consumoHistoricoAcumulado: Math.max(0, Number(((item.consumoHistoricoAcumulado || 0) - restoreAmount).toFixed(2)))
             };
           }
           return item;
@@ -577,6 +534,49 @@ export default function App() {
       );
     }
     setLabores((prev) => prev.filter((l) => l.id !== id));
+  };
+
+  // EXECUCIÓN Y DESCUENTO AUTOMÁTICO DE PRODUCTOS DE LA ORDEN DE TRABAJO DE BODEGA
+  const handleExecuteOrden = (ordenId: string, aplicadorNombre: string, firma: string) => {
+    const orden = ordenesTrabajo.find(o => o.id === ordenId);
+    if (!orden) return;
+
+    // Descontar todos los productos vinculados de la bodega
+    if (orden.productos && orden.productos.length > 0) {
+      setInventario(prevInv => {
+        let copyInv = [...prevInv];
+        orden.productos.forEach(prod => {
+          if (prod.insumoId) {
+            copyInv = copyInv.map(ins => {
+              if (ins.id === prod.insumoId) {
+                const descontar = Number(prod.totalProductoRequerido) || 0;
+                return {
+                  ...ins,
+                  stockActual: Math.max(0, Number((ins.stockActual - descontar).toFixed(2))),
+                  consumoHistoricoAcumulado: Number(((ins.consumoHistoricoAcumulado || 0) + descontar).toFixed(2))
+                };
+              }
+              return ins;
+            });
+          }
+        });
+        return copyInv;
+      });
+    }
+
+    // Marcar la orden como completada
+    setOrdenesTrabajo(prev => prev.map(o => {
+      if (o.id === ordenId) {
+        return {
+          ...o,
+          estado: 'completada',
+          descontadoInventario: true,
+          aplicadorAsignadoNombre: aplicadorNombre,
+          aplicadorFirma: firma
+        };
+      }
+      return o;
+    }));
   };
 
   const handleExecuteReset = () => {
@@ -601,81 +601,7 @@ export default function App() {
     guardarEnSupabase({ ...defaults, riegosSector: [], sectoresRiego: SECTORES_INICIALES });
   };
 
-  // CÁLCULO DE RIEGO EXCLUSIVO PARA EL SECTOR SELECCIONADO
-  const sectorActualObj = sectoresRiego.find(s => s.nombre === riegoSector) || sectoresRiego[0];
-  const sectorHa = sectorActualObj ? sectorActualObj.ha : 3.8;
-  
-  const laminaMmCalculada = (riegoVolumen > 0 && sectorHa > 0) 
-    ? Number((riegoVolumen / (10 * sectorHa)).toFixed(2)) 
-    : 0;
-
-  const fertilizanteTotalKg = (riegoDosis > 0 && sectorHa > 0)
-    ? Number((riegoDosis * sectorHa).toFixed(1))
-    : 0;
-
-  const handleSaveRiegoModal = (e: React.FormEvent) => {
-    e.preventDefault();
-    const lts = (Number(riegoVolumen) || 0) * 1000;
-    const nuevoRiego: RegistroRiegoSector = {
-      id: editingRiego ? editingRiego.id : `rieg-${Date.now()}`,
-      fecha: riegoFecha,
-      horaInicio: riegoHora,
-      sectorDestino: sectorActualObj.nombre,
-      superficieHa: sectorHa,
-      tipoRiego: riegoModalidad,
-      fuenteAgua: riegoFuente,
-      duracionHoras: Number(riegoDuracion) || 0,
-      volumenM3: Number(riegoVolumen) || 0,
-      litrosTotales: lts,
-      laminaMm: laminaMmCalculada,
-      productoFertilizante: riegoModalidad === 'Fertirriego' ? riegoFertilizante : undefined,
-      dosisKgHa: riegoModalidad === 'Fertirriego' ? Number(riegoDosis) || 0 : undefined,
-      totalFertilizanteKg: riegoModalidad === 'Fertirriego' ? fertilizanteTotalKg : undefined,
-      operador: activeUser.nombre,
-      observaciones: riegoObservaciones || undefined
-    };
-
-    if (editingRiego) {
-      setRiegosSector(prev => prev.map(r => r.id === editingRiego.id ? nuevoRiego : r));
-    } else {
-      setRiegosSector(prev => [nuevoRiego, ...prev]);
-    }
-    setIsModalRiegoOpen(false);
-  };
-
-  // GUARDAR EDICIÓN DE UN SECTOR DE RIEGO ESPECÍFICO
-  const handleSaveSingleSector = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!editingSectorModal) return;
-
-    const nuevaLista = sectoresRiego.map(s => 
-      s.id === editingSectorModal.id ? editingSectorModal : s
-    );
-
-    setSectoresRiego(nuevaLista);
-    guardarEnSupabase({
-      explotacion,
-      parcelas,
-      labores,
-      inventario,
-      registrosPozo,
-      riegosSector,
-      sectoresRiego: nuevaLista,
-      lugares,
-      usuarios,
-      activeUserId,
-      muestreosMadurez,
-      cosechasLote,
-      ordenesTrabajo,
-      horasFrio,
-      fenologia,
-      polinizacion
-    });
-
-    setEditingSectorModal(null);
-  };
-
-  const lowStockCount = inventario.filter((i) => i.stockActual <= i.stockMinimo).length;
+  const lowStockCount = inventario.filter((i) => i.stockActual <= (i.stockMinimo || 5)).length;
 
   // PANTALLA LOGIN
   if (!loggedInUser) {
@@ -859,101 +785,21 @@ export default function App() {
             onDeleteParcela={(id) => setParcelas((prev) => prev.filter((item) => item.id !== id))}
             onAddLugar={(l) => setLugares((prev) => [...prev, l])}
             onDeleteLugar={(id) => setLugares((prev) => prev.filter((item) => item.id !== id))}
-            onRegisterLaborForParcela={(pId) => handleOpenNewLaborWithDefaults(pId, undefined)}
           />
         )}
 
-        {/* USUARIOS */}
-        {activeTab === 'usuarios' && (
-          <UsuariosView
-            usuarios={usuarios}
-            activeUserId={activeUserId}
-            loggedInUser={loggedInUser}
-            onSetActiveUser={setActiveUserId}
-            onAddUsuario={(u) => {
-              const userWithPass = { ...u, clave: (u as any).clave || '1234' };
-              const nuevaLista = [...usuarios, userWithPass];
-              setUsuarios(nuevaLista);
-              guardarEnSupabase({
-                explotacion,
-                parcelas,
-                labores,
-                inventario,
-                registrosPozo,
-                riegosSector,
-                sectoresRiego,
-                lugares,
-                usuarios: nuevaLista,
-                activeUserId,
-                muestreosMadurez,
-                cosechasLote,
-                ordenesTrabajo,
-                horasFrio,
-                fenologia,
-                polinizacion
-              });
-            }}
-            onUpdateUsuario={(u) => {
-              const nuevaLista = usuarios.map((item) => item.id === u.id ? { ...u, clave: (u as any).clave || (item as any).clave || '1234' } : item);
-              setUsuarios(nuevaLista);
-              guardarEnSupabase({
-                explotacion,
-                parcelas,
-                labores,
-                inventario,
-                registrosPozo,
-                riegosSector,
-                sectoresRiego,
-                lugares,
-                usuarios: nuevaLista,
-                activeUserId,
-                muestreosMadurez,
-                cosechasLote,
-                ordenesTrabajo,
-                horasFrio,
-                fenologia,
-                polinizacion
-              });
-            }}
-            onDeleteUsuario={(id) => {
-              const nuevaLista = usuarios.filter((item) => item.id !== id);
-              setUsuarios(nuevaLista);
-              guardarEnSupabase({
-                explotacion,
-                parcelas,
-                labores,
-                inventario,
-                registrosPozo,
-                riegosSector,
-                sectoresRiego,
-                lugares,
-                usuarios: nuevaLista,
-                activeUserId,
-                muestreosMadurez,
-                cosechasLote,
-                ordenesTrabajo,
-                horasFrio,
-                fenologia,
-                polinizacion
-              });
-            }}
-          />
-        )}
-
-        {activeTab === 'cosecha' && (
-          <CosechaMadurezView
+        {activeTab === 'labores' && (
+          <LaboresView
+            labores={labores}
             parcelas={parcelas}
-            muestreos={muestreosMadurez}
-            onAddMuestreo={(m) => setMuestreosMadurez((prev) => [m, ...prev])}
-            onDeleteMuestreo={(id) => setMuestreosMadurez((prev) => prev.filter((m) => m.id !== id))}
-            cosechas={cosechasLote}
-            onAddCosecha={(c) => setCosechasLote((prev) => [c, ...prev])}
-            onDeleteCosecha={(id) => setCosechasLote((prev) => prev.filter((c) => c.id !== id))}
-            activeUserName={activeUser?.nombre}
+            inventario={inventario}
+            usuarios={usuarios}
+            onOpenNewLabor={handleOpenNewLabor}
+            onEditLabor={handleEditLabor}
+            onDeleteLabor={handleDeleteLabor}
           />
         )}
 
-        {/* ORDENES DE TRABAJO ACTUALIZADO PARA MULTIPLES PRODUCTOS */}
         {activeTab === 'ordenes' && (
           <OrdenesTrabajoView
             ordenes={ordenesTrabajo}
@@ -963,261 +809,38 @@ export default function App() {
             activeUser={activeUser}
             onAddOrden={(o) => setOrdenesTrabajo((prev) => [o, ...prev])}
             onUpdateOrden={(o) => setOrdenesTrabajo((prev) => prev.map((item) => item.id === o.id ? o : item))}
-            onExecuteOrden={(ordenId, aplicadorNombre, firma) => {
-              const orden = ordenesTrabajo.find((o) => o.id === ordenId);
-              if (!orden) return;
-              
-              // Lógica para descontar múltiples productos del inventario
-              if (!orden.descontadoInventario && orden.productos && orden.productos.length > 0) {
-                setInventario((prevInventario) => {
-                  let nuevoInventario = [...prevInventario];
-                  
-                  orden.productos.forEach((prod) => {
-                    if (prod.insumoId) {
-                      nuevoInventario = nuevoInventario.map((item) => {
-                        if (item.id === prod.insumoId) {
-                          return {
-                            ...item,
-                            stockActual: Math.max(0, Number((item.stockActual - prod.totalProductoRequerido).toFixed(2))),
-                            consumoHistoricoAcumulado: Number((item.consumoHistoricoAcumulado + prod.totalProductoRequerido).toFixed(2))
-                          };
-                        }
-                        return item;
-                      });
-                    }
-                  });
-                  
-                  return nuevoInventario;
-                });
-              }
-              
-              // Marcar la orden como completada
-              setOrdenesTrabajo((prev) =>
-                prev.map((o) => o.id === ordenId ? { ...o, estado: 'completada', aplicadorFirma: firma, descontadoInventario: true } : o)
-              );
-            }}
-            onDeleteOrden={(id) => setOrdenesTrabajo((prev) => prev.filter((o) => o.id !== id))}
-          />
-        )}
-
-        {activeTab === 'fenologia' && (
-          <HorasFrioFenologiaView
-            parcelas={parcelas}
-            horasFrio={horasFrio}
-            onUpdateHorasFrio={setHorasFrio}
-            fenologia={fenologia}
-            onAddFenologia={(f) => setFenologia((prev) => [f, ...prev])}
-            onDeleteFenologia={(id) => setFenologia((prev) => prev.filter((f) => f.id !== id))}
-            polinizacion={polinizacion}
-            onAddPolinizacion={(p) => setPolinizacion((prev) => [p, ...prev])}
-            onDeletePolinizacion={(id) => setPolinizacion((prev) => prev.filter((p) => p.id !== id))}
-            activeUserName={activeUser?.nombre}
-          />
-        )}
-
-        {/* LABORES */}
-        {activeTab === 'labores' && (
-          <LaboresView
-            labores={labores.filter(l => l.tipoLabor !== 'riego')}
-            parcelas={parcelas}
-            onOpenNewLabor={handleOpenNewLabor}
-            onEditLabor={handleEditLabor}
-            onDeleteLabor={handleDeleteLabor}
+            onExecuteOrden={handleExecuteOrden}
+            onDeleteOrden={(id) => setOrdenesTrabajo((prev) => prev.filter((item) => item.id !== id))}
           />
         )}
 
         {activeTab === 'inventario' && (
           <InventarioView
             inventario={inventario}
-            onAddInsumo={(i) => setInventario((prev) => [...prev, i])}
-            onUpdateInsumo={(i) => setInventario((prev) => prev.map((item) => item.id === i.id ? i : item))}
+            onAddInsumo={(insumo) => setInventario((prev) => [...prev, insumo])}
+            onUpdateInsumo={(insumo) => setInventario((prev) => prev.map((item) => item.id === insumo.id ? insumo : item))}
             onDeleteInsumo={(id) => setInventario((prev) => prev.filter((item) => item.id !== id))}
           />
         )}
 
-        {/* POZO PROFUNDO DGA EXCLUSIVO */}
         {activeTab === 'pozo' && (
           <PozoView
             registrosPozo={registrosPozo}
-            onAddRegistroPozo={(r) => setRegistrosPozo((prev) => [r, ...prev])}
-            onUpdateRegistroPozo={(r) => setRegistrosPozo((prev) => prev.map((p) => p.id === r.id ? r : p))}
-            onDeleteRegistroPozo={(id) => setRegistrosPozo((prev) => prev.filter((p) => p.id !== id))}
+            onAddRegistro={(reg) => setRegistrosPozo((prev) => [reg, ...prev])}
+            onDeleteRegistro={(id) => setRegistrosPozo((prev) => prev.filter((item) => item.id !== id))}
           />
         )}
 
-        {/* PESTAÑA RIEGO EXCLUSIVA: CON EDICIÓN DIRECTA EN CADA SECTOR */}
         {activeTab === 'riego' && (
-          <div className="space-y-6 text-xs">
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-2 border-b border-stone-200">
-              <div>
-                <h1 className="text-xl font-bold tracking-tight text-stone-900 flex items-center gap-2">
-                  <Waves className="w-5 h-5 text-blue-700" />
-                  Control de Riego y Fertirriego por Sectores
-                </h1>
-                <p className="text-xs text-stone-500">
-                  Riego distribuido exclusivamente en los 4 sectores del fundo. Puedes editar las hectáreas de cada sector directamente en sus tarjetas [1, 2].
-                </p>
-              </div>
-
-              <button
-                onClick={() => {
-                  setEditingRiego(null);
-                  setRiegoFecha(new Date().toISOString().slice(0, 10));
-                  setRiegoHora('08:00');
-                  setRiegoSector(sectoresRiego[0]?.nombre || 'Sector 1');
-                  setRiegoModalidad('Solo Riego por Goteo');
-                  setRiegoFuente('Tranque acumulador');
-                  setRiegoDuracion(4.0);
-                  setRiegoVolumen(250);
-                  setRiegoFertilizante('Nitrato de Calcio');
-                  setRiegoDosis(35);
-                  setRiegoObservaciones('');
-                  setIsModalRiegoOpen(true);
-                }}
-                className="px-4 py-2.5 bg-blue-700 hover:bg-blue-600 text-white font-bold rounded-xl text-xs transition-all shadow-sm flex items-center gap-2 cursor-pointer active:scale-95"
-              >
-                <Plus className="w-4 h-4" />
-                + Registrar Riego al Sector
-              </button>
-            </div>
-
-            {/* LAS 4 TARJETAS CON BOTÓN DE EDITAR EN CADA UNA */}
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-              {sectoresRiego.map((sec) => {
-                const riegosSectorActual = riegosSector.filter(r => r.sectorDestino === sec.nombre);
-                const m3Sector = riegosSectorActual.reduce((a, b) => a + Number(b.volumenM3 || 0), 0);
-
-                return (
-                  <div key={sec.id} className="p-4 bg-white rounded-2xl border border-blue-200 shadow-2xs space-y-2 flex flex-col justify-between">
-                    <div>
-                      <div className="flex justify-between items-start gap-1">
-                        <div>
-                          <strong className="text-blue-950 font-bold text-sm block">{sec.nombre}</strong>
-                          <span className="text-[10px] text-stone-400 block">{sec.descripcion || 'Sector de Riego'}</span>
-                        </div>
-                        
-                        {/* BOTÓN EDITAR DIRECTO EN CADA SECTOR */}
-                        <button
-                          onClick={() => setEditingSectorModal(sec)}
-                          className="p-1.5 text-blue-700 hover:bg-blue-50 rounded-lg cursor-pointer border border-blue-200/60"
-                          title={`Editar nombre o hectáreas de ${sec.nombre}`}
-                        >
-                          <Edit2 className="w-3.5 h-3.5" />
-                        </button>
-                      </div>
-
-                      <div className="mt-2 flex items-baseline gap-1">
-                        <span className="text-2xl font-extrabold text-stone-900 font-mono">
-                          {sec.ha}
-                        </span>
-                        <span className="text-xs font-bold text-blue-900">hectáreas</span>
-                      </div>
-                    </div>
-
-                    <div className="pt-2 border-t border-stone-100 flex justify-between items-center text-[10px]">
-                      <span className="text-stone-500 font-mono font-bold">{m3Sector.toLocaleString()} m³ regados</span>
-                      <button
-                        onClick={() => setEditingSectorModal(sec)}
-                        className="text-blue-700 font-bold hover:underline cursor-pointer"
-                      >
-                        Ajustar ha
-                      </button>
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-
-            {/* TABLA DE RIEGOS */}
-            <div className="bg-white border rounded-xl overflow-hidden shadow-xs">
-              <div className="overflow-x-auto">
-                <table className="w-full text-left">
-                  <thead className="bg-stone-50 border-b text-stone-600 font-bold uppercase text-[10px]">
-                    <tr>
-                      <th className="p-3">Fecha & Hora</th>
-                      <th className="p-3">Sector</th>
-                      <th className="p-3">Superficie</th>
-                      <th className="p-3">Modalidad</th>
-                      <th className="p-3">Fuente Agua</th>
-                      <th className="p-3">Horas / m³</th>
-                      <th className="p-3">Lámina mm</th>
-                      <th className="p-3">Fertirriego</th>
-                      <th className="p-3">Regador</th>
-                      <th className="p-3 text-center">Acciones</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-stone-100">
-                    {riegosSector.map((rg) => {
-                      const esFertirriego = rg.tipoRiego === 'Fertirriego';
-                      return (
-                        <tr key={rg.id} className="hover:bg-stone-50/70">
-                          <td className="p-3 font-mono">{rg.fecha} {rg.horaInicio}</td>
-                          <td className="p-3 font-bold text-stone-900">{rg.sectorDestino}</td>
-                          <td className="p-3 font-mono">{rg.superficieHa} ha</td>
-                          <td className="p-3">
-                            <span className={`px-2 py-0.5 rounded text-[10px] font-bold ${
-                              esFertirriego ? 'bg-emerald-100 text-emerald-950' : 'bg-blue-100 text-blue-950'
-                            }`}>
-                              {rg.tipoRiego}
-                            </span>
-                          </td>
-                          <td className="p-3 text-stone-600">{rg.fuenteAgua}</td>
-                          <td className="p-3 font-mono font-bold text-blue-950">{rg.duracionHoras} hrs ({rg.volumenM3} m³)</td>
-                          <td className="p-3 font-mono font-bold text-sky-800">{rg.laminaMm || '-'} mm</td>
-                          <td className="p-3">
-                            {esFertirriego ? (
-                              <div>
-                                <strong className="text-emerald-950 block">{rg.productoFertilizante}</strong>
-                                <span className="text-[10px] text-stone-500 font-mono">Dosis: {rg.dosisKgHa} kg/ha (Total: {rg.totalFertilizanteKg} kg)</span>
-                              </div>
-                            ) : (
-                              <span className="text-stone-400 italic">Solo agua</span>
-                            )}
-                          </td>
-                          <td className="p-3 text-stone-700">{rg.operador}</td>
-                          <td className="p-3 text-center whitespace-nowrap">
-                            <button
-                              onClick={() => {
-                                setEditingRiego(rg);
-                                setRiegoFecha(rg.fecha);
-                                setRiegoHora(rg.horaInicio);
-                                setRiegoSector(rg.sectorDestino);
-                                setRiegoModalidad(rg.tipoRiego === 'Fertirriego' ? 'Fertirriego' : 'Solo Riego por Goteo');
-                                setRiegoFuente(rg.fuenteAgua);
-                                setRiegoDuracion(rg.duracionHoras);
-                                setRiegoVolumen(rg.volumenM3);
-                                setRiegoFertilizante(rg.productoFertilizante || 'Nitrato de Calcio');
-                                setRiegoDosis(rg.dosisKgHa || 35);
-                                setIsModalRiegoOpen(true);
-                              }}
-                              className="p-1 text-blue-700 hover:bg-blue-50 rounded mr-1 cursor-pointer"
-                            >
-                              <Edit2 className="w-3.5 h-3.5" />
-                            </button>
-                            <button
-                              onClick={() => {
-                                setRiegosSector(prev => prev.filter(item => item.id !== rg.id));
-                              }}
-                              className="p-1 text-red-700 hover:bg-red-50 rounded cursor-pointer"
-                            >
-                              <Trash2 className="w-3.5 h-3.5" />
-                            </button>
-                          </td>
-                        </tr>
-                      );
-                    })}
-                    {riegosSector.length === 0 && (
-                      <tr>
-                        <td colSpan={10} className="p-8 text-center text-stone-400">
-                          No hay riegos registrados. Haz clic en <strong>"+ Registrar Riego al Sector"</strong> para ingresar el primero.
-                        </td>
-                      </tr>
-                    )}
-                  </tbody>
-                </table>
-              </div>
-            </div>
-          </div>
+          <RiegoView
+            riegos={riegosSector}
+            sectoresConfig={sectoresRiego}
+            onUpdateSectoresConfig={(nuevosSectores) => setSectoresRiego(nuevosSectores)}
+            onAddRiego={(r) => setRiegosSector((prev) => [r, ...prev])}
+            onUpdateRiego={(r) => setRiegosSector((prev) => prev.map((item) => item.id === r.id ? r : item))}
+            onDeleteRiego={(id) => setRiegosSector((prev) => prev.filter((item) => item.id !== id))}
+            activeUserName={activeUser.nombre}
+          />
         )}
 
         {activeTab === 'clima' && (
@@ -1227,20 +850,45 @@ export default function App() {
           />
         )}
 
+        {activeTab === 'cosecha' && (
+          <CosechaMadurezView
+            muestreos={muestreosMadurez}
+            cosechas={cosechasLote}
+            parcelas={parcelas}
+            onAddMuestreo={(m) => setMuestreosMadurez((prev) => [m, ...prev])}
+            onDeleteMuestreo={(id) => setMuestreosMadurez((prev) => prev.filter((item) => item.id !== id))}
+            onAddCosecha={(c) => setCosechasLote((prev) => [c, ...prev])}
+            onDeleteCosecha={(id) => setCosechasLote((prev) => prev.filter((item) => item.id !== id))}
+          />
+        )}
+
+        {activeTab === 'horasfrio' && (
+          <HorasFrioFenologiaView
+            horasFrio={horasFrio}
+            fenologia={fenologia}
+            polinizacion={polinizacion}
+            onUpdateHorasFrio={setHorasFrio}
+            onAddFenologia={(f) => setFenologia((prev) => [f, ...prev])}
+            onDeleteFenologia={(id) => setFenologia((prev) => prev.filter((item) => item.id !== id))}
+            onAddPolinizacion={(p) => setPolinizacion((prev) => [p, ...prev])}
+            onDeletePolinizacion={(id) => setPolinizacion((prev) => prev.filter((item) => item.id !== id))}
+          />
+        )}
+
         {activeTab === 'monitoreo' && (
           <MonitoreoView
             labores={labores}
             parcelas={parcelas}
-            onOpenNewLaborWithDefaults={handleOpenNewLaborWithDefaults}
-            onSaveQuickObservation={handleSaveLabor}
           />
         )}
 
         {activeTab === 'calculadora' && (
-          <CalculadoraView />
+          <CalculadoraView
+            parcelas={parcelas}
+            inventario={inventario}
+          />
         )}
 
-        {/* INFORME OFICIAL SAG CON TODAS LAS TABLAS EN VIVO */}
         {activeTab === 'informe' && (
           <InformeOficialView
             explotacion={explotacion}
@@ -1248,360 +896,89 @@ export default function App() {
             labores={labores}
             inventario={inventario}
             registrosPozo={registrosPozo}
-            riegosSector={riegosSector}
-            muestreosMadurez={muestreosMadurez}
-            cosechasLote={cosechasLote}
-            ordenesTrabajo={ordenesTrabajo}
+            cosechas={cosechasLote}
+            ordenes={ordenesTrabajo}
+          />
+        )}
+
+        {activeTab === 'usuarios' && (
+          <UsuariosView
             usuarios={usuarios}
-            onImportJSON={(e) => {
-              const file = e.target.files?.[0];
-              if (file) {
-                const reader = new FileReader();
-                reader.onload = (event) => {
-                  try {
-                    const parsed = JSON.parse(event.target?.result as string);
-                    if (parsed.explotacion) setExplotacion(parsed.explotacion);
-                    if (parsed.parcelas) setParcelas(parsed.parcelas);
-                    if (parsed.labores) setLabores(parsed.labores);
-                    if (parsed.inventario) setInventario(parsed.inventario);
-                    if (parsed.registrosPozo) setRegistrosPozo(parsed.registrosPozo);
-                    if (parsed.riegosSector) setRiegosSector(parsed.riegosSector);
-                    if (parsed.sectoresRiego) setSectoresRiego(parsed.sectoresRiego);
-                    if (parsed.lugares) setLugares(parsed.lugares);
-                    if (parsed.usuarios) setUsuarios(parsed.usuarios);
-                    if (parsed.muestreosMadurez) setMuestreosMadurez(parsed.muestreosMadurez);
-                    if (parsed.cosechasLote) setCosechasLote(parsed.cosechasLote);
-                    if (parsed.ordenesTrabajo) setOrdenesTrabajo(parsed.ordenesTrabajo);
-                    if (parsed.horasFrio) setHorasFrio(parsed.horasFrio);
-                    if (parsed.fenologia) setFenologia(parsed.fenologia);
-                    if (parsed.polinizacion) setPolinizacion(parsed.polinizacion);
-                    guardarEnSupabase(parsed);
-                  } catch (err) {
-                    console.error('Error importando', err);
-                  }
-                };
-                reader.readAsText(file);
-              }
-            }}
+            activeUserId={activeUserId}
+            onSelectActiveUser={setActiveUserId}
+            onAddUsuario={(u) => setUsuarios((prev) => [...prev, u])}
+            onUpdateUsuario={(u) => setUsuarios((prev) => prev.map((item) => item.id === u.id ? u : item))}
+            onDeleteUsuario={(id) => setUsuarios((prev) => prev.filter((item) => item.id !== id))}
           />
         )}
       </main>
 
-      {/* MODAL EDITAR UN SECTOR DE RIEGO ESPECÍFICO */}
-      {editingSectorModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-3 bg-stone-900/60 backdrop-blur-xs text-xs">
-          <div className="bg-white rounded-2xl shadow-xl w-full max-w-md border overflow-hidden p-6 space-y-4">
-            <div className="flex justify-between items-center border-b pb-2">
-              <h3 className="font-bold text-sm text-stone-900 flex items-center gap-2">
-                <Edit2 className="w-4 h-4 text-blue-700" />
-                Editar Dimensiones: {editingSectorModal.nombre}
-              </h3>
-              <button onClick={() => setEditingSectorModal(null)} className="text-stone-400 hover:text-stone-700 cursor-pointer">
-                <X className="w-5 h-5" />
-              </button>
-            </div>
-
-            <form onSubmit={handleSaveSingleSector} className="space-y-4">
-              <div>
-                <label className="block font-bold text-stone-700 mb-1">Nombre del Sector *</label>
-                <input
-                  type="text"
-                  required
-                  value={editingSectorModal.nombre}
-                  onChange={(e) => setEditingSectorModal({ ...editingSectorModal, nombre: e.target.value })}
-                  className="w-full p-2.5 border rounded-lg font-bold text-stone-900"
-                />
-              </div>
-
-              <div>
-                <label className="block font-bold text-stone-700 mb-1">Superficie / Hectáreas *</label>
-                <div className="flex items-center gap-2">
-                  <input
-                    type="number"
-                    step="0.1"
-                    min="0.1"
-                    required
-                    value={editingSectorModal.ha}
-                    onChange={(e) => setEditingSectorModal({ ...editingSectorModal, ha: parseFloat(e.target.value) || 0.1 })}
-                    className="w-full p-2.5 border rounded-lg font-bold text-blue-900 text-base font-mono"
-                  />
-                  <span className="font-bold text-sm text-stone-600">ha</span>
-                </div>
-                <span className="text-[10px] text-stone-400 mt-1 block">
-                  *(Se usará para calcular la lámina de agua en mm y los kilos de fertilizante)*
-                </span>
-              </div>
-
-              <div>
-                <label className="block font-semibold text-stone-700 mb-1">Descripción o Ubicación</label>
-                <input
-                  type="text"
-                  value={editingSectorModal.descripcion || ''}
-                  onChange={(e) => setEditingSectorModal({ ...editingSectorModal, descripcion: e.target.value })}
-                  placeholder="Ej: Lado Norte, hileras 1 a 25"
-                  className="w-full p-2 border rounded-lg"
-                />
-              </div>
-
-              <div className="pt-3 border-t flex justify-end gap-2">
-                <button
-                  type="button"
-                  onClick={() => setEditingSectorModal(null)}
-                  className="px-4 py-2 border rounded-lg text-stone-600 hover:bg-stone-50 cursor-pointer"
-                >
-                  Cancelar
-                </button>
-                <button
-                  type="submit"
-                  className="px-5 py-2 bg-blue-800 hover:bg-blue-700 text-white font-bold rounded-lg cursor-pointer"
-                >
-                  Guardar en Supabase
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
-
-      {/* MODAL REGISTRAR RIEGO AL SECTOR */}
-      {isModalRiegoOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-stone-900/60 backdrop-blur-xs text-xs">
-          <div className="bg-white rounded-2xl shadow-xl w-full max-w-lg overflow-hidden border">
-            <div className="px-6 py-4 border-b bg-blue-950 text-white flex justify-between items-center">
-              <h3 className="font-bold text-sm flex items-center gap-2">
-                <Waves className="w-4 h-4 text-blue-300" />
-                {editingRiego ? 'Editar Riego' : 'Registrar Riego a Sector'}
-              </h3>
-              <button onClick={() => setIsModalRiegoOpen(false)} className="text-blue-200 hover:text-white cursor-pointer"><X className="w-5 h-5" /></button>
-            </div>
-
-            <form onSubmit={handleSaveRiegoModal} className="p-6 space-y-4 max-h-[85vh] overflow-y-auto">
-              
-              {/* SELECTOR EXCLUSIVO: SOLO SECTORES 1, 2, 3, 4 */}
-              <div className="p-3 bg-blue-50 rounded-xl border border-blue-200">
-                <label className="block font-bold text-blue-950 mb-1 uppercase tracking-wide">
-                  Selecciona el Sector de Riego *
-                </label>
-                <select
-                  value={riegoSector}
-                  onChange={(e) => setRiegoSector(e.target.value)}
-                  className="w-full p-2.5 bg-white border border-blue-300 rounded-lg font-bold text-stone-900 text-sm cursor-pointer"
-                >
-                  {sectoresRiego.map(s => (
-                    <option key={s.id} value={s.nombre}>
-                      {s.nombre} ({s.ha} hectáreas)
-                    </option>
-                  ))}
-                </select>
-              </div>
-
-              {/* MODALIDAD */}
-              <div>
-                <label className="block font-bold text-stone-800 mb-1">Modalidad de Riego *</label>
-                <div className="grid grid-cols-2 gap-3">
-                  <button
-                    type="button"
-                    onClick={() => setRiegoModalidad('Solo Riego por Goteo')}
-                    className={`p-3 rounded-xl border text-left font-bold cursor-pointer ${
-                      riegoModalidad === 'Solo Riego por Goteo' ? 'bg-blue-900 text-white border-blue-900' : 'bg-stone-50 text-stone-700'
-                    }`}
-                  >
-                    <div className="flex items-center gap-2">
-                      <Droplet className="w-4 h-4 text-blue-400" />
-                      <span>Solo Riego por Goteo</span>
-                    </div>
-                  </button>
-
-                  <button
-                    type="button"
-                    onClick={() => setRiegoModalidad('Fertirriego')}
-                    className={`p-3 rounded-xl border text-left font-bold cursor-pointer ${
-                      riegoModalidad === 'Fertirriego' ? 'bg-emerald-900 text-white border-emerald-900' : 'bg-stone-50 text-stone-700'
-                    }`}
-                  >
-                    <div className="flex items-center gap-2">
-                      <Wheat className="w-4 h-4 text-emerald-300" />
-                      <span>Fertirriego (Con Abono)</span>
-                    </div>
-                  </button>
-                </div>
-              </div>
-
-              {/* FUENTE AGUA Y DURACIÓN */}
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="block font-semibold text-stone-700 mb-1">Fuente del Agua *</label>
-                  <select value={riegoFuente} onChange={(e) => setRiegoFuente(e.target.value)} className="w-full p-2.5 bg-white border rounded-lg">
-                    <option value="Tranque acumulador">🌊 Tranque acumulador</option>
-                    <option value="Canal de regadío">💧 Canal de regadío / Canalistas</option>
-                    <option value="Red presurizada">⚙️ Red presurizada / Matriz</option>
-                    <option value="Pozo profundo">🏗️ Pozo profundo</option>
-                    <option value="Otra fuente">📍 Otra fuente</option>
-                  </select>
-                </div>
-
-                <div>
-                  <label className="block font-semibold text-stone-700 mb-1">Duración (Horas) *</label>
-                  <input
-                    type="number"
-                    step="0.5"
-                    required
-                    value={riegoDuracion}
-                    onChange={(e) => setRiegoDuracion(parseFloat(e.target.value) || 0)}
-                    className="w-full p-2.5 border rounded-lg font-bold"
-                  />
-                </div>
-              </div>
-
-              {/* VOLUMEN Y LÁMINA CALCULADA */}
-              <div className="grid grid-cols-2 gap-3 p-3 bg-stone-50 rounded-xl border">
-                <div>
-                  <label className="block font-semibold text-stone-700 mb-1">Volumen Estimado (m³) *</label>
-                  <input
-                    type="number"
-                    required
-                    value={riegoVolumen}
-                    onChange={(e) => setRiegoVolumen(parseFloat(e.target.value) || 0)}
-                    className="w-full p-2 border rounded-lg font-bold bg-white"
-                  />
-                </div>
-
-                <div>
-                  <span className="block font-semibold text-stone-500 mb-1">Lámina Calculada:</span>
-                  <div className="text-xl font-extrabold text-blue-900 font-mono mt-1">
-                    {laminaMmCalculada} mm
-                  </div>
-                  <span className="text-[10px] text-stone-500">Para {sectorHa} ha del {sectorActualObj.nombre}</span>
-                </div>
-              </div>
-
-              {/* FERTIRRIEGO */}
-              {riegoModalidad === 'Fertirriego' && (
-                <div className="p-3.5 bg-emerald-50 rounded-xl border border-emerald-300 space-y-3">
-                  <strong className="text-emerald-950 block">Fertirriego en {sectorActualObj.nombre}</strong>
-                  <div className="grid grid-cols-2 gap-3">
-                    <div>
-                      <label className="block font-semibold text-stone-700 mb-1">Producto / Abono *</label>
-                      <input
-                        type="text"
-                        required
-                        value={riegoFertilizante}
-                        onChange={(e) => setRiegoFertilizante(e.target.value)}
-                        placeholder="Ej: Nitrato de Calcio"
-                        className="w-full p-2 border border-emerald-300 rounded-lg bg-white"
-                      />
-                    </div>
-                    <div>
-                      <label className="block font-semibold text-stone-700 mb-1">Dosis (kg/ha) *</label>
-                      <input
-                        type="number"
-                        step="0.1"
-                        required
-                        value={riegoDosis}
-                        onChange={(e) => setRiegoDosis(parseFloat(e.target.value) || 0)}
-                        className="w-full p-2 border border-emerald-300 rounded-lg bg-white font-bold"
-                      />
-                    </div>
-                  </div>
-                  <div className="p-2 bg-white rounded border border-emerald-200 text-[11px] text-emerald-900 flex justify-between items-center font-bold">
-                    <span>Abono Total a Disolver en Estanque:</span>
-                    <span className="text-sm font-extrabold font-mono text-emerald-950">{fertilizanteTotalKg} kg</span>
-                  </div>
-                </div>
-              )}
-
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="block font-semibold text-stone-700 mb-1">Fecha *</label>
-                  <input type="date" required value={riegoFecha} onChange={(e) => setRiegoFecha(e.target.value)} className="w-full p-2 border rounded-lg font-mono" />
-                </div>
-                <div>
-                  <label className="block font-semibold text-stone-700 mb-1">Hora Inicio</label>
-                  <input type="time" value={riegoHora} onChange={(e) => setRiegoHora(e.target.value)} className="w-full p-2 border rounded-lg font-mono" />
-                </div>
-              </div>
-
-              <div>
-                <label className="block font-semibold text-stone-700 mb-1">Observaciones</label>
-                <textarea rows={2} value={riegoObservaciones} onChange={(e) => setRiegoObservaciones(e.target.value)} placeholder="Lavado de matriz, presiones..." className="w-full p-2 border rounded-lg" />
-              </div>
-
-              <div className="pt-3 border-t flex justify-end gap-2">
-                <button type="button" onClick={() => setIsModalRiegoOpen(false)} className="px-4 py-2 border rounded-lg">Cancelar</button>
-                <button type="submit" className="px-5 py-2 bg-blue-800 text-white font-bold rounded-lg hover:bg-blue-700">Guardar Riego</button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
-
-      {/* MODAL MI PERFIL */}
+      {/* MODAL MI PERFIL / CLAVE */}
       {isProfileModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-3 bg-stone-900/60 backdrop-blur-xs">
-          <div className="bg-white rounded-2xl shadow-xl w-full max-w-md border border-stone-200 overflow-hidden text-xs">
-            <div className="px-5 py-4 border-b border-stone-200 bg-emerald-950 text-white flex items-center justify-between">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-3 bg-stone-900/60 backdrop-blur-xs text-xs">
+          <div className="bg-white rounded-2xl shadow-xl w-full max-w-md border overflow-hidden">
+            <div className="px-6 py-4 border-b bg-emerald-950 text-white flex justify-between items-center">
               <h3 className="font-bold text-sm flex items-center gap-2">
-                <UserCog className="w-4 h-4 text-emerald-400" />
-                Mi Perfil y Contraseña
+                <UserCog className="w-4 h-4 text-emerald-300" />
+                Editar Mi Perfil & Clave
               </h3>
               <button onClick={() => setIsProfileModalOpen(false)} className="text-emerald-200 hover:text-white cursor-pointer">
                 <X className="w-5 h-5" />
               </button>
             </div>
 
-            <form onSubmit={handleSaveMyProfile} className="p-5 space-y-4">
+            <form onSubmit={handleSaveMyProfile} className="p-6 space-y-4">
               {profileSuccessMsg && (
-                <div className="p-3 bg-emerald-50 border border-emerald-300 text-emerald-900 rounded-xl font-bold flex items-center gap-2">
-                  <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
+                <div className="p-3 bg-emerald-100 border border-emerald-300 text-emerald-900 font-bold rounded-xl flex items-center gap-2">
+                  <CheckCircle2 className="w-4 h-4 text-emerald-700" />
                   <span>{profileSuccessMsg}</span>
                 </div>
               )}
 
               <div>
-                <label className="block text-stone-700 font-bold mb-1">Nombre Completo *</label>
+                <label className="block font-bold text-stone-700 mb-1">Nombre Completo *</label>
                 <input
                   type="text"
                   required
                   value={myNewName}
                   onChange={(e) => setMyNewName(e.target.value)}
-                  className="w-full p-2.5 rounded-lg border border-stone-300"
+                  className="w-full p-2.5 border rounded-xl font-bold bg-stone-50"
                 />
               </div>
 
               <div>
-                <label className="block text-stone-700 font-bold mb-1">Correo Electrónico (Tu usuario de ingreso) *</label>
+                <label className="block font-bold text-stone-700 mb-1">Correo Electrónico (Login) *</label>
                 <input
                   type="email"
                   required
                   value={myNewEmail}
                   onChange={(e) => setMyNewEmail(e.target.value)}
-                  className="w-full p-2.5 rounded-lg border border-stone-300"
+                  className="w-full p-2.5 border rounded-xl font-bold bg-stone-50"
                 />
               </div>
 
               <div>
-                <label className="block text-stone-700 font-bold mb-1">Nueva Contraseña *</label>
+                <label className="block font-bold text-stone-700 mb-1">Nueva Contraseña *</label>
                 <input
                   type="text"
                   required
                   value={myNewPassword}
                   onChange={(e) => setMyNewPassword(e.target.value)}
-                  placeholder="Escribe tu nueva clave secreta"
-                  className="w-full p-2.5 rounded-lg border border-stone-300 text-sm font-mono"
+                  className="w-full p-2.5 border rounded-xl font-mono font-bold bg-stone-50"
                 />
               </div>
 
-              <div className="pt-3 border-t border-stone-200 flex justify-end gap-2">
+              <div className="pt-3 border-t flex justify-end gap-2">
                 <button
                   type="button"
                   onClick={() => setIsProfileModalOpen(false)}
-                  className="px-4 py-2 border rounded-lg text-stone-600 hover:bg-stone-50"
+                  className="px-4 py-2 border rounded-xl cursor-pointer hover:bg-stone-50"
                 >
                   Cancelar
                 </button>
                 <button
                   type="submit"
-                  className="px-5 py-2 bg-emerald-800 hover:bg-emerald-700 text-white font-bold rounded-lg shadow-sm cursor-pointer"
+                  className="px-5 py-2 bg-emerald-800 text-white font-bold rounded-xl cursor-pointer hover:bg-emerald-700 shadow-sm"
                 >
                   Guardar Cambios
                 </button>
@@ -1611,98 +988,72 @@ export default function App() {
         </div>
       )}
 
-      {/* Modals */}
-      <ModalLabor
-        isOpen={isLaborModalOpen}
-        onClose={() => {
-          setIsLaborModalOpen(false);
-          setEditingLabor(null);
-        }}
-        onSave={handleSaveLabor}
-        parcelas={parcelas}
-        inventario={inventario}
-        climaActual={clima}
-        usuarios={usuarios}
-        activeUserId={activeUserId}
-        initialLabor={editingLabor}
-        defaultParcelaId={defaultParcelaId}
-        defaultTipoLabor={defaultTipoLabor}
-      />
+      {/* MODAL EDITAR EXPOTACIÓN */}
+      {isExplotacionModalOpen && (
+        <ModalExplotacion
+          explotacion={explotacion}
+          onSave={(e) => {
+            setExplotacion(e);
+            setIsExplotacionModalOpen(false);
+          }}
+          onClose={() => setIsExplotacionModalOpen(false)}
+        />
+      )}
 
-      <ModalExplotacion
-        isOpen={isExplotacionModalOpen}
-        onClose={() => setIsExplotacionModalOpen(false)}
-        explotacion={explotacion}
-        onSave={setExplotacion}
-      />
+      {/* MODAL REGISTRAR / EDITAR LABOR */}
+      {isLaborModalOpen && (
+        <ModalLabor
+          labor={editingLabor}
+          parcelas={parcelas}
+          inventario={inventario}
+          usuarios={usuarios}
+          activeUserId={activeUserId}
+          defaultParcelaId={defaultParcelaId}
+          defaultTipoLabor={defaultTipoLabor}
+          onSave={handleSaveLabor}
+          onClose={() => {
+            setIsLaborModalOpen(false);
+            setEditingLabor(null);
+          }}
+        />
+      )}
 
-      <AlertasStockModal
-        isOpen={isAlertsModalOpen}
-        onClose={() => setIsAlertsModalOpen(false)}
-        inventario={inventario}
-        onUpdateInsumo={(i) => setInventario((prev) => prev.map((item) => item.id === i.id ? i : item))}
-        onNavigateToInventario={() => setActiveTab('inventario')}
-      />
+      {/* MODAL ALERTAS DE STOCK */}
+      {isAlertsModalOpen && (
+        <AlertasStockModal
+          inventario={inventario}
+          onClose={() => setIsAlertsModalOpen(false)}
+        />
+      )}
 
+      {/* MODAL CONFIRMAR RESETEO */}
       {isResetConfirmOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-3 bg-stone-900/60 backdrop-blur-xs">
-          <div className="bg-white rounded-2xl shadow-xl w-full max-w-md border border-stone-200 overflow-hidden">
-            <div className="px-5 py-4 border-b border-stone-200 bg-amber-950 text-white flex items-center justify-between">
-              <h3 className="font-bold text-sm">Vaciar Datos</h3>
-              <button onClick={() => setIsResetConfirmOpen(false)} className="p-1 text-amber-200 hover:text-white cursor-pointer">
-                <X className="w-5 h-5" />
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-3 bg-stone-900/60 backdrop-blur-xs text-xs">
+          <div className="bg-white rounded-2xl shadow-xl w-full max-w-md p-6 border space-y-4">
+            <h3 className="font-bold text-sm text-stone-900 flex items-center gap-2 text-red-700">
+              <RotateCcw className="w-4 h-4" />
+              ¿Restablecer datos de fábrica?
+            </h3>
+            <p className="text-stone-600">
+              Esta acción borrará los registros agregados manualmente y restaurará el sistema a su estado inicial.
+            </p>
+            <div className="pt-2 border-t flex justify-end gap-2">
+              <button
+                onClick={() => setIsResetConfirmOpen(false)}
+                className="px-4 py-2 border rounded-lg cursor-pointer"
+              >
+                Cancelar
               </button>
-            </div>
-            <div className="p-5 space-y-3 text-xs">
-              <p className="text-stone-700 text-sm">¿Deseas vaciar la base de datos para comenzar en blanco?</p>
-              <div className="pt-3 border-t border-stone-200 flex justify-end gap-2">
-                <button
-                  type="button"
-                  onClick={() => setIsResetConfirmOpen(false)}
-                  className="px-4 py-2 border border-stone-300 rounded-lg text-stone-700 font-medium hover:bg-stone-50 cursor-pointer"
-                >
-                  Cancelar
-                </button>
-                <button
-                  type="button"
-                  onClick={handleExecuteReset}
-                  className="px-4 py-2 bg-amber-700 hover:bg-amber-800 text-white font-bold rounded-lg shadow-sm cursor-pointer"
-                >
-                  Confirmar y Vaciar
-                </button>
-              </div>
+              <button
+                onClick={handleExecuteReset}
+                className="px-4 py-2 bg-red-700 text-white font-bold rounded-lg cursor-pointer"
+              >
+                Restablecer Todo
+              </button>
             </div>
           </div>
         </div>
       )}
-
-      {/* FOOTER */}
-      <footer className="no-print mt-auto border-t border-stone-200 bg-white py-3.5">
-        <div className="max-w-7xl mx-auto px-4 flex flex-col sm:flex-row items-center justify-between gap-3 text-xs text-stone-500">
-          <div>
-            <span className="font-semibold text-stone-800">{explotacion.nombreFundo}</span>
-            <span className="mx-2">·</span>
-            <span>Cuaderno Oficial SAG</span>
-          </div>
-
-          <div className="flex items-center gap-3">
-            <button
-              onClick={() => guardarEnSupabase()}
-              className="text-emerald-800 font-bold hover:underline cursor-pointer flex items-center gap-1"
-            >
-              <Save className="w-3.5 h-3.5" />
-              Guardar en Supabase
-            </button>
-            <button
-              onClick={() => setIsResetConfirmOpen(true)}
-              className="text-stone-400 hover:text-stone-700 flex items-center gap-1 cursor-pointer"
-            >
-              <RotateCcw className="w-3.5 h-3.5" />
-              Vaciar / Empezar en Blanco
-            </button>
-          </div>
-        </div>
-      </footer>
     </div>
   );
 }
