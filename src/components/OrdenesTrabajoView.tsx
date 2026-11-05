@@ -216,7 +216,7 @@ export const OrdenesTrabajoView: React.FC<OrdenesTrabajoViewProps> = ({
         </button>
       </div>
 
-      {/* TARJETAS KPI Y FILTROS (Sin cambios mayores) */}
+      {/* TARJETAS KPI Y FILTROS */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
         <div className="p-4 bg-white rounded-xl border shadow-2xs"><span className="text-[10px] font-bold uppercase text-stone-500">Total Recetas</span><div className="text-2xl font-extrabold text-stone-900">{ordenes.length}</div></div>
         <div className="p-4 bg-white rounded-xl border shadow-2xs"><span className="text-[10px] font-bold uppercase text-amber-700">Pendientes</span><div className="text-2xl font-extrabold text-amber-800">{ordenesPendientes}</div></div>
@@ -248,8 +248,8 @@ export const OrdenesTrabajoView: React.FC<OrdenesTrabajoViewProps> = ({
                   <span className={`px-2.5 py-0.5 rounded-full font-bold ${isCompleted ? 'bg-emerald-100 text-emerald-900' : 'bg-amber-100 text-amber-900'}`}>{isCompleted ? '✓ Aplicación Realizada' : '⏳ Pendiente'}</span>
                 </div>
                 <div className="flex items-center gap-2">
-                  <button onClick={() => openEditModal(orden)} className="p-1.5 text-blue-700 hover:bg-blue-50 rounded-lg"><Edit2 className="w-4 h-4" /></button>
-                  <button onClick={() => onDeleteOrden(orden.id)} className="p-1.5 text-stone-400 hover:text-red-700 rounded-lg"><Trash2 className="w-4 h-4" /></button>
+                  <button onClick={() => openEditModal(orden)} className="p-1.5 text-blue-700 hover:bg-blue-50 rounded-lg cursor-pointer"><Edit2 className="w-4 h-4" /></button>
+                  <button onClick={() => onDeleteOrden(orden.id)} className="p-1.5 text-stone-400 hover:text-red-700 rounded-lg cursor-pointer"><Trash2 className="w-4 h-4" /></button>
                 </div>
               </div>
 
@@ -271,7 +271,7 @@ export const OrdenesTrabajoView: React.FC<OrdenesTrabajoViewProps> = ({
                           <span className="text-[10px] text-stone-500 ml-2">({prod.materiaActiva})</span>
                         </div>
                         <div className="text-right">
-                          <span className="font-mono text-xs block">{prod.totalProductoRequerido} {prod.unidadProducto}</span>
+                          <span className="font-mono text-xs block font-bold">{prod.totalProductoRequerido} {prod.unidadProducto}</span>
                           <span className="text-[10px] text-stone-400">Dosis: {prod.dosisPorHa} {prod.unidadDosis}</span>
                         </div>
                       </div>
@@ -286,7 +286,7 @@ export const OrdenesTrabajoView: React.FC<OrdenesTrabajoViewProps> = ({
               <div className="flex justify-between items-center pt-1">
                 <div className="text-[11px] text-stone-500">Carencia: <strong>{orden.plazoCarenciaDias} días</strong> · Reingreso: <strong>{orden.plazoReingresoHoras} hrs</strong></div>
                 {!isCompleted ? (
-                  <button onClick={() => { setExecutingOrden(orden); setExecFirmaAplicador(`CONFORME - ${orden.aplicadorAsignadoNombre}`); }} className="px-4 py-2 bg-emerald-700 hover:bg-emerald-600 text-white font-bold rounded-xl flex items-center gap-1.5"><Check className="w-4 h-4" /> Confirmar & Descontar</button>
+                  <button onClick={() => { setExecutingOrden(orden); setExecFirmaAplicador(`CONFORME - ${orden.aplicadorAsignadoNombre}`); }} className="px-4 py-2 bg-emerald-700 hover:bg-emerald-600 text-white font-bold rounded-xl flex items-center gap-1.5 cursor-pointer"><Check className="w-4 h-4" /> Confirmar & Descontar</button>
                 ) : (
                   <span className="text-emerald-800 font-bold flex items-center gap-1"><CheckCircle2 className="w-4 h-4 text-emerald-600" /> {orden.aplicadorFirma || 'Realizada'}</span>
                 )}
@@ -302,7 +302,7 @@ export const OrdenesTrabajoView: React.FC<OrdenesTrabajoViewProps> = ({
           <div className="bg-white rounded-2xl shadow-xl w-full max-w-3xl overflow-hidden border">
             <div className="px-6 py-4 border-b bg-emerald-950 text-white flex justify-between items-center">
               <h3 className="font-bold text-sm flex items-center gap-2"><FileText className="w-4 h-4 text-emerald-300" /> {editingOrdenItem ? 'Editar Receta' : 'Emitir Receta Fitosanitaria'}</h3>
-              <button onClick={() => setIsModalOpen(false)} className="text-emerald-200 hover:text-white"><X className="w-5 h-5" /></button>
+              <button onClick={() => setIsModalOpen(false)} className="text-emerald-200 hover:text-white cursor-pointer"><X className="w-5 h-5" /></button>
             </div>
 
             <form onSubmit={handleSubmit} className="p-6 space-y-4 max-h-[85vh] overflow-y-auto">
@@ -343,12 +343,12 @@ export const OrdenesTrabajoView: React.FC<OrdenesTrabajoViewProps> = ({
               <div className="p-3.5 bg-emerald-50 rounded-xl border border-emerald-300 space-y-3">
                 <div className="flex justify-between items-center">
                   <label className="block font-bold text-emerald-950 flex items-center gap-1"><Package className="w-4 h-4 text-emerald-700" /> Productos a Aplicar *</label>
-                  <button type="button" onClick={agregarProducto} className="px-3 py-1 bg-emerald-700 text-white rounded font-bold hover:bg-emerald-600">+ Añadir Producto</button>
+                  <button type="button" onClick={agregarProducto} className="px-3 py-1 bg-emerald-700 text-white rounded font-bold hover:bg-emerald-600 cursor-pointer">+ Añadir Producto</button>
                 </div>
 
                 {productos.map((prod, index) => (
                   <div key={index} className="p-3 bg-white rounded-lg border border-emerald-200 space-y-2 relative">
-                    <button type="button" onClick={() => eliminarProducto(index)} className="absolute top-2 right-2 text-red-500 hover:text-red-700"><Trash2 className="w-4 h-4" /></button>
+                    <button type="button" onClick={() => eliminarProducto(index)} className="absolute top-2 right-2 text-red-500 hover:text-red-700 cursor-pointer"><Trash2 className="w-4 h-4" /></button>
                     
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
                       <div>
@@ -364,7 +364,7 @@ export const OrdenesTrabajoView: React.FC<OrdenesTrabajoViewProps> = ({
                       </div>
                       <div>
                         <label className="block text-[10px] font-semibold mb-0.5">Nombre Comercial *</label>
-                        <input type="text" required value={prod.productoComercial} onChange={(e) => actualizarProducto(index, 'productoComercial', e.target.value)} className="w-full p-2 border rounded-lg font-bold" placeholder="Ej: Switch 62.5 WG" />
+                        <input type="text" required value={prod.productoComercial} onChange={(e) => actualizarProducto(index, 'productoComercial', e.target.value)} className="w-full p-2 border rounded-lg font-bold" placeholder="Ej: Cobre Hidróxido 50 WP" />
                       </div>
                     </div>
 
@@ -416,19 +416,19 @@ export const OrdenesTrabajoView: React.FC<OrdenesTrabajoViewProps> = ({
                     <input type="text" required value={plagaObjetivo} onChange={(e) => setPlagaObjetivo(e.target.value)} className="w-full p-2 border rounded-lg" />
                   </div>
                   <div>
-                    <label className="block font-semibold text-stone-700 mb-1">Fecha *</label>
+                    <label className="block font-semibold text-stone-700 mb-1">Fecha Programada *</label>
                     <input type="date" required value={fechaProgramada} onChange={(e) => setFechaProgramada(e.target.value)} className="w-full p-2 border rounded-lg font-mono" />
                   </div>
                 </div>
                 <div>
                   <label className="block font-semibold text-stone-700 mb-1">Maquinaria / Tractor</label>
-                  <input type="text" value={maquinaria} onChange={(e) => setMaquinaria(e.target.value)} placeholder="Ej: Tractor John Deere + Nebulizadora" className="w-full p-2 border rounded-lg" />
+                  <input type="text" value={maquinaria} onChange={(e) => setMaquinaria(e.target.value)} placeholder="Ej: Tractor John Deere + Pulverizadora 2000L" className="w-full p-2 border rounded-lg" />
                 </div>
               </div>
 
               <div className="pt-3 border-t flex justify-end gap-2">
-                <button type="button" onClick={() => setIsModalOpen(false)} className="px-4 py-2 border rounded-lg hover:bg-stone-50">Cancelar</button>
-                <button type="submit" className="px-5 py-2 bg-emerald-800 hover:bg-emerald-700 text-white font-bold rounded-lg shadow-sm">Guardar Receta</button>
+                <button type="button" onClick={() => setIsModalOpen(false)} className="px-4 py-2 border rounded-lg hover:bg-stone-50 cursor-pointer">Cancelar</button>
+                <button type="submit" className="px-5 py-2 bg-emerald-800 hover:bg-emerald-700 text-white font-bold rounded-lg shadow-sm cursor-pointer">Guardar Receta</button>
               </div>
             </form>
           </div>
@@ -439,15 +439,15 @@ export const OrdenesTrabajoView: React.FC<OrdenesTrabajoViewProps> = ({
       {executingOrden && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-3 bg-stone-900/60 backdrop-blur-xs">
           <div className="bg-white rounded-2xl shadow-xl w-full max-w-md p-6 border space-y-4">
-            <h3 className="font-bold text-sm text-stone-900">Confirmar Aplicación</h3>
-            <p className="text-stone-600">Se descontarán los {executingOrden.productos.length} producto(s) de la bodega para {executingOrden.parcelaNombres}.</p>
+            <h3 className="font-bold text-sm text-stone-900">Confirmar Aplicación & Descontar Bodega</h3>
+            <p className="text-stone-600">Se descontarán automáticamente los <strong>{executingOrden.productos.length} producto(s)</strong> del inventario para <strong>{executingOrden.parcelaNombres}</strong>.</p>
             <div>
-              <label className="block font-bold text-stone-700 mb-1">Firma del Aplicador</label>
+              <label className="block font-bold text-stone-700 mb-1">Firma / Registro del Aplicador</label>
               <input type="text" value={execFirmaAplicador} onChange={(e) => setExecFirmaAplicador(e.target.value)} className="w-full p-2.5 border rounded-lg font-mono" />
             </div>
             <div className="pt-2 border-t flex justify-end gap-2">
-              <button onClick={() => setExecutingOrden(null)} className="px-4 py-2 border rounded-lg">Cancelar</button>
-              <button onClick={handleConfirmExecution} className="px-4 py-2 bg-emerald-800 text-white font-bold rounded-lg">Confirmar</button>
+              <button onClick={() => setExecutingOrden(null)} className="px-4 py-2 border rounded-lg cursor-pointer">Cancelar</button>
+              <button onClick={handleConfirmExecution} className="px-4 py-2 bg-emerald-800 text-white font-bold rounded-lg cursor-pointer">Confirmar & Descontar</button>
             </div>
           </div>
         </div>
