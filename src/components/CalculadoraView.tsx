@@ -6,36 +6,108 @@ import {
   Wheat, 
   Layers, 
   HelpCircle,
-  RotateCcw
+  Info,
+  Package,
+  CheckCircle2
 } from 'lucide-react';
+import { Parcela, InsumoInventario } from '../types/campo';
 
-export const CalculadoraView: React.FC = () => {
+interface CalculadoraViewProps {
+  parcelas?: Parcela[];
+  inventario?: InsumoInventario[];
+}
+
+export const CalculadoraView: React.FC<CalculadoraViewProps> = ({ 
+  parcelas = [], 
+  inventario = [] 
+}) => {
   const [activeCalc, setActiveCalc] = useState<'caldo' | 'densidad' | 'npk' | 'lamina'>('caldo');
 
-  // 1. Caldo Pulverización States
+  // -------------------------------------------------------------
+  // 1. ESTADOS Y LÓGICA DE CALDO Y DOSIFICACIÓN
+  // -------------------------------------------------------------
+  const [selectedParcelaId, setSelectedParcelaId] = useState<string>(parcelas[0]?.id || '');
+  const [superficieTratarHa, setSuperficieTratarHa] = useState<number>(parcelas[0]?.superficieHa || 4.8);
   const [tanqueLitros, setTanqueLitros] = useState<number>(2000);
   const [gastoCaldoHa, setGastoCaldoHa] = useState<number>(1200);
-  const [dosisHa, setDosisHa] = useState<number>(0.8);
-  const [superficieTratarHa, setSuperficieTratarHa] = useState<number>(4.8);
-  const [unidadProducto, setUnidadProducto] = useState<'kg' | 'L'>('kg');
+  
+  const [selectedInsumoId, setSelectedInsumoId] = useState<string>('');
+  const [nombreProducto, setNombreProducto] = useState<string>('Cobre Hidróxido 50 WP');
+  const [dosisHa, setDosisHa] = useState<number>(2.0);
+  const [unidadDosis, setUnidadDosis] = useState<'kg/ha' | 'L/ha' | 'cc/100L' | 'g/100L'>('kg/ha');
 
-  // Cálculos Caldo
-  const haPorTanque = gastoCaldoHa > 0 ? tanqueLitros / gastoCaldoHa : 0;
-  const productoPorTanque = haPorTanque * dosisHa;
-  const tanquesNecesarios = haPorTanque > 0 ? superficieTratarHa / haPorTanque : 0;
-  const productoTotalLote = superficieTratarHa * dosisHa;
+  // Manejo de cambio de parcela
+  const handleParcelaChange = (id: string) => {
+    setSelectedParcelaId(id);
+    const p = parcelas.find(item => item.id === id);
+    if (p) {
+      setSuperficieTratarHa(p.superficieHa);
+    }
+  };
 
-  // 2. Densidad Plantación States
+  // Manejo de cambio de insumo desde Bodega
+  const handleInsumoChange = (id: string) => {
+    setSelectedInsumoId(id);
+    const ins = inventario.find(i => i.id === id);
+    if (ins) {
+      setNombreProducto(ins.nombreComercial);
+      if (ins.unidad === 'kg') setUnidadDosis('kg/ha');
+      else if (ins.unidad === 'L') setUnidadDosis('L/ha');
+      else if (ins.unidad === 'g') setUnidadDosis('g/100L');
+      else if (ins.unidad === 'cc') setUnidadDosis('cc/100L');
+    }
+  };
+
+  // Cálculos de Caldo
+  const ha = Number(superficieTratarHa) || 0;
+  const mojamiento = Number(gastoCaldoHa) || 0;
+  const dosisVal = Number(dosisHa) || 0;
+  const estanqueVal = Number(tanqueLitros) || 2000;
+
+  const aguaTotalLitros = Math.round(ha * mojamiento);
+  const tanquesNecesarios = mojamiento > 0 && estanqueVal > 0 ? (aguaTotalLitros / estanqueVal) : 0;
+  const haPorTanque = mojamiento > 0 ? estanqueVal / mojamiento : 0;
+
+  let productoTotalLote = 0;
+  let unidadProductoTotal = 'kg';
+
+  if (unidadDosis === 'kg/ha' || unidadDosis === 'L/ha') {
+    productoTotalLote = ha * dosisVal;
+    unidadProductoTotal = unidadDosis === 'kg/ha' ? 'kg' : 'L';
+  } else {
+    productoTotalLote = (aguaTotalLitros / 100) * dosisVal;
+    if (unidadDosis === 'cc/100L') {
+      unidadProductoTotal = productoTotalLote >= 1000 ? 'L' : 'cc';
+      if (productoTotalLote >= 1000) productoTotalLote /= 1000;
+    } else {
+      unidadProductoTotal = productoTotalLote >= 1000 ? 'kg' : 'g';
+      if (productoTotalLote >= 1000) productoTotalLote /= 1000;
+    }
+  }
+
+  let productoPorTanque = 0;
+  if (unidadDosis === 'kg/ha' || unidadDosis === 'L/ha') {
+    productoPorTanque = haPorTanque * dosisVal;
+  } else {
+    productoPorTanque = (estanqueVal / 100) * dosisVal;
+    if (unidadDosis === 'cc/100L' && productoPorTanque >= 1000) productoPorTanque /= 1000;
+    if (unidadDosis === 'g/100L' && productoPorTanque >= 1000) productoPorTanque /= 1000;
+  }
+
+  // -------------------------------------------------------------
+  // 2. ESTADOS Y LÓGICA DE DENSIDAD DE PLANTACIÓN
+  // -------------------------------------------------------------
   const [distEntreHileras, setDistEntreHileras] = useState<number>(4.0);
   const [distSobreHilera, setDistSobreHilera] = useState<number>(2.0);
   const [superficieLoteHa, setSuperficieLoteHa] = useState<number>(3.5);
 
-  // Cálculos Densidad
   const areaPorPlanta = distEntreHileras * distSobreHilera;
   const plantasPorHa = areaPorPlanta > 0 ? Math.round(10000 / areaPorPlanta) : 0;
   const totalPlantasLote = Math.round(plantasPorHa * superficieLoteHa);
 
-  // 3. NPK Nutrición States
+  // -------------------------------------------------------------
+  // 3. ESTADOS Y LÓGICA DE APORTE NUTRICIONAL NPK
+  // -------------------------------------------------------------
   const [fertilizanteTipo, setFertilizanteTipo] = useState<string>('urea');
   const [dosisFertilizanteKgHa, setDosisFertilizanteKgHa] = useState<number>(150);
   const [areaFertHa, setAreaFertHa] = useState<number>(4.8);
@@ -61,25 +133,26 @@ export const CalculadoraView: React.FC = () => {
   const aporteP_total = aporteP_ha * areaFertHa;
   const aporteK_total = aporteK_ha * areaFertHa;
 
-  // 4. Lámina de Riego States
-  const [caudalGoteroLtsH, setCaudalGoteroLtsH] = useState<number>(2.0); // 2 L/h
-  const [distGoterosM, setDistGoterosM] = useState<number>(0.5); // 0.5 m entre goteros
-  const [distHilerasRiegoM, setDistHilerasRiegoM] = useState<number>(4.0); // 4 m entre hileras
+  // -------------------------------------------------------------
+  // 4. ESTADOS Y LÓGICA DE LÁMINA DE RIEGO
+  // -------------------------------------------------------------
+  const [caudalGoteroLtsH, setCaudalGoteroLtsH] = useState<number>(2.0);
+  const [distGoterosM, setDistGoterosM] = useState<number>(0.5);
+  const [distHilerasRiegoM, setDistHilerasRiegoM] = useState<number>(4.0);
   const [horasRiego, setHorasRiego] = useState<number>(4.0);
 
-  // mm de agua = (caudal / área de cobertura por gotero) * horas
-  // Área por gotero = distGoteros * distHileras (m²)
   const areaPorGotero = distGoterosM * distHilerasRiegoM;
   const intensidadPrecipitacionMmH = areaPorGotero > 0 ? caudalGoteroLtsH / areaPorGotero : 0;
   const laminaRiegoMm = intensidadPrecipitacionMmH * horasRiego;
-  const m3PorHa = laminaRiegoMm * 10; // 1 mm = 10 m³/ha
+  const m3PorHa = laminaRiegoMm * 10;
 
   return (
-    <div className="space-y-6">
-      {/* Header */}
+    <div className="space-y-6 text-xs">
+      {/* Header General */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-2 border-b border-stone-200">
         <div>
-          <h1 className="text-xl font-bold tracking-tight text-stone-900">
+          <h1 className="text-xl font-bold tracking-tight text-stone-900 flex items-center gap-2">
+            <Calculator className="w-5 h-5 text-emerald-700" />
             Calculadora Agronómica de Campo
           </h1>
           <p className="text-xs text-stone-500">
@@ -88,11 +161,11 @@ export const CalculadoraView: React.FC = () => {
         </div>
       </div>
 
-      {/* Segmented Selector */}
+      {/* Selector de Pestaña */}
       <div className="flex items-center gap-2 p-1 bg-stone-100 rounded-xl overflow-x-auto">
         <button
           onClick={() => setActiveCalc('caldo')}
-          className={`px-4 py-2 text-xs font-semibold rounded-lg transition-all whitespace-nowrap flex items-center gap-1.5 ${
+          className={`px-4 py-2 text-xs font-semibold rounded-lg transition-all whitespace-nowrap flex items-center gap-1.5 cursor-pointer ${
             activeCalc === 'caldo'
               ? 'bg-white text-stone-900 shadow-xs border border-stone-200'
               : 'text-stone-600 hover:text-stone-900'
@@ -104,7 +177,7 @@ export const CalculadoraView: React.FC = () => {
 
         <button
           onClick={() => setActiveCalc('densidad')}
-          className={`px-4 py-2 text-xs font-semibold rounded-lg transition-all whitespace-nowrap flex items-center gap-1.5 ${
+          className={`px-4 py-2 text-xs font-semibold rounded-lg transition-all whitespace-nowrap flex items-center gap-1.5 cursor-pointer ${
             activeCalc === 'densidad'
               ? 'bg-white text-stone-900 shadow-xs border border-stone-200'
               : 'text-stone-600 hover:text-stone-900'
@@ -116,7 +189,7 @@ export const CalculadoraView: React.FC = () => {
 
         <button
           onClick={() => setActiveCalc('npk')}
-          className={`px-4 py-2 text-xs font-semibold rounded-lg transition-all whitespace-nowrap flex items-center gap-1.5 ${
+          className={`px-4 py-2 text-xs font-semibold rounded-lg transition-all whitespace-nowrap flex items-center gap-1.5 cursor-pointer ${
             activeCalc === 'npk'
               ? 'bg-white text-stone-900 shadow-xs border border-stone-200'
               : 'text-stone-600 hover:text-stone-900'
@@ -128,7 +201,7 @@ export const CalculadoraView: React.FC = () => {
 
         <button
           onClick={() => setActiveCalc('lamina')}
-          className={`px-4 py-2 text-xs font-semibold rounded-lg transition-all whitespace-nowrap flex items-center gap-1.5 ${
+          className={`px-4 py-2 text-xs font-semibold rounded-lg transition-all whitespace-nowrap flex items-center gap-1.5 cursor-pointer ${
             activeCalc === 'lamina'
               ? 'bg-white text-stone-900 shadow-xs border border-stone-200'
               : 'text-stone-600 hover:text-stone-900'
@@ -139,71 +212,38 @@ export const CalculadoraView: React.FC = () => {
         </button>
       </div>
 
-      {/* 1. CALDO PULVERIZADOR */}
+      {/* ------------------------------------------------------------- */}
+      {/* 1. SECCIÓN: CALDO Y DOSIFICACIÓN PULVERIZADOR */}
+      {/* ------------------------------------------------------------- */}
       {activeCalc === 'caldo' && (
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+          
+          {/* Formulario de Entrada (Col 6) */}
           <div className="lg:col-span-6 bg-white border border-stone-200 rounded-xl p-5 shadow-xs space-y-4">
-            <h3 className="text-sm font-bold text-stone-900">
-              Parámetros de Maquinaria y Lote
+            <h3 className="text-sm font-bold text-stone-900 flex items-center gap-2 border-b pb-2">
+              <Info className="w-4 h-4 text-emerald-700" /> Parámetros de Maquinaria y Lote
             </h3>
 
-            <div className="space-y-3 text-xs">
+            {/* Parcela o Hectáreas */}
+            {parcelas.length > 0 && (
               <div>
-                <label className="block text-stone-700 font-medium mb-1">
-                  Capacidad del Estanque del Pulverizador (Litros)
-                </label>
-                <input
-                  type="number"
-                  value={tanqueLitros}
-                  onChange={(e) => setTanqueLitros(Math.max(1, Number(e.target.value)))}
-                  className="w-full px-3 py-2 border border-stone-300 rounded-lg font-mono text-sm"
-                />
-                <span className="text-[11px] text-stone-400">Valores típicos: 1000L, 1500L, 2000L, 3000L</span>
+                <label className="block text-stone-700 font-medium mb-1">Cargar Cuartel / Parcela</label>
+                <select 
+                  value={selectedParcelaId} 
+                  onChange={(e) => handleParcelaChange(e.target.value)}
+                  className="w-full px-3 py-2 border border-stone-300 rounded-lg font-medium bg-stone-50"
+                >
+                  {parcelas.map(p => (
+                    <option key={p.id} value={p.id}>{p.nombre} ({p.superficieHa} ha)</option>
+                  ))}
+                  <option value="manual">-- Definir Superficie Manual --</option>
+                </select>
               </div>
+            )}
 
+            <div className="grid grid-cols-2 gap-3">
               <div>
-                <label className="block text-stone-700 font-medium mb-1">
-                  Volumen de Caldo Calibrado por Hectárea (L/ha)
-                </label>
-                <input
-                  type="number"
-                  value={gastoCaldoHa}
-                  onChange={(e) => setGastoCaldoHa(Math.max(1, Number(e.target.value)))}
-                  className="w-full px-3 py-2 border border-stone-300 rounded-lg font-mono text-sm"
-                />
-                <span className="text-[11px] text-stone-400">Según calibración con tractor a velocidad constante</span>
-              </div>
-
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="block text-stone-700 font-medium mb-1">
-                    Dosis Recomendada por Hectárea
-                  </label>
-                  <input
-                    type="number"
-                    step="0.05"
-                    value={dosisHa}
-                    onChange={(e) => setDosisHa(Number(e.target.value))}
-                    className="w-full px-3 py-2 border border-stone-300 rounded-lg font-mono text-sm"
-                  />
-                </div>
-                <div>
-                  <label className="block text-stone-700 font-medium mb-1">Unidad</label>
-                  <select
-                    value={unidadProducto}
-                    onChange={(e) => setUnidadProducto(e.target.value as any)}
-                    className="w-full px-3 py-2 border border-stone-300 rounded-lg text-sm"
-                  >
-                    <option value="kg">kg/ha (Polvos mojables / granulados)</option>
-                    <option value="L">L/ha (Líquidos / suspensiones)</option>
-                  </select>
-                </div>
-              </div>
-
-              <div>
-                <label className="block text-stone-700 font-medium mb-1">
-                  Superficie del Cuartel / Lote a Tratar (ha)
-                </label>
+                <label className="block text-stone-700 font-medium mb-1">Superficie a Tratar (ha)</label>
                 <input
                   type="number"
                   step="0.1"
@@ -212,73 +252,188 @@ export const CalculadoraView: React.FC = () => {
                   className="w-full px-3 py-2 border border-stone-300 rounded-lg font-mono text-sm"
                 />
               </div>
+              <div>
+                <label className="block text-stone-700 font-medium mb-1">Capacidad Estanque (L)</label>
+                <input
+                  type="number"
+                  value={tanqueLitros}
+                  onChange={(e) => setTanqueLitros(Math.max(1, Number(e.target.value)))}
+                  className="w-full px-3 py-2 border border-stone-300 rounded-lg font-mono text-sm"
+                />
+              </div>
             </div>
-          </div>
 
-          {/* Results Caldo */}
-          <div className="lg:col-span-6 bg-stone-900 text-white rounded-xl p-6 shadow-sm flex flex-col justify-between space-y-6">
             <div>
-              <div className="text-xs text-emerald-400 font-semibold uppercase tracking-wider mb-1">
-                Resultado de Mezcla para Terreno
-              </div>
-              <h3 className="text-lg font-bold">
-                Instrucciones para el Operador del Pulverizador
-              </h3>
-
-              <div className="mt-6 space-y-4">
-                <div className="p-4 bg-white/10 rounded-lg border border-white/10">
-                  <span className="text-xs text-stone-300 block">Dosis a Disolver por Estanque Lleno</span>
-                  <div className="mt-1 flex items-baseline gap-2">
-                    <span className="text-3xl font-extrabold text-emerald-300 font-mono tabular-nums">
-                      {productoPorTanque.toFixed(2)}
-                    </span>
-                    <span className="text-sm font-semibold">{unidadProducto} de producto</span>
-                  </div>
-                  <span className="text-[11px] text-stone-400 block mt-1">
-                    Cada estanque cubre exactamente {haPorTanque.toFixed(2)} hectáreas
-                  </span>
-                </div>
-
-                <div className="grid grid-cols-2 gap-3 text-xs">
-                  <div className="p-3 bg-white/5 rounded-lg border border-white/10">
-                    <span className="text-stone-400 block">Estanques para el lote</span>
-                    <span className="text-xl font-bold font-mono tabular-nums text-white mt-1 block">
-                      {tanquesNecesarios.toFixed(2)}
-                    </span>
-                    <span className="text-[10px] text-stone-400">
-                      ≈ {Math.floor(tanquesNecesarios)} llenos + {((tanquesNecesarios % 1) * 100).toFixed(0)}% remanente
-                    </span>
-                  </div>
-
-                  <div className="p-3 bg-white/5 rounded-lg border border-white/10">
-                    <span className="text-stone-400 block">Total Producto Requerido</span>
-                    <span className="text-xl font-bold font-mono tabular-nums text-emerald-400 mt-1 block">
-                      {productoTotalLote.toFixed(2)} {unidadProducto}
-                    </span>
-                    <span className="text-[10px] text-stone-400">
-                      Para {superficieTratarHa} hectáreas totales
-                    </span>
-                  </div>
-                </div>
-              </div>
+              <label className="block text-stone-700 font-medium mb-1">
+                Volumen Caldo Calibrado (L/ha)
+              </label>
+              <input
+                type="number"
+                value={gastoCaldoHa}
+                onChange={(e) => setGastoCaldoHa(Math.max(1, Number(e.target.value)))}
+                className="w-full px-3 py-2 border border-stone-300 rounded-lg font-mono text-sm"
+              />
+              <span className="text-[11px] text-stone-400 mt-1 block">
+                Agua requerida por hectárea según calibración del tractor.
+              </span>
             </div>
 
-            <div className="p-3 bg-emerald-950/60 rounded-lg border border-emerald-800/40 text-[11px] text-emerald-200">
-              💡 <strong>Recomendación agronómica:</strong> Llenar el estanque hasta el 50% con agua limpia, poner el agitador en marcha, diluir el producto previamente en un balde (premezcla) y luego completar el volumen restante de agua.
+            <hr className="border-stone-100" />
+
+            {/* Insumos de Bodega y Dosis */}
+            <div className="space-y-3">
+              <label className="block text-stone-700 font-bold">Producto y Dosis</label>
+
+              {inventario.length > 0 && (
+                <div>
+                  <label className="block text-[11px] text-stone-500 mb-1">Cargar de Bodega</label>
+                  <select
+                    value={selectedInsumoId}
+                    onChange={(e) => handleInsumoChange(e.target.value)}
+                    className="w-full px-3 py-2 border border-stone-300 rounded-lg bg-emerald-50/50 text-emerald-950 font-medium"
+                  >
+                    <option value="">-- Seleccionar de Bodega --</option>
+                    {inventario.map(i => (
+                      <option key={i.id} value={i.id}>[{i.categoria}] {i.nombreComercial}</option>
+                    ))}
+                  </select>
+                </div>
+              )}
+
+              <div>
+                <label className="block text-[11px] text-stone-500 mb-1">Nombre Comercial</label>
+                <input
+                  type="text"
+                  value={nombreProducto}
+                  onChange={(e) => setNombreProducto(e.target.value)}
+                  className="w-full px-3 py-2 border border-stone-300 rounded-lg font-bold"
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-[11px] text-stone-500 mb-1">Dosis Recomendada</label>
+                  <input
+                    type="number"
+                    step="0.05"
+                    value={dosisHa}
+                    onChange={(e) => setDosisHa(Number(e.target.value))}
+                    className="w-full px-3 py-2 border border-stone-300 rounded-lg font-mono text-sm font-bold"
+                  />
+                </div>
+                <div>
+                  <label className="block text-[11px] text-stone-500 mb-1">Unidad Dosis</label>
+                  <select
+                    value={unidadDosis}
+                    onChange={(e) => setUnidadDosis(e.target.value as any)}
+                    className="w-full px-3 py-2 border border-stone-300 rounded-lg text-sm bg-white font-medium"
+                  >
+                    <option value="kg/ha">kg / ha</option>
+                    <option value="L/ha">L / ha</option>
+                    <option value="cc/100L">cc / 100 Litros</option>
+                    <option value="g/100L">g / 100 Litros</option>
+                  </select>
+                </div>
+              </div>
             </div>
           </div>
+
+          {/* Panel de Resultados y Explicación (Col 6) */}
+          <div className="lg:col-span-6 space-y-4">
+            
+            {/* Tarjetas Principales */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div className="p-4 bg-stone-900 text-white rounded-xl shadow-xs space-y-1">
+                <span className="text-stone-400 uppercase font-bold text-[10px] flex items-center gap-1">
+                  <Droplet className="w-3.5 h-3.5 text-blue-400" /> Agua Total Necesaria
+                </span>
+                <div className="text-2xl font-black font-mono text-blue-300">
+                  {aguaTotalLitros.toLocaleString('es-CL')} <span className="text-xs font-normal">Litros</span>
+                </div>
+                <span className="text-[11px] text-stone-300 block">
+                  Para {ha} ha con {mojamiento} L/ha
+                </span>
+              </div>
+
+              <div className="p-4 bg-emerald-950 text-white rounded-xl shadow-xs space-y-1">
+                <span className="text-emerald-300 uppercase font-bold text-[10px] flex items-center gap-1">
+                  <Package className="w-3.5 h-3.5 text-emerald-400" /> Producto Total Requerido
+                </span>
+                <div className="text-2xl font-black font-mono text-emerald-300">
+                  {productoTotalLote.toFixed(2)} <span className="text-xs font-normal">{unidadProductoTotal}</span>
+                </div>
+                <span className="text-[11px] text-emerald-200 block truncate">
+                  Total de {nombreProducto}
+                </span>
+              </div>
+            </div>
+
+            {/* Receta por Estanque Lleno */}
+            <div className="p-4 bg-amber-50 rounded-xl border border-amber-300 space-y-2">
+              <h4 className="font-extrabold text-amber-950 text-xs flex items-center gap-1.5 uppercase">
+                <CheckCircle2 className="w-4 h-4 text-amber-700" /> Receta por Estanque Lleno ({estanqueVal} L)
+              </h4>
+              <div className="p-3 bg-white rounded-lg border border-amber-200 flex justify-between items-center">
+                <div>
+                  <span className="text-stone-500 font-semibold block">Dosis a Disolver:</span>
+                  <strong className="text-stone-900 text-sm">{nombreProducto}</strong>
+                </div>
+                <div className="text-right">
+                  <span className="text-xl font-black font-mono text-amber-900">
+                    {productoPorTanque.toFixed(2)} {unidadDosis === 'cc/100L' || unidadDosis === 'g/100L' ? (productoPorTanque >= 1000 ? (unidadDosis === 'cc/100L' ? 'L' : 'kg') : (unidadDosis === 'cc/100L' ? 'cc' : 'g')) : (unidadDosis === 'kg/ha' ? 'kg' : 'L')}
+                  </span>
+                  <span className="block text-[10px] text-stone-400">cubre {haPorTanque.toFixed(2)} ha</span>
+                </div>
+              </div>
+              <div className="text-[10px] text-amber-900">
+                Se requieren <strong>{tanquesNecesarios.toFixed(2)} estanques</strong> para cubrir la superficie total ({Math.floor(tanquesNecesarios)} llenos + {((tanquesNecesarios % 1) * 100).toFixed(0)}% remanente).
+              </div>
+            </div>
+
+            {/* Desglose Explicativo Paso a Paso */}
+            <div className="bg-white p-4 rounded-xl border border-stone-200 space-y-2.5">
+              <h4 className="font-bold text-xs text-stone-900 flex items-center gap-1.5 border-b pb-1.5">
+                <HelpCircle className="w-4 h-4 text-stone-500" /> Explicación Matemática del Cálculo
+              </h4>
+
+              <div className="space-y-2 text-stone-700 text-[11px]">
+                <div className="p-2 bg-stone-50 rounded border">
+                  <strong className="text-stone-900 block font-bold">1. Agua Total:</strong>
+                  <span>{ha} ha × {mojamiento} L/ha = <strong>{aguaTotalLitros.toLocaleString('es-CL')} Litros</strong>.</span>
+                </div>
+
+                <div className="p-2 bg-stone-50 rounded border">
+                  <strong className="text-stone-900 block font-bold">2. Producto Total:</strong>
+                  {unidadDosis === 'kg/ha' || unidadDosis === 'L/ha' ? (
+                    <span>{ha} ha × {dosisVal} {unidadDosis} = <strong>{productoTotalLote.toFixed(2)} {unidadProductoTotal}</strong>.</span>
+                  ) : (
+                    <span>({aguaTotalLitros} L / 100) × {dosisVal} = <strong>{productoTotalLote.toFixed(2)} {unidadProductoTotal}</strong>.</span>
+                  )}
+                </div>
+
+                <div className="p-2 bg-stone-50 rounded border">
+                  <strong className="text-stone-900 block font-bold">3. Mezcla por Estanque:</strong>
+                  <span>Para 1 estanque de {estanqueVal}L echar <strong>{productoPorTanque.toFixed(2)}</strong> del producto.</span>
+                </div>
+              </div>
+            </div>
+
+          </div>
+
         </div>
       )}
 
-      {/* 2. DENSIDAD PLANTACIÓN */}
+      {/* ------------------------------------------------------------- */}
+      {/* 2. SECCIÓN: DENSIDAD DE PLANTACIÓN */}
+      {/* ------------------------------------------------------------- */}
       {activeCalc === 'densidad' && (
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
           <div className="lg:col-span-6 bg-white border border-stone-200 rounded-xl p-5 shadow-xs space-y-4">
-            <h3 className="text-sm font-bold text-stone-900">
+            <h3 className="text-sm font-bold text-stone-900 border-b pb-2">
               Marco de Plantación y Superficie
             </h3>
 
-            <div className="space-y-3 text-xs">
+            <div className="space-y-3">
               <div>
                 <label className="block text-stone-700 font-medium mb-1">
                   Distancia entre Hileras (metros)
@@ -349,7 +504,7 @@ export const CalculadoraView: React.FC = () => {
                     {totalPlantasLote.toLocaleString()} plantas
                   </span>
                   <span className="text-[11px] text-stone-400 block mt-1">
-                    Para {superficieLoteHa} ha (Se recomienda cotizar 5% extra para replante: {(totalPlantasLote * 1.05).toFixed(0)} plantas)
+                    Para {superficieLoteHa} ha (Cotizar 5% extra para replante: {(totalPlantasLote * 1.05).toFixed(0)} plantas)
                   </span>
                 </div>
               </div>
@@ -358,15 +513,17 @@ export const CalculadoraView: React.FC = () => {
         </div>
       )}
 
-      {/* 3. APORTE NUTRICIONAL NPK */}
+      {/* ------------------------------------------------------------- */}
+      {/* 3. SECCIÓN: APORTE NUTRICIONAL NPK */}
+      {/* ------------------------------------------------------------- */}
       {activeCalc === 'npk' && (
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
           <div className="lg:col-span-6 bg-white border border-stone-200 rounded-xl p-5 shadow-xs space-y-4">
-            <h3 className="text-sm font-bold text-stone-900">
+            <h3 className="text-sm font-bold text-stone-900 border-b pb-2">
               Fertilizante y Dosis Aplicada
             </h3>
 
-            <div className="space-y-3 text-xs">
+            <div className="space-y-3">
               <div>
                 <label className="block text-stone-700 font-medium mb-1">
                   Tipo de Fertilizante
@@ -374,7 +531,7 @@ export const CalculadoraView: React.FC = () => {
                 <select
                   value={fertilizanteTipo}
                   onChange={(e) => setFertilizanteTipo(e.target.value)}
-                  className="w-full px-3 py-2 border border-stone-300 rounded-lg text-sm"
+                  className="w-full px-3 py-2 border border-stone-300 rounded-lg text-sm bg-white font-medium"
                 >
                   <option value="urea">Urea Granulada (46-0-0)</option>
                   <option value="nitrato_calcio">Nitrato de Calcio (15.5-0-0 + 26 CaO)</option>
@@ -465,19 +622,21 @@ export const CalculadoraView: React.FC = () => {
         </div>
       )}
 
-      {/* 4. LÁMINA DE RIEGO */}
+      {/* ------------------------------------------------------------- */}
+      {/* 4. SECCIÓN: LÁMINA DE RIEGO */}
+      {/* ------------------------------------------------------------- */}
       {activeCalc === 'lamina' && (
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
           <div className="lg:col-span-6 bg-white border border-stone-200 rounded-xl p-5 shadow-xs space-y-4">
-            <h3 className="text-sm font-bold text-stone-900">
+            <h3 className="text-sm font-bold text-stone-900 border-b pb-2">
               Parámetros del Sistema de Riego Tecnificado
             </h3>
 
-            <div className="space-y-3 text-xs">
+            <div className="space-y-3">
               <div className="grid grid-cols-2 gap-3">
                 <div>
                   <label className="block text-stone-700 font-medium mb-1">
-                    Caudal por Emisor / Gotero (L/h)
+                    Caudal Gotero (L/h)
                   </label>
                   <input
                     type="number"
@@ -489,7 +648,7 @@ export const CalculadoraView: React.FC = () => {
                 </div>
                 <div>
                   <label className="block text-stone-700 font-medium mb-1">
-                    Distancia entre Goteros (m)
+                    Dist. Goteros (m)
                   </label>
                   <input
                     type="number"
@@ -563,6 +722,7 @@ export const CalculadoraView: React.FC = () => {
           </div>
         </div>
       )}
+
     </div>
   );
 };
