@@ -37,7 +37,7 @@ const INITIAL_INVENTARIO: InsumoInventario[] = [
 
 const INITIAL_USUARIOS: UsuarioPredio[] = [
   { id: 'usr-1', nombre: 'Diego Pereira Ramirez', email: 'diego@fundolacabana.cl', rol: 'administrador', numeroRegistroSAG: 'SAG-8921-CL', estado: 'activo', fechaAlta: '2026-01-01' },
-  { id: 'usr-2', nombre: 'Juan Pérez', email: 'juan@fundolacabana.cl', rol: 'operador', numeroRegistroSAG: 'APL-SAG-3312', estado: 'activo', fechaAlta: '2026-01-01' }
+  { id: 'usr-2', nombre: 'Carlos Manqui', email: 'juan@fundolacabana.cl', rol: 'operador', numeroRegistroSAG: 'APL-SAG-3312', estado: 'activo', fechaAlta: '2026-01-01' }
 ];
 
 const INITIAL_LABORES: RegistroLabor[] = [
