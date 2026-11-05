@@ -1,793 +1,337 @@
-import React, { useState, useEffect, useRef } from 'react';
-import { Navbar, ActiveTab } from './components/Navbar';
-import { DashboardView } from './components/DashboardView';
+import React, { useState } from 'react';
+import { 
+  Sprout, 
+  Package, 
+  Droplet, 
+  Waves, 
+  Sun, 
+  Bug, 
+  Calculator, 
+  FileText, 
+  Plus, 
+  Bell,
+  Layers
+} from 'lucide-react';
+
+import { Parcela, InsumoInventario, UsuarioPredio, RegistroLabor, OrdenTrabajoFitosanitaria, CondicionClima } from './types/campo';
 import { LaboresView } from './components/LaboresView';
-import { InventarioView } from './components/InventarioView';
-import { PozoView } from './components/PozoView';
-import { ClimaView } from './components/ClimaView';
-import { ParcelasView } from './components/ParcelasView';
-import { MonitoreoView } from './components/MonitoreoView';
+import { BodegaView } from './components/BodegaView';
 import { CalculadoraView } from './components/CalculadoraView';
-import { InformeOficialView } from './components/InformeOficialView';
-import { UsuariosView } from './components/UsuariosView';
-import { CosechaMadurezView } from './components/CosechaMadurezView';
 import { OrdenesTrabajoView } from './components/OrdenesTrabajoView';
-import { HorasFrioFenologiaView } from './components/HorasFrioFenologiaView';
-import { RiegoView } from './components/RiegoView';
-import { AlertasStockModal } from './components/AlertasStockModal';
 import { ModalLabor } from './components/ModalLabor';
-import { ModalExplotacion } from './components/ModalExplotacion';
-import { 
-  getStoredExplotacion, 
-  saveStoredExplotacion,
-  getStoredParcelas, 
-  saveStoredParcelas,
-  getStoredLabores, 
-  saveStoredLabores,
-  getStoredInventario, 
-  saveStoredInventario,
-  getStoredRegistrosPozo, 
-  saveStoredRegistrosPozo,
-  getStoredLugares, 
-  saveStoredLugares,
-  getStoredUsuarios, 
-  saveStoredUsuarios,
-  getStoredActiveUserId, 
-  saveStoredActiveUserId,
-  getStoredMuestreosMadurez, 
-  saveStoredMuestreosMadurez,
-  getStoredCosechasLote, 
-  saveStoredCosechasLote,
-  getStoredOrdenesTrabajo, 
-  saveStoredOrdenesTrabajo,
-  getStoredCondicionHorasFrio, 
-  saveStoredCondicionHorasFrio,
-  getStoredFenologia, 
-  saveStoredFenologia,
-  getStoredPolinizacion, 
-  saveStoredPolinizacion,
-  resetStorageToDefaults 
-} from './utils/storage';
-import { 
-  ExplotacionAgricola, 
-  Parcela, 
-  RegistroLabor, 
-  TipoLabor, 
-  InsumoInventario, 
-  RegistroExtraccionPozo,
-  ClimaCondiciones,
-  LugarPredio,
-  UsuarioPredio,
-  MuestreoMadurez,
-  RegistroCosechaLote,
-  OrdenTrabajoFitosanitaria,
-  CondicionHorasFrio,
-  SeguimientoFenologico,
-  RegistroPolinizacion,
-  RegistroRiegoSector,
-  SectorRiegoConfig
-} from './types/campo';
-import { initialClimaLaCabana } from './data/initialData';
-import { RotateCcw, X, CheckCircle2, Loader2, Save, Database, Lock, LogIn, AlertCircle, LogOut, UserCog } from 'lucide-react';
 
-const SUPABASE_URL = 'https://zvtolionewlulqmtdaty.supabase.co';
-const SUPABASE_ANON_KEY = 'sb_publishable_s1vQx_x3_f3fDHHkdjVxZw_GTMkiU8I';
-
-const SECTORES_INICIALES: SectorRiegoConfig[] = [
-  { id: 'sec-1', nombre: 'Sector 1', superficieHa: 3.8, descripcion: 'Lado Norte' },
-  { id: 'sec-2', nombre: 'Sector 2', superficieHa: 3.2, descripcion: 'Lado Este' },
-  { id: 'sec-3', nombre: 'Sector 3', superficieHa: 3.5, descripcion: 'Lado Sur' },
-  { id: 'sec-4', nombre: 'Sector 4', superficieHa: 2.6, descripcion: 'Lado Poniente' }
+// Datos Iniciales de Ejemplo
+const INITIAL_PARCELAS: Parcela[] = [
+  { id: 'c1', nombre: 'Cuartel 1 - Kiwi Hayward', superficieHa: 2.8, variedad: 'Kiwi Hayward', anoPlantacion: 2015 },
+  { id: 'c2', nombre: 'Cuartel 2 - Kiwi Hayward', superficieHa: 4.9, variedad: 'Kiwi Hayward', anoPlantacion: 2017 },
+  { id: 'c3', nombre: 'Cuartel 3 - Kiwi Hayward Formacion', superficieHa: 5.4, variedad: 'Kiwi Hayward', anoPlantacion: 2021 }
 ];
 
-const USUARIO_INICIAL_ADMIN: UsuarioPredio & { clave?: string } = {
-  id: 'usr-admin-diego',
-  nombre: 'Diego Pereira Ramirez',
-  email: 'diegopereiraramirez@gmail.com',
-  telefono: '+56 9 ',
-  rol: 'administrador',
-  rutIdentificacion: '',
-  estado: 'activo',
-  fechaAlta: '2026-10-20',
-  avatarColor: 'bg-emerald-800 text-white',
-  notas: 'Administrador del Fundo La Cabaña'
-};
+const INITIAL_INVENTARIO: InsumoInventario[] = [
+  { id: 'ins-1', nombreComercial: 'Cobre Hidróxido 50 WP', materiaActiva: 'Hidróxido de Cobre', categoria: 'Fungicida', stockActual: 45, unidad: 'kg', numeroRegistroSAG: '1234-SAG' },
+  { id: 'ins-2', nombreComercial: 'Spirotetramat 240 SC', materiaActiva: 'Spirotetramat', categoria: 'Insecticida', stockActual: 12, unidad: 'L', numeroRegistroSAG: '5678-SAG' },
+  { id: 'ins-3', nombreComercial: 'Nitrato de Calcio', materiaActiva: 'Nitrato de Calcio', categoria: 'Fertilizante', stockActual: 500, unidad: 'kg' },
+  { id: 'ins-4', nombreComercial: 'Glifosato 480 SL', materiaActiva: 'Glifosato', categoria: 'Herbicida', stockActual: 30, unidad: 'L', numeroRegistroSAG: '9912-SAG' }
+];
 
-export default function App() {
-  const [activeTab, setActiveTab] = useState<ActiveTab>('dashboard');
+const INITIAL_USUARIOS: UsuarioPredio[] = [
+  { id: 'usr-1', nombre: 'Diego Pereira Ramirez', rol: 'Agronomo', numeroRegistroSAG: 'SAG-8921-CL' },
+  { id: 'usr-2', nombre: 'Juan Pérez', rol: 'Aplicador', numeroRegistroSAG: 'APL-SAG-3312' }
+];
 
-  const [explotacion, setExplotacion] = useState<ExplotacionAgricola>(getStoredExplotacion);
-  const [parcelas, setParcelas] = useState<Parcela[]>(getStoredParcelas);
-  const [labores, setLabores] = useState<RegistroLabor[]>(getStoredLabores);
-  const [inventario, setInventario] = useState<InsumoInventario[]>(getStoredInventario);
-  const [registrosPozo, setRegistrosPozo] = useState<RegistroExtraccionPozo[]>(getStoredRegistrosPozo);
-  const [riegosSector, setRiegosSector] = useState<RegistroRiegoSector[]>([]);
-  const [sectoresRiego, setSectoresRiego] = useState<SectorRiegoConfig[]>(SECTORES_INICIALES);
+const INITIAL_LABORES: RegistroLabor[] = [
+  {
+    id: 'lab-1',
+    fecha: '2026-11-04',
+    parcelaId: 'c1',
+    parcelaNombre: 'Cuartel 1 - Kiwi Hayward',
+    tipoLabor: 'Aplicacion Fitosanitaria',
+    descripcion: 'Aplicación foliar preventiva con Fungicida Cobre',
+    operadorNombre: 'Juan Pérez',
+    insumoId: 'ins-1',
+    insumoNombre: 'Cobre Hidróxido 50 WP',
+    dosisPorHa: 1.5,
+    totalInsumoUtilizado: 4.2,
+    unidadInsumo: 'kg/ha',
+    observaciones: 'Aplicado con pulverizadora 2000L'
+  }
+];
 
-  const [lugares, setLugares] = useState<LugarPredio[]>(getStoredLugares);
-  const [usuarios, setUsuarios] = useState<(UsuarioPredio & { clave?: string })[]>([
-    { ...USUARIO_INICIAL_ADMIN, clave: 'DiegoPer1.' }
-  ]);
-  const [activeUserId, setActiveUserId] = useState<string>('usr-admin-diego');
-  const [clima, setClima] = useState<ClimaCondiciones>(initialClimaLaCabana);
+const INITIAL_ORDENES: OrdenTrabajoFitosanitaria[] = [
+  {
+    id: 'ot-1',
+    numeroOrden: 'OT-2026-001',
+    fechaEmision: '2026-11-04',
+    fechaProgramada: '2026-11-06',
+    parcelaIds: ['c1'],
+    parcelaNombres: 'Cuartel 1 - Kiwi Hayward',
+    superficieTratarHa: 2.8,
+    destinoAplicacion: 'Huerto de Kiwi',
+    estado: 'emitida',
+    plagaObjetivo: 'Control Fitosanitario / Preventivo',
+    productos: [
+      {
+        insumoId: 'ins-1',
+        productoComercial: 'Cobre Hidróxido 50 WP',
+        materiaActiva: 'Hidróxido de Cobre',
+        numeroRegistroSAG: '1234-SAG',
+        dosisPorHa: 1.5,
+        unidadDosis: 'kg/ha',
+        totalProductoRequerido: 4.2,
+        unidadProducto: 'kg'
+      }
+    ],
+    mojamientoLHa: 1200,
+    caldoTotalLitros: 3360,
+    plazoReingresoHoras: 24,
+    plazoCarenciaDias: 14,
+    eppObligatorio: ['Máscara respiratoria', 'Buzo impermeble', 'Guantes nitrilo'],
+    agronomoEmisorId: 'usr-1',
+    agronomoEmisorNombre: 'Diego Pereira Ramirez',
+    agronomoRegistroSAG: 'SAG-8921-CL',
+    aplicadorAsignadoId: 'usr-2',
+    aplicadorAsignadoNombre: 'Juan Pérez',
+    maquinariaTractor: 'Tractor John Deere + Pulverizadora 2000L',
+    descontadoInventario: false
+  }
+];
 
-  const [muestreosMadurez, setMuestreosMadurez] = useState<MuestreoMadurez[]>(getStoredMuestreosMadurez);
-  const [cosechasLote, setCosechasLote] = useState<RegistroCosechaLote[]>(getStoredCosechasLote);
-  const [ordenesTrabajo, setOrdenesTrabajo] = useState<OrdenTrabajoFitosanitaria[]>(getStoredOrdenesTrabajo);
-  const [horasFrio, setHorasFrio] = useState<CondicionHorasFrio>(getStoredCondicionHorasFrio);
-  const [fenologia, setFenologia] = useState<SeguimientoFenologico[]>(getStoredFenologia);
-  const [polinizacion, setPolinizacion] = useState<RegistroPolinizacion[]>(getStoredPolinizacion);
+export function App() {
+  // Estado de Pestañas
+  const [activeTab, setActiveTab] = useState<
+    'labores' | 'bodega' | 'calculadora' | 'ordenes'
+  >('labores');
 
-  // Estados de conexión con Supabase
-  const [isDbLoaded, setIsDbLoaded] = useState(false);
-  const [dbStatus, setDbStatus] = useState<'sincronizado' | 'guardando' | 'cargando' | 'error'>('cargando');
-  const [dbMessage, setDbMessage] = useState('Conectando a Supabase...');
+  // Datos globales de la aplicación
+  const [parcelas] = useState<Parcela[]>(INITIAL_PARCELAS);
+  const [inventario, setInventario] = useState<InsumoInventario[]>(INITIAL_INVENTARIO);
+  const [usuarios] = useState<UsuarioPredio[]>(INITIAL_USUARIOS);
+  const [labores, setLabores] = useState<RegistroLabor[]>(INITIAL_LABORES);
+  const [ordenes, setOrdenes] = useState<OrdenTrabajoFitosanitaria[]>(INITIAL_ORDENES);
+  const [activeUserId] = useState<string>('usr-1');
 
-  // Sesión y Login
-  const [loggedInUser, setLoggedInUser] = useState<(UsuarioPredio & { clave?: string }) | null>(null);
-  const [loginEmail, setLoginEmail] = useState('diegopereiraramirez@gmail.com');
-  const [loginPassword, setLoginPassword] = useState('');
-  const [loginError, setLoginError] = useState('');
-  const [isLoggingIn, setIsLoggingIn] = useState(false);
-
-  // Modal Mi Perfil y Clave
-  const [isProfileModalOpen, setIsProfileModalOpen] = useState(false);
-  const [myNewName, setMyNewName] = useState('Diego Pereira Ramirez');
-  const [myNewEmail, setMyNewEmail] = useState('diegopereiraramirez@gmail.com');
-  const [myNewPassword, setMyNewPassword] = useState('DiegoPer1.');
-  const [profileSuccessMsg, setProfileSuccessMsg] = useState('');
-
-  // Modales
+  // Control del Modal de Labores
   const [isLaborModalOpen, setIsLaborModalOpen] = useState(false);
-  const [isAlertsModalOpen, setIsAlertsModalOpen] = useState(false);
   const [editingLabor, setEditingLabor] = useState<RegistroLabor | null>(null);
-  const [defaultParcelaId, setDefaultParcelaId] = useState<string | undefined>(undefined);
-  const [defaultTipoLabor, setDefaultTipoLabor] = useState<TipoLabor | undefined>(undefined);
-  const [isExplotacionModalOpen, setIsExplotacionModalOpen] = useState(false);
-  const [isResetConfirmOpen, setIsResetConfirmOpen] = useState(false);
+  const [defaultParcelaId, setDefaultParcelaId] = useState<string>('');
+  const [defaultTipoLabor, setDefaultTipoLabor] = useState<any>('Aplicacion Fitosanitaria');
 
-  // 1. CARGA AUTOMÁTICA EN VIVO DESDE SUPABASE
-  const cargarDesdeSupabase = async () => {
-    setDbStatus('cargando');
-    setDbMessage('Descargando datos de Supabase...');
-
-    try {
-      const res = await fetch(`${SUPABASE_URL}/rest/v1/fundo_datos?id=eq.fundo_la_cabana&select=datos`, {
-        headers: { 'apikey': SUPABASE_ANON_KEY }
-      });
-
-      if (!res.ok) {
-        const errDetail = await res.text();
-        throw new Error(`HTTP ${res.status}: ${errDetail.slice(0, 40)}`);
-      }
-
-      const filas = await res.json();
-
-      if (Array.isArray(filas) && filas.length > 0 && filas[0].datos) {
-        const datos = filas[0].datos;
-        if (datos.explotacion) setExplotacion(datos.explotacion);
-        if (Array.isArray(datos.parcelas)) setParcelas(datos.parcelas);
-        if (Array.isArray(datos.labores)) setLabores(datos.labores);
-        if (Array.isArray(datos.inventario)) setInventario(datos.inventario);
-        if (Array.isArray(datos.registrosPozo)) setRegistrosPozo(datos.registrosPozo);
-        if (Array.isArray(datos.riegosSector)) setRiegosSector(datos.riegosSector);
-        if (Array.isArray(datos.sectoresRiego) && datos.sectoresRiego.length > 0) {
-          setSectoresRiego(datos.sectoresRiego);
-        }
-        if (Array.isArray(datos.lugares)) setLugares(datos.lugares);
-        if (Array.isArray(datos.usuarios) && datos.usuarios.length > 0) {
-          setUsuarios(datos.usuarios);
-          const adminUser = datos.usuarios.find((u: any) => u.email === 'diegopereiraramirez@gmail.com');
-          if (adminUser) {
-            setMyNewEmail(adminUser.email);
-            setMyNewName(adminUser.nombre);
-            if (adminUser.clave) setMyNewPassword(adminUser.clave);
-          }
-        }
-        if (Array.isArray(datos.muestreosMadurez)) setMuestreosMadurez(datos.muestreosMadurez);
-        if (Array.isArray(datos.cosechasLote)) setCosechasLote(datos.cosechasLote);
-        if (Array.isArray(datos.ordenesTrabajo)) setOrdenesTrabajo(datos.ordenesTrabajo);
-        if (datos.horasFrio) setHorasFrio(datos.horasFrio);
-        if (Array.isArray(datos.fenologia)) setFenologia(datos.fenologia);
-        if (Array.isArray(datos.polinizacion)) setPolinizacion(datos.polinizacion);
-      }
-      setIsDbLoaded(true);
-      setDbStatus('sincronizado');
-      setDbMessage('Supabase conectado en vivo');
-    } catch (err: any) {
-      console.warn('Iniciando con memoria local:', err);
-      setIsDbLoaded(true);
-      setDbStatus('sincronizado');
-      setDbMessage('Modo local activo');
-    }
-  };
-
-  useEffect(() => {
-    cargarDesdeSupabase();
-
-    const savedUserId = localStorage.getItem('fundo_sesion_id');
-    if (savedUserId) {
-      const u = usuarios.find((item) => item.id === savedUserId) || usuarios[0];
-      if (u) {
-        setLoggedInUser(u);
-        setActiveUserId(u.id);
-      }
-    }
-  }, []);
-
-  // 2. GUARDAR EN SUPABASE
-  const guardarEnSupabase = async (datosPersonalizados?: any) => {
-    setDbStatus('guardando');
-    setDbMessage('Guardando en Supabase...');
-
-    const payload = datosPersonalizados || {
-      explotacion,
-      parcelas,
-      labores,
-      inventario,
-      registrosPozo,
-      riegosSector,
-      sectoresRiego,
-      lugares,
-      usuarios,
-      activeUserId,
-      muestreosMadurez,
-      cosechasLote,
-      ordenesTrabajo,
-      horasFrio,
-      fenologia,
-      polinizacion
-    };
-
-    saveStoredExplotacion(payload.explotacion);
-    saveStoredParcelas(payload.parcelas);
-    saveStoredLabores(payload.labores);
-    saveStoredInventario(payload.inventario);
-    saveStoredRegistrosPozo(payload.registrosPozo);
-    saveStoredLugares(payload.lugares);
-    saveStoredUsuarios(payload.usuarios);
-    saveStoredActiveUserId(payload.activeUserId);
-    saveStoredMuestreosMadurez(payload.muestreosMadurez);
-    saveStoredCosechasLote(payload.cosechasLote);
-    saveStoredOrdenesTrabajo(payload.ordenesTrabajo);
-    saveStoredCondicionHorasFrio(payload.horasFrio);
-    saveStoredFenologia(payload.fenologia);
-    saveStoredPolinizacion(payload.polinizacion);
-
-    try {
-      const res = await fetch(`${SUPABASE_URL}/rest/v1/fundo_datos?on_conflict=id`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'apikey': SUPABASE_ANON_KEY,
-          'Prefer': 'resolution=merge-duplicates'
-        },
-        body: JSON.stringify([{
-          id: 'fundo_la_cabana',
-          datos: payload,
-          updated_at: new Date().toISOString()
-        }])
-      });
-
-      if (!res.ok) {
-        const errDetail = await res.text();
-        throw new Error(`HTTP ${res.status}: ${errDetail.slice(0, 50)}`);
-      }
-
-      setDbStatus('sincronizado');
-      setDbMessage(`Guardado en Supabase (${new Date().toLocaleTimeString('es-CL')})`);
-    } catch (err: any) {
-      console.error('Error guardando en Supabase:', err);
-      setDbStatus('error');
-      setDbMessage('Error al conectar');
-    }
-  };
-
-  const primerCarga = useRef(true);
-  useEffect(() => {
-    if (!isDbLoaded) return;
-    if (primerCarga.current) {
-      primerCarga.current = false;
-      return;
-    }
-
-    const timer = setTimeout(() => {
-      guardarEnSupabase();
-    }, 600);
-
-    return () => clearTimeout(timer);
-  }, [
-    isDbLoaded,
-    explotacion,
-    parcelas,
-    labores,
-    inventario,
-    registrosPozo,
-    riegosSector,
-    sectoresRiego,
-    lugares,
-    usuarios,
-    activeUserId,
-    muestreosMadurez,
-    cosechasLote,
-    ordenesTrabajo,
-    horasFrio,
-    fenologia,
-    polinizacion
-  ]);
-
-  // LOGIN EN VIVO
-  const handleLogin = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setLoginError('');
-    setIsLoggingIn(true);
-
-    try {
-      let listaFresca = usuarios;
-      const res = await fetch(`${SUPABASE_URL}/rest/v1/fundo_datos?id=eq.fundo_la_cabana&select=datos`, {
-        headers: { 'apikey': SUPABASE_ANON_KEY }
-      });
-
-      if (res.ok) {
-        const filas = await res.json();
-        if (Array.isArray(filas) && filas.length > 0 && filas[0].datos?.usuarios) {
-          listaFresca = filas[0].datos.usuarios;
-          setUsuarios(listaFresca);
-
-          const datos = filas[0].datos;
-          if (datos.explotacion) setExplotacion(datos.explotacion);
-          if (Array.isArray(datos.parcelas)) setParcelas(datos.parcelas);
-          if (Array.isArray(datos.labores)) setLabores(datos.labores);
-          if (Array.isArray(datos.inventario)) setInventario(datos.inventario);
-          if (Array.isArray(datos.registrosPozo)) setRegistrosPozo(datos.registrosPozo);
-          if (Array.isArray(datos.riegosSector)) setRiegosSector(datos.riegosSector);
-          if (Array.isArray(datos.sectoresRiego)) setSectoresRiego(datos.sectoresRiego);
-          if (Array.isArray(datos.lugares)) setLugares(datos.lugares);
-          if (Array.isArray(datos.muestreosMadurez)) setMuestreosMadurez(datos.muestreosMadurez);
-          if (Array.isArray(datos.cosechasLote)) setCosechasLote(datos.cosechasLote);
-          if (Array.isArray(datos.ordenesTrabajo)) setOrdenesTrabajo(datos.ordenesTrabajo);
-          if (datos.horasFrio) setHorasFrio(datos.horasFrio);
-          if (Array.isArray(datos.fenologia)) setFenologia(datos.fenologia);
-          if (Array.isArray(datos.polinizacion)) setPolinizacion(datos.polinizacion);
-        }
-      }
-
-      const inputEmail = loginEmail.trim().toLowerCase();
-      const user = listaFresca.find(
-        (u) => u.email.trim().toLowerCase() === inputEmail
-      );
-
-      if (!user) {
-        setLoginError('Usuario no encontrado. Por favor selecciona tu nombre.');
-        setIsLoggingIn(false);
-        return;
-      }
-
-      const userPass = user.clave || '1234';
-
-      if (loginPassword.trim() !== userPass.trim()) {
-        setLoginError('Contraseña incorrecta.');
-        setIsLoggingIn(false);
-        return;
-      }
-
-      setLoggedInUser(user);
-      setActiveUserId(user.id);
-      localStorage.setItem('fundo_sesion_id', user.id);
-    } catch (err: any) {
-      setLoginError('Error de red al comprobar usuario.');
-    } finally {
-      setIsLoggingIn(false);
-    }
-  };
-
-  const handleLogout = () => {
-    setLoggedInUser(null);
-    localStorage.removeItem('fundo_sesion_id');
-    setLoginPassword('');
-  };
-
-  const handleSaveMyProfile = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!loggedInUser) return;
-
-    const emailLimpio = myNewEmail.trim().toLowerCase();
-    const claveLimpia = myNewPassword.trim() || '1234';
-    const nombreLimpio = myNewName.trim() || loggedInUser.nombre;
-
-    const updatedUser = {
-      ...loggedInUser,
-      nombre: nombreLimpio,
-      email: emailLimpio,
-      clave: claveLimpia
-    };
-
-    const nuevosUsuarios = usuarios.map((u) =>
-      u.id === updatedUser.id ? updatedUser : u
-    );
-
-    if (!nuevosUsuarios.some(u => u.id === updatedUser.id)) {
-      nuevosUsuarios.push(updatedUser);
-    }
-
-    setLoggedInUser(updatedUser);
-    setUsuarios(nuevosUsuarios);
-    setLoginEmail(emailLimpio);
-
-    localStorage.setItem('fundo_sesion_id', updatedUser.id);
-
-    guardarEnSupabase({
-      explotacion,
-      parcelas,
-      labores,
-      inventario,
-      registrosPozo,
-      riegosSector,
-      sectoresRiego,
-      lugares,
-      usuarios: nuevosUsuarios,
-      activeUserId: updatedUser.id,
-      muestreosMadurez,
-      cosechasLote,
-      ordenesTrabajo,
-      horasFrio,
-      fenologia,
-      polinizacion
-    });
-
-    setProfileSuccessMsg('¡Correo y contraseña guardados con éxito!');
-    setTimeout(() => {
-      setIsProfileModalOpen(false);
-      setProfileSuccessMsg('');
-    }, 1500);
-  };
-
-  const activeUser = loggedInUser || usuarios.find((u) => u.id === activeUserId) || usuarios[0];
-
+  // Abrir Modal de Nueva Labor
   const handleOpenNewLabor = () => {
     setEditingLabor(null);
-    setDefaultParcelaId(undefined);
-    setDefaultTipoLabor(undefined);
+    setDefaultParcelaId(parcelas[0]?.id || '');
+    setDefaultTipoLabor('Aplicacion Fitosanitaria');
     setIsLaborModalOpen(true);
   };
 
-  const handleOpenNewLaborWithDefaults = (parcelaId?: string, tipoLabor?: TipoLabor) => {
-    setEditingLabor(null);
-    setDefaultParcelaId(parcelaId);
-    setDefaultTipoLabor(tipoLabor);
-    setIsLaborModalOpen(true);
-  };
-
+  // Abrir Modal para Editar Labor
   const handleEditLabor = (labor: RegistroLabor) => {
     setEditingLabor(labor);
-    setDefaultParcelaId(undefined);
-    setDefaultTipoLabor(undefined);
     setIsLaborModalOpen(true);
   };
 
-  const handleSaveLabor = (laborToSave: RegistroLabor) => {
-    const existingIndex = labores.findIndex((l) => l.id === laborToSave.id);
-    const isEdit = existingIndex >= 0;
-    const oldLabor = isEdit ? labores[existingIndex] : null;
-
-    if (isEdit && oldLabor?.insumoId && oldLabor?.totalInsumoUtilizado) {
-      const revertAmount = Number(oldLabor.totalInsumoUtilizado);
-      setInventario((prev) => 
-        prev.map((item) => {
-          if (item.id === oldLabor.insumoId) {
-            return {
-              ...item,
-              stockActual: Number((item.stockActual + revertAmount).toFixed(2)),
-              consumoHistoricoAcumulado: Math.max(0, Number(((item.consumoHistoricoAcumulado || 0) - revertAmount).toFixed(2)))
-            };
+  // Guardar / Crear / Editar Labor
+  const handleSaveLabor = (laborGuardar: RegistroLabor) => {
+    if (editingLabor) {
+      setLabores(labores.map(l => l.id === laborGuardar.id ? laborGuardar : l));
+    } else {
+      setLabores([laborGuardar, ...labores]);
+      
+      // Si incluye descuento de insumo
+      if (laborGuardar.insumoId && laborGuardar.totalInsumoUtilizado) {
+        setInventario(prev => prev.map(item => {
+          if (item.id === laborGuardar.insumoId) {
+            const nuevoStock = Math.max(0, item.stockActual - (laborGuardar.totalInsumoUtilizado || 0));
+            return { ...item, stockActual: Number(nuevoStock.toFixed(2)) };
           }
           return item;
-        })
-      );
-    }
-
-    if (laborToSave.insumoId && laborToSave.totalInsumoUtilizado) {
-      const deductionAmount = Number(laborToSave.totalInsumoUtilizado);
-      setInventario((prev) => 
-        prev.map((item) => {
-          if (item.id === laborToSave.insumoId) {
-            return {
-              ...item,
-              stockActual: Math.max(0, Number((item.stockActual - deductionAmount).toFixed(2))),
-              consumoHistoricoAcumulado: Number(((item.consumoHistoricoAcumulado || 0) + deductionAmount).toFixed(2))
-            };
-          }
-          return item;
-        })
-      );
-    }
-
-    setLabores((prev) => {
-      const idx = prev.findIndex((l) => l.id === laborToSave.id);
-      if (idx >= 0) {
-        const copy = [...prev];
-        copy[idx] = laborToSave;
-        return copy;
+        }));
       }
-      return [laborToSave, ...prev];
-    });
-
-    setEditingLabor(null);
-    setIsLaborModalOpen(false);
-  };
-
-  const handleDeleteLabor = (id: string) => {
-    const labor = labores.find((l) => l.id === id);
-    if (labor && labor.insumoId && labor.totalInsumoUtilizado) {
-      const restoreAmount = Number(labor.totalInsumoUtilizado);
-      setInventario((prev) => 
-        prev.map((item) => {
-          if (item.id === labor.insumoId) {
-            return {
-              ...item,
-              stockActual: Number((item.stockActual + restoreAmount).toFixed(2)),
-              consumoHistoricoAcumulado: Math.max(0, Number(((item.consumoHistoricoAcumulado || 0) - restoreAmount).toFixed(2)))
-            };
-          }
-          return item;
-        })
-      );
     }
-    setLabores((prev) => prev.filter((l) => l.id !== id));
+    setIsLaborModalOpen(false);
+    setEditingLabor(null);
   };
 
-  // EXECUCIÓN Y DESCUENTO AUTOMÁTICO DE PRODUCTOS DE LA ORDEN DE TRABAJO DE BODEGA
+  // Eliminar Labor
+  const handleDeleteLabor = (id: string) => {
+    if (confirm('¿Estás seguro de eliminar este registro de labor?')) {
+      setLabores(labores.filter(l => l.id !== id));
+    }
+  };
+
+  // Manejo de Órdenes de Trabajo (Recetas)
+  const handleAddOrden = (nuevaOrden: OrdenTrabajoFitosanitaria) => {
+    setOrdenes([nuevaOrden, ...ordenes]);
+  };
+
+  const handleUpdateOrden = (ordenActualizada: OrdenTrabajoFitosanitaria) => {
+    setOrdenes(ordenes.map(o => o.id === ordenActualizada.id ? ordenActualizada : o));
+  };
+
+  const handleDeleteOrden = (ordenId: string) => {
+    if (confirm('¿Eliminar esta receta / orden de trabajo?')) {
+      setOrdenes(ordenes.filter(o => o.id !== ordenId));
+    }
+  };
+
   const handleExecuteOrden = (ordenId: string, aplicadorNombre: string, firma: string) => {
-    const orden = ordenesTrabajo.find(o => o.id === ordenId);
+    const orden = ordenes.find(o => o.id === ordenId);
     if (!orden) return;
 
-    // Descontar todos los productos vinculados de la bodega
-    if (orden.productos && orden.productos.length > 0) {
-      setInventario(prevInv => {
-        let copyInv = [...prevInv];
+    // Descontar inventario de cada producto
+    if (!orden.descontadoInventario && orden.productos) {
+      setInventario(prev => {
+        let actual = [...prev];
         orden.productos.forEach(prod => {
           if (prod.insumoId) {
-            copyInv = copyInv.map(ins => {
-              if (ins.id === prod.insumoId) {
-                const descontar = Number(prod.totalProductoRequerido) || 0;
-                return {
-                  ...ins,
-                  stockActual: Math.max(0, Number((ins.stockActual - descontar).toFixed(2))),
-                  consumoHistoricoAcumulado: Number(((ins.consumoHistoricoAcumulado || 0) + descontar).toFixed(2))
-                };
+            actual = actual.map(item => {
+              if (item.id === prod.insumoId) {
+                const nStock = Math.max(0, item.stockActual - (prod.totalProductoRequerido || 0));
+                return { ...item, stockActual: Number(nStock.toFixed(2)) };
               }
-              return ins;
+              return item;
             });
           }
         });
-        return copyInv;
+        return actual;
       });
     }
 
-    // Marcar la orden como completada
-    setOrdenesTrabajo(prev => prev.map(o => {
+    // Actualizar estado de la Orden
+    setOrdenes(ordenes.map(o => {
       if (o.id === ordenId) {
         return {
           ...o,
           estado: 'completada',
           descontadoInventario: true,
-          aplicadorAsignadoNombre: aplicadorNombre,
-          aplicadorFirma: firma
+          aplicadorFirma: firma,
+          aplicadorAsignadoNombre: aplicadorNombre
         };
       }
       return o;
     }));
   };
 
-  const handleExecuteReset = () => {
-    const defaults = resetStorageToDefaults();
-    setExplotacion(defaults.explotacion);
-    setParcelas(defaults.parcelas);
-    setLabores(defaults.labores);
-    setInventario(defaults.inventario);
-    setRegistrosPozo(defaults.registrosPozo);
-    setRiegosSector([]);
-    setSectoresRiego(SECTORES_INICIALES);
-    setLugares(defaults.lugares);
-    setUsuarios(defaults.usuarios);
-    setMuestreosMadurez(defaults.muestreosMadurez);
-    setCosechasLote(defaults.cosechasLote);
-    setOrdenesTrabajo(defaults.ordenesTrabajo);
-    setHorasFrio(defaults.condicionHorasFrio);
-    setFenologia(defaults.fenologia);
-    setPolinizacion(defaults.polinizacion);
-    setActiveUserId(defaults.usuarios[0]?.id || 'usr-admin-diego');
-    setIsResetConfirmOpen(false);
-    guardarEnSupabase({ ...defaults, riegosSector: [], sectoresRiego: SECTORES_INICIALES });
+  // Manejo del Inventario (Bodega)
+  const handleAddInsumo = (nuevo: InsumoInventario) => {
+    setInventario([...inventario, nuevo]);
   };
 
-  const lowStockCount = inventario.filter((i) => i.stockActual <= (i.stockMinimo || 5)).length;
+  const handleUpdateInsumo = (editado: InsumoInventario) => {
+    setInventario(inventario.map(i => i.id === editado.id ? editado : i));
+  };
 
-  // PANTALLA LOGIN
-  if (!loggedInUser) {
-    return (
-      <div className="min-h-screen bg-stone-900 flex items-center justify-center p-4">
-        <div className="w-full max-w-md bg-white rounded-2xl shadow-2xl overflow-hidden border border-stone-200">
-          <div className="bg-emerald-950 p-6 text-white text-center">
-            <div className="w-12 h-12 bg-emerald-800 rounded-xl flex items-center justify-center mx-auto mb-3 border border-emerald-600">
-              <Lock className="w-6 h-6 text-emerald-200" />
-            </div>
-            <h1 className="text-xl font-bold">Fundo La Cabaña</h1>
-            <p className="text-xs text-emerald-300 mt-1">
-              Cuaderno de Campo Digital · Kiwi Hayward
-            </p>
-          </div>
+  const handleDeleteInsumo = (id: string) => {
+    if (confirm('¿Eliminar este producto de bodega?')) {
+      setInventario(inventario.filter(i => i.id !== id));
+    }
+  };
 
-          <form onSubmit={handleLogin} className="p-6 space-y-4 text-xs">
-            {loginError && (
-              <div className="p-3 bg-red-50 border border-red-200 text-red-800 rounded-xl flex items-center gap-2 font-medium">
-                <AlertCircle className="w-4 h-4 text-red-600 shrink-0" />
-                <span>{loginError}</span>
-              </div>
-            )}
-
-            <div>
-              <label className="block text-stone-700 font-bold mb-1">
-                Selecciona tu Nombre de Usuario *
-              </label>
-              
-              <select
-                value={loginEmail}
-                onChange={(e) => setLoginEmail(e.target.value)}
-                className="w-full p-3 rounded-xl border border-stone-300 font-bold bg-stone-50 text-stone-900 text-sm cursor-pointer focus:ring-2 focus:ring-emerald-700 focus:outline-none"
-              >
-                {usuarios.map((u) => (
-                  <option key={u.id} value={u.email}>
-                    {u.nombre}
-                  </option>
-                ))}
-              </select>
-            </div>
-
-            <div>
-              <label className="block text-stone-700 font-bold mb-1">
-                Contraseña Personal *
-              </label>
-              <input
-                type="password"
-                required
-                value={loginPassword}
-                onChange={(e) => setLoginPassword(e.target.value)}
-                placeholder="Escribe tu clave aquí"
-                className="w-full p-3 rounded-xl border border-stone-300 text-sm font-mono focus:ring-2 focus:ring-emerald-700 focus:outline-none"
-              />
-            </div>
-
-            <button
-              type="submit"
-              disabled={isLoggingIn}
-              className="w-full py-3 bg-emerald-800 hover:bg-emerald-700 disabled:opacity-50 text-white font-bold rounded-xl text-sm transition-all flex items-center justify-center gap-2 shadow-sm cursor-pointer active:scale-95"
-            >
-              {isLoggingIn ? (
-                <>
-                  <Loader2 className="w-4 h-4 animate-spin" />
-                  <span>Comprobando en Supabase...</span>
-                </>
-              ) : (
-                <>
-                  <LogIn className="w-4 h-4" />
-                  <span>Ingresar al Cuaderno</span>
-                </>
-              )}
-            </button>
-          </form>
-        </div>
-      </div>
-    );
-  }
+  const activeUser = usuarios.find(u => u.id === activeUserId);
 
   return (
-    <div className="min-h-screen bg-stone-50 flex flex-col font-sans text-stone-900 pb-16 sm:pb-0">
-      {/* BARRA SUPERIOR DE CONEXIÓN CON SUPABASE */}
-      <div className="bg-stone-900 text-white px-4 py-2 border-b border-stone-800 text-xs flex flex-wrap items-center justify-between gap-3 sticky top-0 z-50">
-        <div className="flex items-center gap-2">
-          <Database className="w-4 h-4 text-emerald-400" />
-          {dbStatus === 'guardando' && (
-            <span className="flex items-center gap-1.5 text-amber-300 font-bold">
-              <Loader2 className="w-3.5 h-3.5 animate-spin" />
-              {dbMessage}
-            </span>
-          )}
-          {dbStatus === 'sincronizado' && (
-            <span className="flex items-center gap-1.5 text-emerald-400 font-bold">
-              <CheckCircle2 className="w-4 h-4 text-emerald-400" />
-              {dbMessage}
-            </span>
-          )}
-          {dbStatus === 'cargando' && (
-            <span className="flex items-center gap-1.5 text-stone-300">
-              <Loader2 className="w-3.5 h-3.5 animate-spin" />
-              {dbMessage}
-            </span>
-          )}
-          {dbStatus === 'error' && (
-            <span className="text-red-400 font-bold">
-              {dbMessage}
-            </span>
-          )}
+    <div className="min-h-screen bg-stone-100 text-stone-900 flex flex-col font-sans">
+      
+      {/* NAVBAR SUPERIOR */}
+      <header className="bg-emerald-950 text-white sticky top-0 z-40 shadow-md">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 flex items-center justify-between h-16">
+          
+          <div className="flex items-center gap-3">
+            <div className="p-2 bg-emerald-800 rounded-xl">
+              <Sprout className="w-6 h-6 text-emerald-300" />
+            </div>
+            <div>
+              <h1 className="font-bold text-sm sm:text-base leading-tight">Fundo La Cabaña</h1>
+              <p className="text-[10px] text-emerald-300">100% Kiwi Hayward · Cuaderno SAG</p>
+            </div>
+          </div>
+
+          {/* MENU NAVEGACIÓN DE PESTAÑAS */}
+          <nav className="hidden md:flex items-center gap-1">
+            <button
+              onClick={() => setActiveTab('labores')}
+              className={`px-3.5 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer ${
+                activeTab === 'labores' ? 'bg-emerald-800 text-white shadow-xs' : 'text-emerald-100 hover:bg-emerald-900/60'
+              }`}
+            >
+              <Sprout className="w-4 h-4" /> Labores
+            </button>
+
+            <button
+              onClick={() => setActiveTab('ordenes')}
+              className={`px-3.5 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer ${
+                activeTab === 'ordenes' ? 'bg-emerald-800 text-white shadow-xs' : 'text-emerald-100 hover:bg-emerald-900/60'
+              }`}
+            >
+              <FileText className="w-4 h-4" /> Recetas SAG
+            </button>
+
+            <button
+              onClick={() => setActiveTab('bodega')}
+              className={`px-3.5 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer ${
+                activeTab === 'bodega' ? 'bg-emerald-800 text-white shadow-xs' : 'text-emerald-100 hover:bg-emerald-900/60'
+              }`}
+            >
+              <Package className="w-4 h-4" /> Bodega Insumos
+              <span className="ml-1 px-1.5 py-0.2 bg-emerald-700 rounded-full text-[10px]">
+                {inventario.length}
+              </span>
+            </button>
+
+            <button
+              onClick={() => setActiveTab('calculadora')}
+              className={`px-3.5 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer ${
+                activeTab === 'calculadora' ? 'bg-emerald-800 text-white shadow-xs' : 'text-emerald-100 hover:bg-emerald-900/60'
+              }`}
+            >
+              <Calculator className="w-4 h-4" /> Calculadora
+            </button>
+          </nav>
+
+          {/* BOTÓN NUEVA LABOR RÁPIDO */}
+          <div className="flex items-center gap-2">
+            <button
+              onClick={handleOpenNewLabor}
+              className="px-3.5 py-2 bg-emerald-600 hover:bg-emerald-500 text-white font-bold rounded-xl text-xs transition-all shadow-sm flex items-center gap-1.5 cursor-pointer"
+            >
+              <Plus className="w-4 h-4" /> + Nueva Labor
+            </button>
+          </div>
+
         </div>
+      </header>
 
-        <div className="flex items-center gap-2">
-          <button
-            onClick={() => {
-              setMyNewName(activeUser.nombre);
-              setMyNewEmail(activeUser.email);
-              setMyNewPassword((activeUser as any).clave || '1234');
-              setIsProfileModalOpen(true);
-            }}
-            className="px-2.5 py-1 bg-stone-800 hover:bg-stone-700 text-stone-200 font-semibold rounded-lg transition-colors flex items-center gap-1.5 cursor-pointer border border-stone-700 shadow-xs"
-            title="Cambiar mi nombre, correo y contraseña"
-          >
-            <UserCog className="w-3.5 h-3.5 text-emerald-400" />
-            <span>Mi Perfil / Clave</span>
-          </button>
-
-          <button
-            onClick={() => guardarEnSupabase()}
-            className="px-3 py-1 bg-emerald-600 hover:bg-emerald-500 text-white font-bold rounded-lg transition-all flex items-center gap-1.5 active:scale-95 cursor-pointer shadow-xs"
-          >
-            <Save className="w-3.5 h-3.5" />
-            Guardar en Supabase
-          </button>
-
-          <button
-            onClick={handleLogout}
-            className="px-2.5 py-1 bg-stone-800 hover:bg-red-800 text-stone-300 hover:text-white rounded-lg transition-colors flex items-center gap-1 cursor-pointer"
-            title="Cerrar sesión"
-          >
-            <LogOut className="w-3.5 h-3.5" />
-            Salir
-          </button>
-        </div>
+      {/* MENU NAVEGACIÓN MÓVIL */}
+      <div className="md:hidden flex bg-emerald-900 text-white border-b border-emerald-800 overflow-x-auto p-1.5 gap-1 text-xs">
+        <button 
+          onClick={() => setActiveTab('labores')} 
+          className={`px-3 py-1.5 rounded-lg whitespace-nowrap font-bold ${activeTab === 'labores' ? 'bg-emerald-700' : ''}`}
+        >
+          Labores
+        </button>
+        <button 
+          onClick={() => setActiveTab('ordenes')} 
+          className={`px-3 py-1.5 rounded-lg whitespace-nowrap font-bold ${activeTab === 'ordenes' ? 'bg-emerald-700' : ''}`}
+        >
+          Recetas SAG
+        </button>
+        <button 
+          onClick={() => setActiveTab('bodega')} 
+          className={`px-3 py-1.5 rounded-lg whitespace-nowrap font-bold ${activeTab === 'bodega' ? 'bg-emerald-700' : ''}`}
+        >
+          Bodega ({inventario.length})
+        </button>
+        <button 
+          onClick={() => setActiveTab('calculadora')} 
+          className={`px-3 py-1.5 rounded-lg whitespace-nowrap font-bold ${activeTab === 'calculadora' ? 'bg-emerald-700' : ''}`}
+        >
+          Calculadora
+        </button>
       </div>
 
-      <Navbar
-        activeTab={activeTab}
-        setActiveTab={setActiveTab}
-        onOpenNewLabor={handleOpenNewLabor}
-        fundoNombre={explotacion.nombreFundo}
-        lowStockCount={lowStockCount}
-        onOpenAlertsModal={() => setIsAlertsModalOpen(true)}
-        activeUser={activeUser}
-      />
-
-      <main className="flex-1 max-w-7xl w-full mx-auto px-3 sm:px-6 lg:px-8 py-5 sm:py-6">
-        {activeTab === 'dashboard' && (
-          <DashboardView
-            explotacion={explotacion}
-            parcelas={parcelas}
-            labores={labores}
-            inventario={inventario}
-            registrosPozo={registrosPozo}
-            clima={clima}
-            usuarios={usuarios}
-            activeUserId={activeUserId}
-            onOpenNewLaborWithDefaults={handleOpenNewLaborWithDefaults}
-            onNavigateTab={setActiveTab}
-            onEditExplotacion={() => setIsExplotacionModalOpen(true)}
-            onOpenAlertsModal={() => setIsAlertsModalOpen(true)}
-            onEditLabor={handleEditLabor}
-            onDeleteLabor={handleDeleteLabor}
-          />
-        )}
-
-        {activeTab === 'parcelas' && (
-          <ParcelasView
-            parcelas={parcelas}
-            lugares={lugares}
-            onAddParcela={(p) => setParcelas((prev) => [...prev, p])}
-            onUpdateParcela={(p) => setParcelas((prev) => prev.map((item) => item.id === p.id ? p : item))}
-            onDeleteParcela={(id) => setParcelas((prev) => prev.filter((item) => item.id !== id))}
-            onAddLugar={(l) => setLugares((prev) => [...prev, l])}
-            onDeleteLugar={(id) => setLugares((prev) => prev.filter((item) => item.id !== id))}
-          />
-        )}
-
+      {/* CONTENIDO PRINCIPAL */}
+      <main className="max-w-7xl mx-auto px-4 sm:px-6 py-6 flex-1 w-full">
+        
         {activeTab === 'labores' && (
           <LaboresView
             labores={labores}
@@ -802,83 +346,24 @@ export default function App() {
 
         {activeTab === 'ordenes' && (
           <OrdenesTrabajoView
-            ordenes={ordenesTrabajo}
+            ordenes={ordenes}
             parcelas={parcelas}
             inventario={inventario}
             usuarios={usuarios}
             activeUser={activeUser}
-            onAddOrden={(o) => setOrdenesTrabajo((prev) => [o, ...prev])}
-            onUpdateOrden={(o) => setOrdenesTrabajo((prev) => prev.map((item) => item.id === o.id ? o : item))}
+            onAddOrden={handleAddOrden}
+            onUpdateOrden={handleUpdateOrden}
             onExecuteOrden={handleExecuteOrden}
-            onDeleteOrden={(id) => setOrdenesTrabajo((prev) => prev.filter((item) => item.id !== id))}
+            onDeleteOrden={handleDeleteOrden}
           />
         )}
 
-        {activeTab === 'inventario' && (
-          <InventarioView
+        {activeTab === 'bodega' && (
+          <BodegaView
             inventario={inventario}
-            onAddInsumo={(insumo) => setInventario((prev) => [...prev, insumo])}
-            onUpdateInsumo={(insumo) => setInventario((prev) => prev.map((item) => item.id === insumo.id ? insumo : item))}
-            onDeleteInsumo={(id) => setInventario((prev) => prev.filter((item) => item.id !== id))}
-          />
-        )}
-
-        {activeTab === 'pozo' && (
-          <PozoView
-            registrosPozo={registrosPozo}
-            onAddRegistro={(reg) => setRegistrosPozo((prev) => [reg, ...prev])}
-            onDeleteRegistro={(id) => setRegistrosPozo((prev) => prev.filter((item) => item.id !== id))}
-          />
-        )}
-
-        {activeTab === 'riego' && (
-          <RiegoView
-            riegos={riegosSector}
-            sectoresConfig={sectoresRiego}
-            onUpdateSectoresConfig={(nuevosSectores) => setSectoresRiego(nuevosSectores)}
-            onAddRiego={(r) => setRiegosSector((prev) => [r, ...prev])}
-            onUpdateRiego={(r) => setRiegosSector((prev) => prev.map((item) => item.id === r.id ? r : item))}
-            onDeleteRiego={(id) => setRiegosSector((prev) => prev.filter((item) => item.id !== id))}
-            activeUserName={activeUser.nombre}
-          />
-        )}
-
-        {activeTab === 'clima' && (
-          <ClimaView
-            clima={clima}
-            onUpdateClima={setClima}
-          />
-        )}
-
-        {activeTab === 'cosecha' && (
-          <CosechaMadurezView
-            muestreos={muestreosMadurez}
-            cosechas={cosechasLote}
-            parcelas={parcelas}
-            onAddMuestreo={(m) => setMuestreosMadurez((prev) => [m, ...prev])}
-            onDeleteMuestreo={(id) => setMuestreosMadurez((prev) => prev.filter((item) => item.id !== id))}
-            onAddCosecha={(c) => setCosechasLote((prev) => [c, ...prev])}
-            onDeleteCosecha={(id) => setCosechasLote((prev) => prev.filter((item) => item.id !== id))}
-          />
-        )}
-
-        {activeTab === 'horasfrio' && (
-          <HorasFrioFenologiaView
-            horasFrio={horasFrio}
-            fenologia={fenologia}
-            polinizacion={polinizacion}
-            onUpdateHorasFrio={setHorasFrio}
-            onAddFenologia={(f) => setFenologia((prev) => [f, ...prev])}
-            onDeleteFenologia={(id) => setFenologia((prev) => prev.filter((item) => item.id !== id))}
-            onAddPolinizacion={(p) => setPolinizacion((prev) => [p, ...prev])}
-            onDeletePolinizacion={(id) => setPolinizacion((prev) => prev.filter((item) => item.id !== id))}
-          />
-        )}
-
-        {activeTab === 'monitoreo' && (
-          <MonitoreoView
-            labores={labores}
-            parcelas={parcelas}
+            onAddInsumo={handleAddInsumo}
+            onUpdateInsumo={handleUpdateInsumo}
+            onDeleteInsumo={handleDeleteInsumo}
           />
         )}
 
@@ -889,120 +374,12 @@ export default function App() {
           />
         )}
 
-        {activeTab === 'informe' && (
-          <InformeOficialView
-            explotacion={explotacion}
-            parcelas={parcelas}
-            labores={labores}
-            inventario={inventario}
-            registrosPozo={registrosPozo}
-            cosechas={cosechasLote}
-            ordenes={ordenesTrabajo}
-          />
-        )}
-
-        {activeTab === 'usuarios' && (
-          <UsuariosView
-            usuarios={usuarios}
-            activeUserId={activeUserId}
-            onSelectActiveUser={setActiveUserId}
-            onAddUsuario={(u) => setUsuarios((prev) => [...prev, u])}
-            onUpdateUsuario={(u) => setUsuarios((prev) => prev.map((item) => item.id === u.id ? u : item))}
-            onDeleteUsuario={(id) => setUsuarios((prev) => prev.filter((item) => item.id !== id))}
-          />
-        )}
       </main>
-
-      {/* MODAL MI PERFIL / CLAVE */}
-      {isProfileModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-3 bg-stone-900/60 backdrop-blur-xs text-xs">
-          <div className="bg-white rounded-2xl shadow-xl w-full max-w-md border overflow-hidden">
-            <div className="px-6 py-4 border-b bg-emerald-950 text-white flex justify-between items-center">
-              <h3 className="font-bold text-sm flex items-center gap-2">
-                <UserCog className="w-4 h-4 text-emerald-300" />
-                Editar Mi Perfil & Clave
-              </h3>
-              <button onClick={() => setIsProfileModalOpen(false)} className="text-emerald-200 hover:text-white cursor-pointer">
-                <X className="w-5 h-5" />
-              </button>
-            </div>
-
-            <form onSubmit={handleSaveMyProfile} className="p-6 space-y-4">
-              {profileSuccessMsg && (
-                <div className="p-3 bg-emerald-100 border border-emerald-300 text-emerald-900 font-bold rounded-xl flex items-center gap-2">
-                  <CheckCircle2 className="w-4 h-4 text-emerald-700" />
-                  <span>{profileSuccessMsg}</span>
-                </div>
-              )}
-
-              <div>
-                <label className="block font-bold text-stone-700 mb-1">Nombre Completo *</label>
-                <input
-                  type="text"
-                  required
-                  value={myNewName}
-                  onChange={(e) => setMyNewName(e.target.value)}
-                  className="w-full p-2.5 border rounded-xl font-bold bg-stone-50"
-                />
-              </div>
-
-              <div>
-                <label className="block font-bold text-stone-700 mb-1">Correo Electrónico (Login) *</label>
-                <input
-                  type="email"
-                  required
-                  value={myNewEmail}
-                  onChange={(e) => setMyNewEmail(e.target.value)}
-                  className="w-full p-2.5 border rounded-xl font-bold bg-stone-50"
-                />
-              </div>
-
-              <div>
-                <label className="block font-bold text-stone-700 mb-1">Nueva Contraseña *</label>
-                <input
-                  type="text"
-                  required
-                  value={myNewPassword}
-                  onChange={(e) => setMyNewPassword(e.target.value)}
-                  className="w-full p-2.5 border rounded-xl font-mono font-bold bg-stone-50"
-                />
-              </div>
-
-              <div className="pt-3 border-t flex justify-end gap-2">
-                <button
-                  type="button"
-                  onClick={() => setIsProfileModalOpen(false)}
-                  className="px-4 py-2 border rounded-xl cursor-pointer hover:bg-stone-50"
-                >
-                  Cancelar
-                </button>
-                <button
-                  type="submit"
-                  className="px-5 py-2 bg-emerald-800 text-white font-bold rounded-xl cursor-pointer hover:bg-emerald-700 shadow-sm"
-                >
-                  Guardar Cambios
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
-
-      {/* MODAL EDITAR EXPOTACIÓN */}
-      {isExplotacionModalOpen && (
-        <ModalExplotacion
-          explotacion={explotacion}
-          onSave={(e) => {
-            setExplotacion(e);
-            setIsExplotacionModalOpen(false);
-          }}
-          onClose={() => setIsExplotacionModalOpen(false)}
-        />
-      )}
 
       {/* MODAL REGISTRAR / EDITAR LABOR */}
       {isLaborModalOpen && (
         <ModalLabor
+          isOpen={isLaborModalOpen}
           labor={editingLabor}
           parcelas={parcelas}
           inventario={inventario}
@@ -1018,42 +395,8 @@ export default function App() {
         />
       )}
 
-      {/* MODAL ALERTAS DE STOCK */}
-      {isAlertsModalOpen && (
-        <AlertasStockModal
-          inventario={inventario}
-          onClose={() => setIsAlertsModalOpen(false)}
-        />
-      )}
-
-      {/* MODAL CONFIRMAR RESETEO */}
-      {isResetConfirmOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-3 bg-stone-900/60 backdrop-blur-xs text-xs">
-          <div className="bg-white rounded-2xl shadow-xl w-full max-w-md p-6 border space-y-4">
-            <h3 className="font-bold text-sm text-stone-900 flex items-center gap-2 text-red-700">
-              <RotateCcw className="w-4 h-4" />
-              ¿Restablecer datos de fábrica?
-            </h3>
-            <p className="text-stone-600">
-              Esta acción borrará los registros agregados manualmente y restaurará el sistema a su estado inicial.
-            </p>
-            <div className="pt-2 border-t flex justify-end gap-2">
-              <button
-                onClick={() => setIsResetConfirmOpen(false)}
-                className="px-4 py-2 border rounded-lg cursor-pointer"
-              >
-                Cancelar
-              </button>
-              <button
-                onClick={handleExecuteReset}
-                className="px-4 py-2 bg-red-700 text-white font-bold rounded-lg cursor-pointer"
-              >
-                Restablecer Todo
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   );
 }
+
+export default App;
