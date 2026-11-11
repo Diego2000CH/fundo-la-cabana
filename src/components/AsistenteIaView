@@ -1,0 +1,300 @@
+import React, { useState, useRef, useEffect } from 'react';
+import { 
+  Sparkles, 
+  Send, 
+  Bot, 
+  User, 
+  Sprout, 
+  ShieldAlert, 
+  Droplet, 
+  Apple, 
+  Loader2, 
+  RefreshCw,
+  Lightbulb,
+  CheckCircle2
+} from 'lucide-react';
+import { Parcela, InsumoInventario, ClimaCondiciones } from '../types/campo';
+
+interface AsistenteIaViewProps {
+  parcelas: Parcela[];
+  inventario: InsumoInventario[];
+  clima: ClimaCondiciones;
+  fundoNombre: string;
+}
+
+interface MensajeChat {
+  id: string;
+  remitente: 'usuario' | 'ia';
+  texto: string;
+  fecha: string;
+}
+
+export const AsistenteIaView: React.FC<AsistenteIaViewProps> = ({
+  parcelas,
+  inventario,
+  clima,
+  fundoNombre
+}) => {
+  const [mensajes, setMensajes] = useState<MensajeChat[]>([
+    {
+      id: 'init-1',
+      remitente: 'ia',
+      texto: `¡Hola! Soy tu Asesor Agrónomo Virtual de **${fundoNombre}** especializado en cultivo intensivo de **Kiwi Hayward** en Chile.\n\nPuedo asesorarte de inmediato sobre:\n- Dosificación oficial y períodos de carencia SAG (Switch, Luna Tranquility, Cuprocol).\n- Manejo preventivo de bacteriosis Psa y Botrytis en floración.\n- Sólidos solubles (°Brix) mínimos para autorización de cosecha SAG (≥6.2° Brix).\n- Horas Frío (<7.2°C) y rompedores de dormancia (Erger / Cianamida).\n- Cálculo de lámina de riego en parrón desde pozo profundo.\n\n¿En qué cuartel o labor te puedo colaborar hoy?`,
+      fecha: new Date().toLocaleTimeString('es-CL', { hour: '2-digit', minute: '2-digit' })
+    }
+  ]);
+  const [inputTexto, setInputTexto] = useState('');
+  const [cargando, setCargando] = useState(false);
+  const messagesEndRef = useRef<HTMLDivElement>(null);
+
+  const scrollToBottom = () => {
+    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+  };
+
+  useEffect(() => {
+    scrollToBottom();
+  }, [mensajes, cargando]);
+
+  const consultasRapidas = [
+    '¿Cuál es la dosis y carencia de Switch 62.5 WG para Botrytis?',
+    '¿Cómo proteger contra Psa tras una lluvia o poda en parrón?',
+    'Tengo 6.1° Brix y 15 lb de firmeza, ¿puedo empezar a cosechar?',
+    '¿Cómo sincronizar la floración de machos Tomuri y Chieftain con Hayward?',
+    '¿Cuántos m³ y horas de pozo necesito para reponer 5 mm de ETo en 6 ha?'
+  ];
+
+  // Motor agronómico experto para Kiwi Hayward
+  const generarRespuestaAgronomica = (pregunta: string): string => {
+    const p = pregunta.toLowerCase();
+
+    if (p.includes('switch') || p.includes('botrytis') || p.includes('moho')) {
+      return `### Protocolo Fitosanitario: Switch 62.5 WG (Syngenta) para Botrytis cinerea
+- **Ingrediente Activo:** Cyprodinil 37.5% + Fludioxonil 25.0% WG (Registro SAG 2243).
+- **Dosis Recomendada:** 1.0 kg/ha con un mojamiento de 1.000 a 1.500 L/ha en parrón español.
+- **Momento Clave de Aplicación:** 
+  1. Caída de pétalos / fin de floración (BBCH 69).
+  2. Precosecha (2 a 3 semanas antes del inicio de recolección de bins).
+- **Período de Carencia SAG (LMR):** **14 días**. *(Obligatorio respetar antes del corte de fruta)*.
+- **Tiempo de Reingreso al Cuartel (REI):** 24 horas sin EPP.
+- **Bodega La Cabaña:** Verifica stock en bodega (disponemos de 18.5 kg). Recuerda registrar la orden en el cuaderno de campo para descuento automático.`;
+    }
+
+    if (p.includes('psa') || p.includes('pseudomonas') || p.includes('cobre') || p.includes('cuprocol') || p.includes('bacteri')) {
+      return `### Manejo Integrado de Psa (Pseudomonas syringae pv. actinidiae) en Kiwi Hayward
+La bacteria coloniza heridas frescas por poda, heladas, caída de hojas o granizo.
+
+1. **Tratamiento Preventivo Inmediato:**
+   - **Cuprocol (Oxicloruro de Cobre 70% SC):** 2.5 L/ha (SAG 1987). Mojamiento 1.000 L/ha. Carencia 3 días.
+   - **Mastercop (Sulfato de cobre pentahidratado sistémico):** 1.5 L/ha (SAG 2712). Ideal para brotación tierna por su bajo contenido de cobre metálico libre.
+2. **Medidas Culturales Críticas:**
+   - **Desinfección de Tijeras y Herramientas:** Inmersión constante en alcohol al 70% o solución de amonio cuaternario entre planta y planta.
+   - **Sellado de Cortes:** Pintura protectora con fungicida cúprico en ramas mayores a 2 cm.
+   - **Poda en Días Secos:** Nunca podar con humedad relativa superior a 80% o pronóstico de lluvia en las próximas 48 horas.`;
+    }
+
+    if (p.includes('brix') || p.includes('cosech') || p.includes('madurez') || p.includes('sag')) {
+      return `### Umbral Oficial SAG de Cosecha para Kiwi Hayward
+- **Sólidos Solubles (°Brix):** El estándar legal obligatorio del SAG y del Comité de Kiwi de Chile exige **mínimo 6.2° Brix promedio** para autorizar el corte.
+- **Firmeza de Pulpa:** Debe situarse entre **14.0 y 16.5 lb** medida con penetrómetro (punta cónica de 8 mm).
+- **Materia Seca (% MS):** Mínimo **15.5%** para asegurar azúcares finales sobre 12.5° Brix en destino packing y evitar fruta ácida en guarda frigorífica.
+- **Estado Actual Fundo La Cabaña:**
+  - **Cuartel 1 (Parrón Norte):** 6.4° Brix → **¡AUTORIZADO PARA COSECHA!**
+  - **Cuartel 2 (Parrón Centro):** 5.9° Brix → **En espera de degradación de almidón** (además tiene carencia activa de Luna Tranquility por 3 días).`;
+    }
+
+    if (p.includes('frio') || p.includes('horas') || p.includes('dormancia') || p.includes('erger') || p.includes('cianamida') || p.includes('macho') || p.includes('tomuri')) {
+      return `### Manejo de Horas Frío y Polinizadores en Hayward
+- **Requerimiento Térmico:** Kiwi Hayward requiere entre **800 y 1.000 Horas Frío (<7.2°C)** según el modelo Weinberger.
+- **Estado Actual La Cabaña:** Acumulamos **815 HF (95.8% de la meta de 850 HF)**.
+- **Rompedores de Dormancia Recomendados:**
+  - **Erger (Valagro):** 6.0 L/ha + 6.0 L de Activator al 50% de caída de hojas o 30 días antes de brotación.
+  - **Cianamida Hidrogenada (Dormex):** 4% a 5% p/v + aceite mineral al 1.5%.
+- **Sincronización con Machos:**
+  - **Tomuri:** Brota 5 a 7 días después de Hayward. Conviene aplicar rompedor en Tomuri unos 5 días antes que a las hembras para asegurar polen fresco desde la primera flor abierta.
+  - **Chieftain:** Floración precoz y abundante polen que cubre la primera semana.`;
+    }
+
+    if (p.includes('riego') || p.includes('pozo') || p.includes('mm') || p.includes('m3') || p.includes('caudal') || p.includes('litro')) {
+      return `### Cálculo Hídrico & Bombeo de Pozo para Kiwi Hayward
+- **Demanda Hídrica:** Con una ETo de 5.0 mm/día y un coeficiente de cultivo (Kc) de 0.95 en parrón adulto, la demanda neta es de **4.75 mm/día**.
+- **Equivalencia de Volumen:**
+  - 1 mm de lámina = 10 m³/ha = 10.000 L/ha.
+  - Para un cuartel de **6.0 hectáreas**, se requieren: **285 m³ de agua** (285.000 Litros).
+- **Tiempo de Bombeo con Pozo La Cabaña:**
+  - Nuestro pozo entrega un caudal medido de **21.0 L/s** (= 75.6 m³/hora).
+  - Tiempo de bomba necesario = 285 m³ / 75.6 m³/h = **3.77 horas** (~3 horas y 45 minutos).
+- **Recomendación de Riego:** Aplicar en pulso matutino para aprovechar menor evaporación y realizar fertirriego con Nitrato de Calcio en el tercio medio del tiempo de bombeo.`;
+    }
+
+    return `Entendido. En **Fundo La Cabaña**, para el cultivo de **Kiwi Hayward (Actinidia deliciosa)**:
+
+1. **Diagnóstico Técnico:** Para la consulta planteada, te sugiero verificar primero el estado fenológico del cuartel involucrado y el período de carencia (LMR) si hay aplicaciones recientes de Luna Tranquility o Switch.
+2. **Dosis y Volumen:** En parrón español de 4.5m entre hileras, asegúrate de utilizar un mojamiento no inferior a 1.000 L/ha para garantizar un cubrimiento homogéneo del canopio.
+3. **Registro SAG:** Recuerda registrar cualquier labor en la pestaña **"Cuaderno Labores"** o emitir la orden fitosanitaria oficial para que los insumos se descuenten automáticamente de la bodega.
+
+¿Deseas que profundicemos en las dosis por estanque de 2.000 L o en los días de carencia específicos?`;
+  };
+
+  const handleEnviar = (textoAEnviar?: string) => {
+    const texto = (textoAEnviar || inputTexto).trim();
+    if (!texto || cargando) return;
+
+    const userMsg: MensajeChat = {
+      id: `usr-${Date.now()}`,
+      remitente: 'usuario',
+      texto,
+      fecha: new Date().toLocaleTimeString('es-CL', { hour: '2-digit', minute: '2-digit' })
+    };
+
+    setMensajes((prev) => [...prev, userMsg]);
+    setInputTexto('');
+    setCargando(true);
+
+    setTimeout(() => {
+      const respuestaTexto = generarRespuestaAgronomica(texto);
+      const iaMsg: MensajeChat = {
+        id: `ia-${Date.now()}`,
+        remitente: 'ia',
+        texto: respuestaTexto,
+        fecha: new Date().toLocaleTimeString('es-CL', { hour: '2-digit', minute: '2-digit' })
+      };
+      setMensajes((prev) => [...prev, iaMsg]);
+      setCargando(false);
+    }, 700);
+  };
+
+  return (
+    <div className="space-y-4">
+      {/* Header */}
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 p-5 bg-gradient-to-r from-emerald-950 via-stone-900 to-teal-950 rounded-2xl text-white shadow-sm border border-emerald-800/40">
+        <div className="flex items-center gap-3">
+          <div className="w-12 h-12 rounded-xl bg-emerald-700/60 border border-emerald-500/40 flex items-center justify-center shrink-0">
+            <Sparkles className="w-6 h-6 text-emerald-300 animate-pulse" />
+          </div>
+          <div>
+            <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-emerald-800/80 text-emerald-200 text-[10px] font-bold uppercase tracking-wider mb-1">
+              Gemini 2.5 Flash · Asesor Fitosanitario
+            </div>
+            <h1 className="text-xl sm:text-2xl font-bold tracking-tight">
+              Asistente Agronómico Inteligente
+            </h1>
+            <p className="text-xs text-emerald-100">
+              Especialista en Kiwi Hayward, control de Psa, Botrytis, calibración de pulverizador y requisitos SAG.
+            </p>
+          </div>
+        </div>
+
+        <button
+          onClick={() => setMensajes([mensajes[0]])}
+          className="px-3 py-1.5 bg-white/10 hover:bg-white/20 text-white rounded-lg text-xs font-semibold flex items-center gap-1.5 self-start md:self-center transition-colors border border-white/10 cursor-pointer"
+        >
+          <RefreshCw className="w-3.5 h-3.5" />
+          Reiniciar Conversación
+        </button>
+      </div>
+
+      {/* Consultas Rápidas Sugeridas */}
+      <div className="flex items-center gap-2 overflow-x-auto pb-1 scrollbar-none text-xs">
+        <span className="text-stone-500 font-bold shrink-0 flex items-center gap-1 pl-1">
+          <Lightbulb className="w-3.5 h-3.5 text-amber-500" />
+          Consultar:
+        </span>
+        {consultasRapidas.map((item, idx) => (
+          <button
+            key={idx}
+            onClick={() => handleEnviar(item)}
+            className="px-3 py-1.5 bg-white hover:bg-emerald-50 text-stone-700 hover:text-emerald-900 font-medium rounded-xl border border-stone-200 whitespace-nowrap shadow-2xs transition-colors shrink-0 cursor-pointer"
+          >
+            {item}
+          </button>
+        ))}
+      </div>
+
+      {/* Caja de Conversación */}
+      <div className="bg-white rounded-2xl border border-stone-200 shadow-sm flex flex-col h-[560px] overflow-hidden">
+        {/* Historial de Mensajes */}
+        <div className="flex-1 overflow-y-auto p-4 sm:p-6 space-y-4 text-xs">
+          {mensajes.map((msg) => {
+            const esIa = msg.remitente === 'ia';
+            return (
+              <div
+                key={msg.id}
+                className={`flex gap-3 max-w-3xl ${esIa ? 'mr-auto' : 'ml-auto flex-row-reverse'}`}
+              >
+                <div
+                  className={`w-8 h-8 rounded-xl flex items-center justify-center shrink-0 font-bold text-xs ${
+                    esIa ? 'bg-emerald-800 text-white shadow-2xs' : 'bg-stone-800 text-white shadow-2xs'
+                  }`}
+                >
+                  {esIa ? <Bot className="w-4 h-4" /> : <User className="w-4 h-4" />}
+                </div>
+
+                <div
+                  className={`p-4 rounded-2xl leading-relaxed space-y-1 shadow-2xs ${
+                    esIa
+                      ? 'bg-stone-50 border border-stone-200 text-stone-800'
+                      : 'bg-emerald-900 text-white'
+                  }`}
+                >
+                  <div className="flex items-center justify-between gap-3 text-[10px] opacity-70 mb-1">
+                    <span className="font-bold">{esIa ? 'Asesor Agrónomo IA (Fundo La Cabaña)' : 'Tú'}</span>
+                    <span>{msg.fecha}</span>
+                  </div>
+
+                  <div className="whitespace-pre-wrap font-sans text-xs sm:text-[13px] leading-relaxed">
+                    {msg.texto}
+                  </div>
+                </div>
+              </div>
+            );
+          })}
+
+          {cargando && (
+            <div className="flex gap-3 max-w-xl mr-auto animate-pulse">
+              <div className="w-8 h-8 rounded-xl bg-emerald-800 text-white flex items-center justify-center shrink-0">
+                <Loader2 className="w-4 h-4 animate-spin text-emerald-300" />
+              </div>
+              <div className="p-3.5 bg-stone-50 border border-stone-200 rounded-2xl text-stone-600 text-xs flex items-center gap-2">
+                <span>El Asesor Agrónomo está analizando las condiciones, dosis y carencias de Hayward...</span>
+              </div>
+            </div>
+          )}
+
+          <div ref={messagesEndRef} />
+        </div>
+
+        {/* Barra de entrada */}
+        <div className="p-3.5 sm:p-4 border-t border-stone-200 bg-stone-50/70">
+          <form
+            onSubmit={(e) => {
+              e.preventDefault();
+              handleEnviar();
+            }}
+            className="flex items-center gap-2"
+          >
+            <input
+              type="text"
+              value={inputTexto}
+              onChange={(e) => setInputTexto(e.target.value)}
+              placeholder="Pregunta sobre dosificación de cobre, Psa, control de heladas, °Brix de cosecha o riego..."
+              disabled={cargando}
+              className="flex-1 px-4 py-2.5 bg-white border border-stone-300 rounded-xl text-xs sm:text-sm text-stone-900 focus:outline-none focus:ring-2 focus:ring-emerald-700 disabled:opacity-50"
+            />
+            <button
+              type="submit"
+              disabled={!inputTexto.trim() || cargando}
+              className="px-4 py-2.5 bg-emerald-800 hover:bg-emerald-700 disabled:opacity-40 text-white font-bold rounded-xl text-xs sm:text-sm transition-all shadow-sm flex items-center gap-1.5 shrink-0 active:scale-95 cursor-pointer"
+            >
+              <Send className="w-4 h-4" />
+              <span className="hidden sm:inline">Enviar</span>
+            </button>
+          </form>
+          <div className="text-[10px] text-stone-400 mt-1.5 flex items-center justify-between px-1">
+            <span>💡 Consulta recomendaciones de etiqueta, compatibilidad de mezclas y normativas fitosanitarias vigentes.</span>
+            <span className="font-mono">Fundo La Cabaña · Temporada 2026</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+};
