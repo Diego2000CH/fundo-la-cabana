@@ -1,114 +1,1380 @@
 import { 
   ExplotacionAgricola, 
   Parcela, 
-  RegistroLabor, 
-  PlagaFicha, 
+  LugarPredio, 
   InsumoInventario, 
+  RegistroLabor, 
   RegistroExtraccionPozo,
-  ClimaCondiciones,
-  LugarPredio,
-  UsuarioPredio,
   MuestreoMadurez,
   RegistroCosechaLote,
   OrdenTrabajoFitosanitaria,
   CondicionHorasFrio,
   SeguimientoFenologico,
-  RegistroPolinizacion
+  RegistroPolinizacion,
+  UsuarioPredio,
+  ClimaCondiciones,
+  MaquinariaEquipo,
+  RegistroMantencionMaquinaria,
+  SectorRiego,
+  TurnoRiego
 } from '../types/campo';
-// DATOS GENERALES DEL FUNDO EN BLANCO
+
 export const initialExplotacion: ExplotacionAgricola = {
+  id: 'exp-la-cabana',
   nombreFundo: 'Fundo La Cabaña',
-  titular: '',
-  identificacionFiscal: '',
-  comunaRegion: '',
-  direccion: '',
-  asesorAgronomo: '',
-  numeroRegistroAgricola: '',
-  telefonoContacto: '',
-  temporada: '2026 - 2027'
+  rut: '76.438.921-8',
+  comuna: 'Curicó',
+  provincia: 'Curicó',
+  region: 'Región del Maule (VII)',
+  direccion: 'Camino a Los Niches Km 8.4, Sector La Cabaña',
+  representanteLegal: 'Diego Morales Silva',
+  rutRepresentante: '15.892.410-K',
+  asesorAgronomo: 'Ing. Agr. Rodrigo Valenzuela Castro',
+  registroColegioAgronomos: 'COL-AGR-4912',
+  telefonoContacto: '+56 9 8412 9043',
+  emailContacto: 'administracion@fundolacabana.cl',
+  superficieTotalHa: 28.5,
+  superficieKiwisHa: 24.5,
+  variedadPrincipal: 'Kiwi Hayward (Actinidia deliciosa)',
+  polinizadores: ['Tomuri (10%)', 'Chieftain (5%)', 'M91'],
+  certificaciones: [
+    'Cuaderno Oficial SAG Chile (Resolución 2433)',
+    'GlobalGAP IFA v6 Fruit & Vegetables',
+    'Buenas Prácticas Agrícolas (BPA Maule)'
+  ],
+  latitud: -35.0214,
+  longitud: -71.1895
 };
-// CUARTELES EN BLANCO (0 CUARTELES)
-export const initialParcelas: Parcela[] = [];
-// PUNTOS Y ENTRADAS EN BLANCO (0 LUGARES)
-export const initialLugaresPredio: LugarPredio[] = [];
-// BODEGA DE INSUMOS EN BLANCO (0 PRODUCTOS)
-export const initialInventario: InsumoInventario[] = [];
-// POZO PROFUNDO EN BLANCO (0 EXTRACCIONES)
-export const initialRegistrosPozo: RegistroExtraccionPozo[] = [];
-// LABORES EN BLANCO (0 LABORES)
-export const initialLabores: RegistroLabor[] = [];
-// MUESTREOS DE MADUREZ EN BLANCO
-export const initialMuestreosMadurez: MuestreoMadurez[] = [];
-// REGISTROS DE COSECHA EN BLANCO
-export const initialCosechasLote: RegistroCosechaLote[] = [];
-// ÓRDENES DE TRABAJO EN BLANCO
-export const initialOrdenesTrabajo: OrdenTrabajoFitosanitaria[] = [];
-// FENOLOGÍA EN BLANCO
-export const initialFenologia: SeguimientoFenologico[] = [];
-// POLINIZACIÓN EN BLANCO
-export const initialPolinizacion: RegistroPolinizacion[] = [];
-// CONDICIÓN CLIMA BASE
-export const initialClimaLaCabana: ClimaCondiciones = {
-  temperaturaC: 18.0,
-  humedadRelativa: 60,
-  velocidadVientoKmH: 5.0,
-  vientoDireccion: 'Sur',
-  precipitacionMm: 0,
-  puntoRocioC: 10.0,
-  presionHpa: 1013,
-  radiacionUv: 5,
-  alertaHelada: false,
-  aptoPulverizacion: 'Optimo',
-  motivoNoApto: 'Condición apta para aplicaciones'
-};
-// PLANTILLA HORAS FRÍO
-export const initialCondicionHorasFrio: CondicionHorasFrio = {
-  temporada: '2026',
-  horasFrioAcumuladas: 0,
-  horasFrioMetaHayward: 850,
-  porcentajeCumplimiento: 0,
-  fechaInicioMedicion: '2026-05-01',
-  fechaUltimaActualizacion: '2026-05-01',
-  temperaturaMinimaRegistradaC: 0,
-  rompedorDormanciaRecomendado: 'Por evaluar según acumulación invernal',
-  fechaSugeridaRompedor: 'Agosto',
-  estadoDormancia: 'En acumulación',
-  observacionesAgronomicas: 'Sin registros aún'
-}:
-// TU USUARIO ADMINISTRADOR
-exprort const initialUsuarios: UsuarioPredio[] = [
+
+export const initialParcelas: Parcela[] = [
   {
-    id: 'usr-1',
-    nombre: 'Diego',
-    email: 'diego@fundolacabana.cl',
-    telefono: '+56 9 ',
-    rol: 'administrador',
-    rutIdentificacion: '',
-    tituloProfesional: 'Administrador General',
-    estado: 'activo',
-    fechaAlta: '2026-10-20',
-    avatarColor: 'bg-emerald-700 text-white',
-    notas: 'Administrador del Fundo La Cabaña'
-  }
-];
-// GUÍA TÉCNICA DE CONSULTA DE PLAGAS DEL KIWI (Biblioteca de consulta)
-export const plagasGuiaKiwi: PlagaFicha[] = [
-  {
-    nombreComun: 'Bacteriosis del Kiwi / Psa',
-    nombreCientifico: 'Pseudomonas syringae pv. actinidiae',
-    cultivosAfectados: ['Kiwi Hayward'],
-    sintomas: 'Manchas angulares en hojas con halo amarillo y exudados en tronco.',
-    umbralEconomico: 'Tolerancia CERO.',
-    metodoControl: 'Aplicación de sales de cobre y sellado de heridas.',
-    periodoAlerta: 'Invierno y Primavera'
+    id: 'cuartel-1',
+    nombre: 'Cuartel 1 - Parrón Norte (Sector 1)',
+    codigoCuartel: 'C1-PN',
+    sectorRiegoNumero: 1,
+    superficieHa: 4.8,
+    variedad: 'Kiwi Hayward',
+    patronPortainjerto: 'Franco Semilla Hayward',
+    polinizador: 'Tomuri (1:8 plantas)',
+    sistemaConduccion: 'Parrón Español',
+    marcoPlantacion: '4.5m x 4.0m',
+    plantasPorHa: 555,
+    anioPlantacion: 2012,
+    estadoFenologico: 'Maduración avanzada',
+    estadoActual: 'Listo para Cosecha',
+    rendimientoEstimadoTonHa: 38.5,
+    colorHex: '#10b981',
+    lat: -35.0202,
+    lng: -71.1895,
+    sectoresRiego: [1],
+    coordenadasPoligono: [
+      { lat: -35.0195, lng: -71.1920 },
+      { lat: -35.0195, lng: -71.1870 },
+      { lat: -35.0210, lng: -71.1870 },
+      { lat: -35.0210, lng: -71.1920 }
+    ]
   },
   {
-    nombreComun: 'Botrytis / Moho Gris',
-    nombreCientifico: 'Botrytis cinerea',
-    cultivosAfectados: ['Kiwi Hayward'],
-    sintomas: 'Pudrición en flores y caída de fruta.',
-    umbralEconomico: 'Preventivo en floración.',
-    metodoControl: 'Fungicidas específicos y ventilación de parrón.',
-    periodoAlerta: 'Noviembre a Diciembre'
+    id: 'cuartel-2',
+    nombre: 'Cuartel 2 - Parrón Centro (Sector 2)',
+    codigoCuartel: 'C2-PC',
+    sectorRiegoNumero: 2,
+    superficieHa: 6.2,
+    variedad: 'Kiwi Hayward',
+    patronPortainjerto: 'Franco Semilla Hayward',
+    polinizador: 'Tomuri + Chieftain (1:7)',
+    sistemaConduccion: 'Parrón Español',
+    marcoPlantacion: '4.5m x 4.0m',
+    plantasPorHa: 555,
+    anioPlantacion: 2014,
+    estadoFenologico: 'Maduración (6.0° Brix)',
+    estadoActual: 'En Carencia SAG',
+    lmrActivo: 'Luna Tranquility (Carencia 7 días)',
+    diasCarenciaRestantes: 3,
+    fechaUltimaAplicacion: '2026-10-22',
+    rendimientoEstimadoTonHa: 42.0,
+    colorHex: '#f59e0b',
+    lat: -35.0220,
+    lng: -71.1895,
+    sectoresRiego: [2],
+    coordenadasPoligono: [
+      { lat: -35.0210, lng: -71.1920 },
+      { lat: -35.0210, lng: -71.1870 },
+      { lat: -35.0230, lng: -71.1870 },
+      { lat: -35.0230, lng: -71.1920 }
+    ]
+  },
+  {
+    id: 'cuartel-3',
+    nombre: 'Cuartel 3 - Parrón Sur (Sector 3)',
+    codigoCuartel: 'C3-PS',
+    sectorRiegoNumero: 3,
+    superficieHa: 7.5,
+    variedad: 'Kiwi Hayward',
+    patronPortainjerto: 'Franco Semilla Hayward',
+    polinizador: 'Tomuri (1:8)',
+    sistemaConduccion: 'Parrón Español',
+    marcoPlantacion: '4.5m x 3.8m',
+    plantasPorHa: 584,
+    anioPlantacion: 2016,
+    estadoFenologico: 'Maduración de fruto',
+    estadoActual: 'Normal',
+    rendimientoEstimadoTonHa: 39.0,
+    colorHex: '#3b82f6',
+    lat: -35.0242,
+    lng: -71.1895,
+    sectoresRiego: [3],
+    coordenadasPoligono: [
+      { lat: -35.0230, lng: -71.1920 },
+      { lat: -35.0230, lng: -71.1870 },
+      { lat: -35.0255, lng: -71.1870 },
+      { lat: -35.0255, lng: -71.1920 }
+    ]
+  },
+  {
+    id: 'cuartel-4',
+    nombre: 'Cuartel 4 - Espaldera T-Bar Este (Sector 4)',
+    codigoCuartel: 'C4-ET',
+    sectorRiegoNumero: 4,
+    superficieHa: 6.0,
+    variedad: 'Kiwi Hayward',
+    patronPortainjerto: 'Bounty 71',
+    polinizador: 'Chieftain (1:6)',
+    sistemaConduccion: 'Espaldera en T',
+    marcoPlantacion: '4.0m x 2.5m',
+    plantasPorHa: 1000,
+    anioPlantacion: 2019,
+    estadoFenologico: 'Maduración y acumulación azúcares',
+    estadoActual: 'En Riego',
+    rendimientoEstimadoTonHa: 44.5,
+    colorHex: '#8b5cf6',
+    lat: -35.0225,
+    lng: -71.1845,
+    sectoresRiego: [4],
+    coordenadasPoligono: [
+      { lat: -35.0195, lng: -71.1870 },
+      { lat: -35.0195, lng: -71.1830 },
+      { lat: -35.0255, lng: -71.1830 },
+      { lat: -35.0255, lng: -71.1870 }
+    ]
   }
-]; 
+];
+
+export const initialLugares: LugarPredio[] = [
+  {
+    id: 'lug-1',
+    nombre: 'Portón Acceso Principal',
+    tipo: 'porton',
+    descripcion: 'Control de entrada vehicular, báscula y registro de camiones de cosecha',
+    lat: -35.0192,
+    lng: -71.1922
+  },
+  {
+    id: 'lug-2',
+    nombre: 'Oficina Administración & Asesoría Agronómica',
+    tipo: 'oficina',
+    descripcion: 'Oficina técnica, archivo de recetas SAG, registros DGA y libro de campo oficial',
+    lat: -35.0198,
+    lng: -71.1918
+  },
+  {
+    id: 'lug-3',
+    nombre: 'Casa Patronal Fundo La Cabaña',
+    tipo: 'casa_patronal',
+    descripcion: 'Residencia principal del fundo y jardines perimetrales',
+    lat: -35.0195,
+    lng: -71.1908
+  },
+  {
+    id: 'lug-4',
+    nombre: 'Bodega de Fitosanitarios y Fertilizantes',
+    tipo: 'bodega',
+    descripcion: 'Bodega autorizada SAG con control de derrames, duchas de emergencia y pañol de fertilizantes',
+    lat: -35.0205,
+    lng: -71.1915
+  },
+  {
+    id: 'lug-5',
+    nombre: 'Sector Barbecho (Suelo en Descanso / Renovación)',
+    tipo: 'barbecho',
+    descripcion: 'Suelo en descanso con desinfección solar y abonos verdes para futura plantación de Kiwi Hayward',
+    lat: -35.0250,
+    lng: -71.1940,
+    superficieHa: 3.2,
+    colorHex: '#d97706'
+  },
+  {
+    id: 'lug-6',
+    nombre: 'Caseta de Riego y Cabezal de Filtrado',
+    tipo: 'caseta_riego',
+    descripcion: 'Batería de filtros de anilla automáticos, 4 válvulas matrices y equipo de fertirriego',
+    lat: -35.0222,
+    lng: -71.1898
+  },
+  {
+    id: 'lug-7',
+    nombre: 'Pozo Profundo 120m (Fiscalización DGA)',
+    tipo: 'pozo',
+    descripcion: 'Bomba sumergible 40 HP, caudalímetro homologado, horómetro y flujómetro DGA',
+    lat: -35.0225,
+    lng: -71.1895
+  },
+  {
+    id: 'lug-8',
+    nombre: 'Estación Meteorológica Fundo La Cabaña',
+    tipo: 'estacion_meteo',
+    descripcion: 'Sensor Davis Vantage Pro2 con telemetría: sensor de heladas, HR, viento y ETo',
+    lat: -35.0210,
+    lng: -71.1890
+  },
+  {
+    id: 'lug-9',
+    nombre: 'Galpón de Maquinaria y Taller Mecánico',
+    tipo: 'taller_maquinaria',
+    descripcion: 'Estacionamiento de tractores, turbo-pulverizadores y banco de mantención',
+    lat: -35.0202,
+    lng: -71.1920
+  },
+  {
+    id: 'lug-10',
+    nombre: 'Punto Limpio y Acopio Triple Lavado SAG',
+    tipo: 'punto_limpio',
+    descripcion: 'Jaula techada autorizada para acopio transitorio de envases de agroquímicos con triple lavado perforados',
+    lat: -35.0208,
+    lng: -71.1910
+  },
+  {
+    id: 'lug-11',
+    nombre: 'Comedor y Servicios Higiénicos de Faena',
+    tipo: 'comedor',
+    descripcion: 'Instalaciones para personal de poda, raleo y cosecha certificadas BPA GlobalGAP',
+    lat: -35.0200,
+    lng: -71.1912
+  }
+];
+
+export const initialTurnosRiego: TurnoRiego[] = [
+  {
+    id: 'tr-01',
+    fecha: '2026-10-25',
+    horaInicio: '07:30',
+    horaTermino: '14:00',
+    sectorRiegoId: 1,
+    sectorNombre: 'Sector 1 - Parrón Español Norte',
+    cuartelesInvolucrados: ['Cuartel 1 - Parrón Norte'],
+    duracionHoras: 6.5,
+    laminaAguaMm: 4.8,
+    volumenM3: 240,
+    conFertirriego: true,
+    fertilizanteInyectado: 'Nitrato de Calcio Soluble (Calcinit)',
+    dosisFertilizanteKg: 50,
+    presionCabezalBar: 3.8,
+    presionFinLineaBar: 1.8,
+    operadorRiego: 'Rodrigo Tapia San Martín',
+    observaciones: 'Turno matinal con fertirriego. Presión de cabezal estable a 3.8 bar.'
+  },
+  {
+    id: 'tr-02',
+    fecha: '2026-10-24',
+    horaInicio: '08:00',
+    horaTermino: '14:30',
+    sectorRiegoId: 4,
+    sectorNombre: 'Sector 4 - Espaldera T-Bar Este',
+    cuartelesInvolucrados: ['Cuartel 4 - Espaldera T-Bar Este'],
+    duracionHoras: 6.5,
+    laminaAguaMm: 4.5,
+    volumenM3: 270,
+    conFertirriego: false,
+    presionCabezalBar: 3.7,
+    presionFinLineaBar: 1.7,
+    operadorRiego: 'Carlos Morales Vega',
+    observaciones: 'Riego por goteo doble línea sin fertirriego. Desagüe de colas realizado.'
+  },
+  {
+    id: 'tr-03',
+    fecha: '2026-10-21',
+    horaInicio: '07:30',
+    horaTermino: '14:30',
+    sectorRiegoId: 2,
+    sectorNombre: 'Sector 2 - Parrón Centro',
+    cuartelesInvolucrados: ['Cuartel 2 - Parrón Centro'],
+    duracionHoras: 7.0,
+    laminaAguaMm: 5.0,
+    volumenM3: 310,
+    conFertirriego: true,
+    fertilizanteInyectado: 'Sulfato de Potasio Soluble',
+    dosisFertilizanteKg: 65,
+    presionCabezalBar: 3.8,
+    presionFinLineaBar: 1.8,
+    operadorRiego: 'Rodrigo Tapia San Martín',
+    observaciones: 'Retrolavado de filtros de anillas realizado previo al turno.'
+  }
+];
+
+// INVENTARIO INTEGRAL: Agroquímicos, Riego, Alambres, Polines, Mallas y Herramientas
+export const initialInventario: InsumoInventario[] = [
+  // Fitosanitarios y Químicos
+  {
+    id: 'ins-1',
+    nombreComercial: 'Switch 62.5 WG',
+    categoriaBodega: 'fitosanitario',
+    categoria: 'fitosanitario',
+    categoriaFito: 'fungicida',
+    ingredienteActivo: 'Cyprodinil 37.5% + Fludioxonil 25.0%',
+    fabricante: 'Syngenta Chile',
+    numeroRegistroSAG: 'SAG 2243',
+    tipo: 'fungicida',
+    stockActual: 18.5,
+    stockMinimo: 15.0,
+    unidad: 'kg',
+    costoUnitarioCLP: 68500,
+    lote: 'SYN-2026-B81',
+    fechaElaboracion: '2024-03-10',
+    fechaVencimiento: '2027-11-30',
+    destinosUso: ['kiwi', 'quinta_frutal'],
+    periodoCarenciaDias: 14,
+    tiempoReingresoHoras: 24,
+    dosisRecomendadaHa: '1.0 kg/ha',
+    ubicacionBodega: 'Bodega Químicos SAG - Estante A1',
+    observaciones: 'Especial para control preventivo de Botrytis cinerea en caída de sépalos y precosecha',
+    consumoHistoricoAcumulado: 42.0
+  },
+  {
+    id: 'ins-2',
+    nombreComercial: 'Luna Tranquility',
+    categoriaBodega: 'fitosanitario',
+    categoria: 'fitosanitario',
+    categoriaFito: 'fungicida',
+    ingredienteActivo: 'Fluopyram 12.5% + Pyrimethanil 37.5%',
+    fabricante: 'Bayer CropScience',
+    numeroRegistroSAG: 'SAG 3560',
+    tipo: 'fungicida',
+    stockActual: 8.0,
+    stockMinimo: 10.0,
+    unidad: 'L',
+    costoUnitarioCLP: 74200,
+    lote: 'BAY-LT-941',
+    fechaElaboracion: '2024-05-18',
+    fechaVencimiento: '2028-04-15',
+    destinosUso: ['kiwi', 'quinta_frutal', 'vivero'],
+    periodoCarenciaDias: 7,
+    tiempoReingresoHoras: 12,
+    dosisRecomendadaHa: '1.2 L/ha',
+    ubicacionBodega: 'Bodega Químicos SAG - Estante A2',
+    observaciones: 'Fungicida translaminar de alta eficacia en Botrytis',
+    consumoHistoricoAcumulado: 26.4
+  },
+  {
+    id: 'ins-3',
+    nombreComercial: 'Cuprocol 70% SC',
+    categoriaBodega: 'fitosanitario',
+    categoria: 'fitosanitario',
+    categoriaFito: 'bactericida',
+    ingredienteActivo: 'Oxicloruro de Cobre 70% SC',
+    fabricante: 'Corteva Agriscience',
+    numeroRegistroSAG: 'SAG 1987',
+    tipo: 'bactericida',
+    stockActual: 65.0,
+    stockMinimo: 50.0,
+    unidad: 'L',
+    costoUnitarioCLP: 18900,
+    lote: 'CRT-CUP-332',
+    fechaElaboracion: '2024-02-15',
+    fechaVencimiento: '2028-09-20',
+    destinosUso: ['kiwi', 'quinta_frutal', 'vivero'],
+    periodoCarenciaDias: 3,
+    tiempoReingresoHoras: 12,
+    dosisRecomendadaHa: '2.5 L/ha',
+    ubicacionBodega: 'Bodega Químicos SAG - Tarima Cobre',
+    observaciones: 'Bactericida de contacto clave para sellado preventivo de Psa tras poda o lluvias',
+    consumoHistoricoAcumulado: 185.0
+  },
+  {
+    id: 'ins-4',
+    nombreComercial: 'Mastercop',
+    categoriaBodega: 'fitosanitario',
+    categoria: 'fitosanitario',
+    categoriaFito: 'bactericida',
+    ingredienteActivo: 'Sulfato de Cobre Pentahidratado 6.6% SL',
+    fabricante: 'Adama Chile',
+    numeroRegistroSAG: 'SAG 2712',
+    tipo: 'bactericida',
+    stockActual: 14.0,
+    stockMinimo: 20.0,
+    unidad: 'L',
+    costoUnitarioCLP: 24500,
+    lote: 'ADM-MC-511',
+    fechaElaboracion: '2024-06-20',
+    fechaVencimiento: '2027-10-10',
+    destinosUso: ['kiwi', 'quinta_frutal', 'vivero'],
+    periodoCarenciaDias: 1,
+    tiempoReingresoHoras: 4,
+    dosisRecomendadaHa: '1.5 L/ha',
+    ubicacionBodega: 'Bodega Químicos SAG - Estante B1',
+    observaciones: 'Cobre sistémico de bajo contenido metálico, seguro para brotes tiernos',
+    consumoHistoricoAcumulado: 38.0
+  },
+  {
+    id: 'ins-5',
+    nombreComercial: 'Envidor 240 SC',
+    categoriaBodega: 'fitosanitario',
+    categoria: 'fitosanitario',
+    categoriaFito: 'acaricida',
+    ingredienteActivo: 'Spirodiclofen 24%',
+    fabricante: 'Bayer CropScience',
+    numeroRegistroSAG: 'SAG 3219',
+    tipo: 'insecticida_acaricida',
+    stockActual: 6.5,
+    stockMinimo: 8.0,
+    unidad: 'L',
+    costoUnitarioCLP: 82000,
+    lote: 'BAY-ENV-108',
+    fechaElaboracion: '2024-01-10',
+    fechaVencimiento: '2027-08-30',
+    destinosUso: ['kiwi', 'quinta_frutal'],
+    periodoCarenciaDias: 14,
+    tiempoReingresoHoras: 24,
+    dosisRecomendadaHa: '0.4 L/ha',
+    ubicacionBodega: 'Bodega Químicos SAG - Estante B2',
+    observaciones: 'Control ovicida y ninficida de Brevipalpus chilensis (Falsa arañita de la vid)',
+    consumoHistoricoAcumulado: 12.0
+  },
+  {
+    id: 'ins-6',
+    nombreComercial: 'Nitrato de Calcio Soluble Calcinit',
+    categoriaBodega: 'fitosanitario',
+    categoria: 'fertilizante',
+    categoriaFito: 'fertilizante',
+    estadoFertilizante: 'granulado',
+    solubilidadFertilizante: 'soluble',
+    composicionFertilizante: 'N 15.5% (Nítrico 14.4% + Amoniacal 1.1%) + CaO 26.5%',
+    fabricante: 'Yara Chile',
+    numeroRegistroSAG: 'SAG F-819',
+    tipo: 'fertilizante_suelo',
+    stockActual: 1250,
+    stockMinimo: 800,
+    unidad: 'kg',
+    costoUnitarioCLP: 1250,
+    lote: 'YARA-CN-880',
+    fechaElaboracion: '2024-04-01',
+    fechaVencimiento: '2029-01-01',
+    destinosUso: ['kiwi', 'quinta_frutal', 'vivero', 'casa_patronal'],
+    periodoCarenciaDias: 0,
+    tiempoReingresoHoras: 0,
+    dosisRecomendadaHa: '50-80 kg/ha',
+    ubicacionBodega: 'Bodega Fertilizantes - Pallet 1',
+    observaciones: 'Nutrición esencial para firmeza de fruto y prevenir colapso celular en guarda fría',
+    consumoHistoricoAcumulado: 3400
+  },
+  {
+    id: 'ins-7',
+    nombreComercial: 'Sulfato de Potasio Soluble (SOP)',
+    categoriaBodega: 'fitosanitario',
+    categoria: 'fertilizante',
+    categoriaFito: 'fertilizante',
+    estadoFertilizante: 'granulado',
+    solubilidadFertilizante: 'soluble',
+    composicionFertilizante: 'K2O 52% + S 18% (Sulfato Potásico Grado Fertirriego)',
+    fabricante: 'SQM Vitas',
+    numeroRegistroSAG: 'SAG F-430',
+    tipo: 'fertilizante_suelo',
+    stockActual: 950,
+    stockMinimo: 600,
+    unidad: 'kg',
+    costoUnitarioCLP: 2100,
+    lote: 'SQM-SOP-901',
+    fechaElaboracion: '2024-03-25',
+    fechaVencimiento: '2029-06-01',
+    destinosUso: ['kiwi', 'quinta_frutal'],
+    periodoCarenciaDias: 0,
+    tiempoReingresoHoras: 0,
+    dosisRecomendadaHa: '60 kg/ha',
+    ubicacionBodega: 'Bodega Fertilizantes - Pallet 2',
+    observaciones: 'Potasio de alta solubilidad para traslocación de sólidos solubles (°Brix)',
+    consumoHistoricoAcumulado: 2100
+  },
+  {
+    id: 'ins-8',
+    nombreComercial: 'Erger Rompedor de Dormancia',
+    categoriaBodega: 'fitosanitario',
+    categoria: 'fitosanitario',
+    categoriaFito: 'fitorregulador',
+    ingredienteActivo: 'Factores nitrogenados orgánicos + polisacáridos bioestimulantes',
+    fabricante: 'Valagro / Syngenta',
+    numeroRegistroSAG: 'SAG BIO-112',
+    tipo: 'rompedor_dormancia',
+    stockActual: 45.0,
+    stockMinimo: 30.0,
+    unidad: 'L',
+    costoUnitarioCLP: 38900,
+    lote: 'VAL-ERG-772',
+    fechaElaboracion: '2024-06-05',
+    fechaVencimiento: '2028-05-30',
+    destinosUso: ['kiwi'],
+    periodoCarenciaDias: 0,
+    tiempoReingresoHoras: 12,
+    dosisRecomendadaHa: '6.0 L/ha + Activator',
+    ubicacionBodega: 'Bodega Químicos SAG - Estante C1',
+    observaciones: 'Sustituto orgánico seguro de cianamida para brotación uniforme de Hayward',
+    consumoHistoricoAcumulado: 90.0
+  },
+
+  // INSUMOS DE RIEGO
+  {
+    id: 'mat-r1',
+    nombreComercial: 'Goteros Autocompensados Netafim PCJ 4 L/h',
+    categoriaBodega: 'material_riego',
+    categoria: 'insumo_riego',
+    categoriaMaterial: 'insumo_riego',
+    destinosUso: ['kiwi', 'quinta_frutal', 'vivero'],
+    fabricante: 'Netafim Chile',
+    tipo: 'riego',
+    stockActual: 850,
+    stockMinimo: 300,
+    unidad: 'unidades',
+    costoUnitarioCLP: 180,
+    especificacionTecnica: 'Caudal 4.0 L/h autocompensado y antidrenante, espiga para manguera 16mm',
+    ubicacionBodega: 'Caseta de Riego - Caja Repuestos Goteros',
+    observaciones: 'Repuesto estándar para las 2 líneas de goteo por parrón',
+    consumoHistoricoAcumulado: 1200
+  },
+  {
+    id: 'mat-r2',
+    nombreComercial: 'Tubería Planicie Polietileno 16mm x 500m',
+    categoriaBodega: 'material_riego',
+    categoria: 'insumo_riego',
+    categoriaMaterial: 'insumo_riego',
+    destinosUso: ['kiwi', 'quinta_frutal'],
+    fabricante: 'Plástica Maule',
+    tipo: 'riego',
+    stockActual: 6,
+    stockMinimo: 3,
+    unidad: 'rollos',
+    costoUnitarioCLP: 64500,
+    especificacionTecnica: 'Polietileno Virgen Clase 4 (4 bar), rollo 500 metros lineales',
+    ubicacionBodega: 'Patio Techado - Rack Tuberías',
+    observaciones: 'Para reemplazo de laterales de goteo en parrones Cuartel 1 y 2',
+    consumoHistoricoAcumulado: 14
+  },
+  {
+    id: 'mat-r3',
+    nombreComercial: 'Válvula de Aire Cinética Doble Efecto 2" Bermad',
+    categoriaBodega: 'material_riego',
+    categoria: 'insumo_riego',
+    categoriaMaterial: 'insumo_riego',
+    destinosUso: ['kiwi'],
+    fabricante: 'Bermad Water Control',
+    tipo: 'riego',
+    stockActual: 4,
+    stockMinimo: 2,
+    unidad: 'unidades',
+    costoUnitarioCLP: 42000,
+    especificacionTecnica: 'Conexión rosca macho 2" NPT, cuerpo en poliamida reforzada con fibra',
+    ubicacionBodega: 'Caseta de Riego - Estante Válvulas',
+    observaciones: 'Instaladas en cabezal de pozo y extremos de matrices de los 4 sectores',
+    consumoHistoricoAcumulado: 2
+  },
+  {
+    id: 'mat-r4',
+    nombreComercial: 'Solenoide 24V AC Galcon para Válvula Hidráulica',
+    categoriaBodega: 'material_riego',
+    categoria: 'insumo_riego',
+    categoriaMaterial: 'insumo_riego',
+    destinosUso: ['kiwi'],
+    fabricante: 'Galcon Israel',
+    tipo: 'riego',
+    stockActual: 5,
+    stockMinimo: 2,
+    unidad: 'unidades',
+    costoUnitarioCLP: 28500,
+    especificacionTecnica: 'Bobina 24V corriente alterna, conexión 2 vías normalmente cerrada',
+    ubicacionBodega: 'Caseta de Riego - Gaveta Eléctrica',
+    observaciones: 'Control de apertura automática para los 4 sectores de riego',
+    consumoHistoricoAcumulado: 3
+  },
+
+  // ALAMBRES Y ESTRUCTURAS DE PARRÓN
+  {
+    id: 'mat-a1',
+    nombreComercial: 'Alambre Acerado Triple Galvanizado N° 14 (Rollo 50kg)',
+    categoriaBodega: 'material_riego',
+    categoria: 'alambre_estructura',
+    categoriaMaterial: 'alambre_estructura',
+    destinosUso: ['kiwi'],
+    fabricante: 'Inchalam Chile',
+    tipo: 'alambre',
+    stockActual: 18,
+    stockMinimo: 8,
+    unidad: 'rollos',
+    costoUnitarioCLP: 115000,
+    especificacionTecnica: 'Diámetro 2.20 mm, alta resistencia a la rotura (140 kg/mm²), galvanizado pesado',
+    ubicacionBodega: 'Galpón Central - Zona Metales',
+    observaciones: 'Para hebras secundarias y cargadores de parrón español',
+    consumoHistoricoAcumulado: 35
+  },
+  {
+    id: 'mat-a2',
+    nombreComercial: 'Alambre Acerado Estructural N° 12 (Rollo 50kg)',
+    categoriaBodega: 'material_riego',
+    categoria: 'alambre_estructura',
+    categoriaMaterial: 'alambre_estructura',
+    destinosUso: ['kiwi'],
+    fabricante: 'Inchalam Chile',
+    tipo: 'alambre',
+    stockActual: 12,
+    stockMinimo: 5,
+    unidad: 'rollos',
+    costoUnitarioCLP: 118000,
+    especificacionTecnica: 'Diámetro 2.70 mm, alambre madre para soporte del peso de racimos (~40 ton/ha)',
+    ubicacionBodega: 'Galpón Central - Zona Metales',
+    observaciones: 'Alambre de cumbrera y hebras principales en parrones',
+    consumoHistoricoAcumulado: 28
+  },
+  {
+    id: 'mat-a3',
+    nombreComercial: 'Tensores de Alambre Gripple Plus Medium',
+    categoriaBodega: 'material_riego',
+    categoria: 'alambre_estructura',
+    categoriaMaterial: 'alambre_estructura',
+    destinosUso: ['kiwi'],
+    fabricante: 'Gripple UK / Inchalam',
+    tipo: 'alambre',
+    stockActual: 320,
+    stockMinimo: 100,
+    unidad: 'unidades',
+    costoUnitarioCLP: 1450,
+    especificacionTecnica: 'Capacidad de carga 400 kg, para alambre de 2.0 a 3.25 mm',
+    ubicacionBodega: 'Bodega Central - Gaveta Tensores',
+    observaciones: 'Tensado rápido de parrón con dinamómetro Gripple',
+    consumoHistoricoAcumulado: 850
+  },
+
+  // POLINES Y MADERAS
+  {
+    id: 'mat-p1',
+    nombreComercial: 'Polines Impregnados CCA 3-4" x 2.40m',
+    categoriaBodega: 'material_riego',
+    categoria: 'polin_madera',
+    categoriaMaterial: 'polin_madera',
+    destinosUso: ['kiwi', 'quinta_frutal'],
+    fabricante: 'Maderas Los Niches',
+    tipo: 'polin',
+    stockActual: 140,
+    stockMinimo: 50,
+    unidad: 'unidades',
+    costoUnitarioCLP: 4200,
+    especificacionTecnica: 'Pino radiata impregnado con sales CCA norma NCh 819, garantía 20 años',
+    ubicacionBodega: 'Patio Exterior - Pila 1 Polines',
+    observaciones: 'Postes intermedios para hileras en cuarteles 1, 2 y 3',
+    consumoHistoricoAcumulado: 450
+  },
+  {
+    id: 'mat-p2',
+    nombreComercial: 'Polines Cabezales y Esquineros CCA 5-6" x 2.70m',
+    categoriaBodega: 'material_riego',
+    categoria: 'polin_madera',
+    categoriaMaterial: 'polin_madera',
+    destinosUso: ['kiwi'],
+    fabricante: 'Maderas Los Niches',
+    tipo: 'polin',
+    stockActual: 35,
+    stockMinimo: 20,
+    unidad: 'unidades',
+    costoUnitarioCLP: 9800,
+    especificacionTecnica: 'Diámetro superior 5 a 6 pulgadas, largo 2.70 m, anclaje reforzado',
+    ubicacionBodega: 'Patio Exterior - Pila 2 Esquineros',
+    observaciones: 'Cabezales de tensión en cabeceras de cuartel',
+    consumoHistoricoAcumulado: 80
+  },
+
+  // MALLAS Y COBERTORES
+  {
+    id: 'mat-m1',
+    nombreComercial: 'Malla Cortaviento Raschel 50% Negra 4.20m x 100m',
+    categoriaBodega: 'material_riego',
+    categoria: 'malla_cobertor',
+    categoriaMaterial: 'malla_cobertor',
+    destinosUso: ['kiwi', 'vivero'],
+    fabricante: 'Marienberg Chile',
+    tipo: 'malla',
+    stockActual: 4,
+    stockMinimo: 2,
+    unidad: 'rollos',
+    costoUnitarioCLP: 142000,
+    especificacionTecnica: 'Polietileno monofilamento con estabilizador UV, ancho 4.20 m',
+    ubicacionBodega: 'Galpón Central - Rack Mallas',
+    observaciones: 'Protección perimetral poniente contra vientos cálidos y rotura de brotes',
+    consumoHistoricoAcumulado: 8
+  },
+  {
+    id: 'mat-m2',
+    nombreComercial: 'Malla Antipájaros Monofilamento 10m x 100m',
+    categoriaBodega: 'material_riego',
+    categoria: 'malla_cobertor',
+    categoriaMaterial: 'malla_cobertor',
+    destinosUso: ['kiwi', 'quinta_frutal'],
+    fabricante: 'Plastitextil Maule',
+    tipo: 'malla',
+    stockActual: 3,
+    stockMinimo: 1,
+    unidad: 'rollos',
+    costoUnitarioCLP: 89000,
+    especificacionTecnica: 'Rombo 18x18 mm, alta elasticidad para cobertura en parrón',
+    ubicacionBodega: 'Galpón Central - Rack Mallas',
+    observaciones: 'Protección de yemas tiernas y precosecha contra tordos y zorzales',
+    consumoHistoricoAcumulado: 6
+  },
+
+  // HERRAMIENTAS Y EQUIPAMIENTO DE CAMPO
+  {
+    id: 'mat-h1',
+    nombreComercial: 'Tijeras de Podar Felco 2 Clásica',
+    categoriaBodega: 'material_riego',
+    categoria: 'herramienta_equipo',
+    categoriaMaterial: 'herramienta_equipo',
+    destinosUso: ['kiwi', 'quinta_frutal', 'vivero'],
+    fabricante: 'Felco Suiza',
+    tipo: 'herramienta',
+    stockActual: 16,
+    stockMinimo: 8,
+    unidad: 'unidades',
+    costoUnitarioCLP: 58000,
+    especificacionTecnica: 'Corte deslizante hasta 25 mm, hojas de acero templado reafilables',
+    ubicacionBodega: 'Pañol de Herramientas - Armario 1',
+    observaciones: 'Asignadas con nombre y desinfectante a cuadrilla de poda',
+    consumoHistoricoAcumulado: 30
+  },
+  {
+    id: 'mat-h2',
+    nombreComercial: 'Serrucho Curvo de Poda con Funda 330mm',
+    categoriaBodega: 'material_riego',
+    categoria: 'herramienta_equipo',
+    categoriaMaterial: 'herramienta_equipo',
+    destinosUso: ['kiwi', 'quinta_frutal'],
+    fabricante: 'Silky Japón / Bahco',
+    tipo: 'herramienta',
+    stockActual: 10,
+    stockMinimo: 4,
+    unidad: 'unidades',
+    costoUnitarioCLP: 34500,
+    especificacionTecnica: 'Hoja cónica japonesa 330 mm, dientes endurecidos por impulso',
+    ubicacionBodega: 'Pañol de Herramientas - Armario 1',
+    observaciones: 'Para cortes limpios de madera gruesa y renovación de cargadores',
+    consumoHistoricoAcumulado: 15
+  },
+  {
+    id: 'mat-h3',
+    nombreComercial: 'Refractómetro Digital Atago PAL-1 (0-53% Brix)',
+    categoriaBodega: 'material_riego',
+    categoria: 'herramienta_equipo',
+    categoriaMaterial: 'herramienta_equipo',
+    destinosUso: ['kiwi', 'quinta_frutal'],
+    fabricante: 'Atago Japón',
+    tipo: 'herramienta',
+    stockActual: 2,
+    stockMinimo: 1,
+    unidad: 'unidades',
+    costoUnitarioCLP: 295000,
+    especificacionTecnica: 'Compensación automática de temperatura (ATC), precisión ±0.2° Brix',
+    ubicacionBodega: 'Oficina Administración - Estuche Calibrado',
+    observaciones: 'Certificado de calibración SAG al día para control de cosecha',
+    consumoHistoricoAcumulado: 2
+  },
+  {
+    id: 'mat-h4',
+    nombreComercial: 'Penetrómetro de Fruta FT-327 con Punta 8mm',
+    categoriaBodega: 'material_riego',
+    categoria: 'herramienta_equipo',
+    categoriaMaterial: 'herramienta_equipo',
+    destinosUso: ['kiwi'],
+    fabricante: 'QA Supplies USA',
+    tipo: 'herramienta',
+    stockActual: 2,
+    stockMinimo: 1,
+    unidad: 'unidades',
+    costoUnitarioCLP: 185000,
+    especificacionTecnica: 'Escala 0-28 lb (0-13 kg), punta cónica reglamentaria 8 mm para Kiwi',
+    ubicacionBodega: 'Oficina Administración - Estuche Medición',
+    observaciones: 'Medición de presión de pulpa para autorización de recolección',
+    consumoHistoricoAcumulado: 2
+  },
+  {
+    id: 'mat-h5',
+    nombreComercial: 'Bomba de Espalda Manual 16L Jacto XP16',
+    categoriaBodega: 'material_riego',
+    categoria: 'herramienta_equipo',
+    categoriaMaterial: 'herramienta_equipo',
+    destinosUso: ['kiwi', 'quinta_frutal', 'vivero', 'casa_patronal'],
+    fabricante: 'Jacto Brasil',
+    tipo: 'herramienta',
+    stockActual: 6,
+    stockMinimo: 3,
+    unidad: 'unidades',
+    costoUnitarioCLP: 62000,
+    especificacionTecnica: 'Tanque 16L polietileno UV, lanza de bronce y cámara metálica de pistón',
+    ubicacionBodega: 'Galpón Maquinaria - Sector Pulverización',
+    observaciones: 'Para aplicaciones focalizadas de herbicida y sellado de cortes Psa',
+    consumoHistoricoAcumulado: 10
+  }
+];
+
+export const initialLabores: RegistroLabor[] = [
+  {
+    id: 'lab-101',
+    fecha: '2026-10-22',
+    hora: '07:30',
+    parcelaId: 'cuartel-2',
+    parcelaNombre: 'Cuartel 2 - Parrón Centro (Sector 2)',
+    tipoLabor: 'fitosanitario',
+    descripcion: 'Aplicación preventiva de Luna Tranquility para protección precosecha contra Botrytis.',
+    insumoId: 'ins-2',
+    nombreInsumo: 'Luna Tranquility',
+    dosisPorHa: 1.2,
+    volumenCaldoLHa: 1200,
+    totalInsumoUtilizado: 7.44,
+    unidadMedida: 'L',
+    metodoAplicacion: 'Turbo Pulverizador Jacto 2000L',
+    tractoristaMaquinaria: 'Tractor John Deere 5075E / Operador: Juan Tapia Gómez',
+    eppUtilizado: ['Traje Tyvek', 'Máscara doble filtro Vapores Orgánicos', 'Guantes Nitrilo', 'Botas de Goma'],
+    periodoCarenciaDias: 7,
+    reingresoHoras: 12,
+    objetivoPlagaEnfermedad: 'Botrytis cinerea (pudrición peduncular en guarda)',
+    registradoPor: 'Rodrigo Valenzuela Castro (Ing. Agrónomo)',
+    rutAplicador: '14.238.901-2',
+    numeroCarnetSAG: 'SAG-MAULE-88192',
+    condicionesClimaticas: {
+      temperaturaC: 17.5,
+      humedadRelativa: 64,
+      velocidadVientoKmH: 4.2
+    },
+    observaciones: 'Condiciones de aplicación óptimas sin viento. Respetar 7 días de carencia SAG antes de cosecha.'
+  },
+  {
+    id: 'lab-102',
+    fecha: '2026-10-24',
+    hora: '08:00',
+    parcelaId: 'cuartel-4',
+    parcelaNombre: 'Cuartel 4 - Espaldera T-Bar Este (Sector 4)',
+    tipoLabor: 'riego',
+    descripcion: 'Riego por goteo doble línea con fertirriego de Nitrato de Calcio y Sulfato de Potasio.',
+    volumenM3: 480,
+    litrosAgua: 480000,
+    duracionRiegoHoras: 6.5,
+    sectorRiego: 'Sector 4: Cuartel 4 Espaldera T-Bar',
+    insumoId: 'ins-6',
+    nombreInsumo: 'Nitrato de Calcio Soluble Calcinit',
+    dosisPorHa: 60,
+    totalInsumoUtilizado: 360,
+    unidadMedida: 'kg',
+    registradoPor: 'Carlos Morales Vega (Operador de Riego)',
+    observaciones: 'Presión de cabezal 3.2 bar constante. Bomba operando a 21.0 L/s.'
+  },
+  {
+    id: 'lab-103',
+    fecha: '2026-10-25',
+    hora: '09:15',
+    parcelaId: 'cuartel-1',
+    parcelaNombre: 'Cuartel 1 - Parrón Norte (Sector 1)',
+    tipoLabor: 'monitoreo',
+    descripcion: 'Muestreo oficial de madurez: 6.4° Brix promedio. Cuartel autorizado para inicio de cosecha.',
+    registradoPor: 'Rodrigo Valenzuela Castro (Ing. Agrónomo)',
+    observaciones: 'Cumple umbral mínimo de 6.2° Brix exigido por Comité de Kiwi y SAG.'
+  }
+];
+
+// REGISTROS DE POZO PROFUNDO EXIGIDOS POR DGA (Con Horómetro y Caudales Inicial/Final)
+export const initialRegistrosPozo: RegistroExtraccionPozo[] = [
+  {
+    id: 'pz-01',
+    fecha: '2026-10-24',
+    hora: '08:00',
+    horaTermino: '14:30',
+    fechaHoraMuestreo: '2026-10-24 08:15',
+    horometroInicialHoras: 3410.5,
+    horometroFinalHoras: 3417.0,
+    horasHorometro: 6.5,
+    caudalInicialLs: 21.2,
+    caudalFinalLs: 20.8,
+    caudalPromedioLs: 21.0,
+    lecturaInicialM3: 41630,
+    lecturaFinalM3: 42110,
+    metrosCubicosExtraidos: 480,
+    litrosTotales: 480000,
+    horasBombeo: 6.5,
+    nivelEstaticoM: 28.4,
+    nivelDinamicoM: 34.2,
+    sectorDestino: 'Sector 4: Cuartel 4 Espaldera T-Bar (6.0 ha)',
+    operadorBomba: 'Carlos Morales Vega',
+    observaciones: 'Muestreo DGA conforme. Flujómetro verificado con precinto intacto.'
+  },
+  {
+    id: 'pz-02',
+    fecha: '2026-10-21',
+    hora: '07:30',
+    horaTermino: '14:30',
+    fechaHoraMuestreo: '2026-10-21 07:45',
+    horometroInicialHoras: 3403.5,
+    horometroFinalHoras: 3410.5,
+    horasHorometro: 7.0,
+    caudalInicialLs: 21.5,
+    caudalFinalLs: 20.6,
+    caudalPromedioLs: 21.0,
+    lecturaInicialM3: 41110,
+    lecturaFinalM3: 41630,
+    metrosCubicosExtraidos: 520,
+    litrosTotales: 520000,
+    horasBombeo: 7.0,
+    nivelEstaticoM: 28.2,
+    nivelDinamicoM: 34.0,
+    sectorDestino: 'Sector 2: Cuartel 2 Parrón Centro (6.2 ha)',
+    operadorBomba: 'Carlos Morales Vega',
+    observaciones: 'Limpieza quincenal de filtros de anilla realizada previo al encendido.'
+  },
+  {
+    id: 'pz-03',
+    fecha: '2026-10-18',
+    hora: '08:00',
+    horaTermino: '15:00',
+    fechaHoraMuestreo: '2026-10-18 08:20',
+    horometroInicialHoras: 3396.5,
+    horometroFinalHoras: 3403.5,
+    horasHorometro: 7.0,
+    caudalInicialLs: 21.4,
+    caudalFinalLs: 20.7,
+    caudalPromedioLs: 21.0,
+    lecturaInicialM3: 40590,
+    lecturaFinalM3: 41110,
+    metrosCubicosExtraidos: 520,
+    litrosTotales: 520000,
+    horasBombeo: 7.0,
+    nivelEstaticoM: 28.1,
+    nivelDinamicoM: 33.9,
+    sectorDestino: 'Sector 1: Cuartel 1 Parrón Norte (4.8 ha)',
+    operadorBomba: 'Carlos Morales Vega',
+    observaciones: 'Sin novedades de caudal, amperaje de bomba 42A estable.'
+  }
+];
+
+// MAQUINARIAS Y EQUIPOS AGRÍCOLAS DEL FUNDO
+export const initialMaquinarias: MaquinariaEquipo[] = [
+  {
+    id: 'maq-1',
+    codigoInterno: 'TRAC-01',
+    nombre: 'Tractor John Deere 5075E 4WD',
+    tipo: 'tractor',
+    marcaModelo: 'John Deere 5075E (75 HP)',
+    patenteOSerie: 'KJ-5512 (Chasis: 1PY5075ELK)',
+    anio: 2021,
+    horometroActual: 2450.5,
+    horometroUltimaMantencion: 2250.0,
+    frecuenciaMantencionHoras: 250,
+    estado: 'operativo',
+    operadorAsignado: 'Juan Tapia Gómez',
+    fechaUltimaMantencion: '2026-08-15',
+    fechaProximaMantencion: '2026-11-20',
+    observaciones: 'Tractor principal para tiro de turbo pulverizador y coloso frutero.'
+  },
+  {
+    id: 'maq-2',
+    codigoInterno: 'PULV-01',
+    nombre: 'Turbo Pulverizador Jacto Arbus 2000L',
+    tipo: 'pulverizador',
+    marcaModelo: 'Jacto Arbus 2000 Torre Parrón',
+    patenteOSerie: 'JAC-2022-8910',
+    anio: 2022,
+    horometroActual: 840.0,
+    horometroUltimaMantencion: 800.0,
+    frecuenciaMantencionHoras: 100,
+    estado: 'operativo',
+    operadorAsignado: 'Juan Tapia Gómez',
+    fechaUltimaMantencion: '2026-09-10',
+    fechaProximaMantencion: '2026-11-15',
+    observaciones: 'Equipado con 16 boquillas de cerámica Albuz ATR lila y naranja. Calibrado SAG.'
+  },
+  {
+    id: 'maq-3',
+    codigoInterno: 'NEBU-02',
+    nombre: 'Nebulizador Electroestático Martignani 1500L',
+    tipo: 'atomizador',
+    marcaModelo: 'Martignani Whirlwind B-612',
+    patenteOSerie: 'MRT-1500-2020',
+    anio: 2020,
+    horometroActual: 1120.0,
+    horometroUltimaMantencion: 1050.0,
+    frecuenciaMantencionHoras: 150,
+    estado: 'mantencion_proxima',
+    operadorAsignado: 'Juan Tapia Gómez',
+    fechaUltimaMantencion: '2026-07-28',
+    fechaProximaMantencion: '2026-11-12',
+    observaciones: 'Sistema electroestático de bajo volumen para fungicidas Botrytis.'
+  },
+  {
+    id: 'maq-4',
+    codigoInterno: 'CAM-01',
+    nombre: 'Camioneta Toyota Hilux 2.8 4x4',
+    tipo: 'camioneta',
+    marcaModelo: 'Toyota Hilux Doble Cabina SRX',
+    patenteOSerie: 'RL-9821',
+    anio: 2022,
+    horometroActual: 68450.0, // km
+    horometroUltimaMantencion: 60000.0,
+    frecuenciaMantencionHoras: 10000,
+    estado: 'operativo',
+    operadorAsignado: 'Diego Morales Silva / Rodrigo Valenzuela',
+    fechaUltimaMantencion: '2026-06-18',
+    fechaProximaMantencion: '2026-12-05',
+    observaciones: 'Vehículo de administración, transporte de muestras y supervisión de cuarteles.'
+  },
+  {
+    id: 'maq-5',
+    codigoInterno: 'COL-01',
+    nombre: 'Coloso Frutero Tándem 6 Bins',
+    tipo: 'coloso',
+    marcaModelo: 'Maestranza San Fernando (3.5 Ton)',
+    patenteOSerie: 'COL-2019-04',
+    anio: 2019,
+    horometroActual: 420.0,
+    horometroUltimaMantencion: 400.0,
+    frecuenciaMantencionHoras: 200,
+    estado: 'operativo',
+    operadorAsignado: 'Juan Tapia Gómez',
+    fechaUltimaMantencion: '2026-09-02',
+    fechaProximaMantencion: '2027-02-15',
+    observaciones: 'Plataforma con rodillos para carga y descarga rápida de bins de cosecha.'
+  },
+  {
+    id: 'maq-6',
+    codigoInterno: 'BOM-01',
+    nombre: 'Motobomba Auxiliar Honda GX160 3"',
+    tipo: 'motobomba',
+    marcaModelo: 'Honda GX160 5.5 HP (Caudal 1000 L/min)',
+    patenteOSerie: 'HON-GX-8821',
+    anio: 2023,
+    horometroActual: 185.0,
+    horometroUltimaMantencion: 150.0,
+    frecuenciaMantencionHoras: 100,
+    estado: 'operativo',
+    operadorAsignado: 'Carlos Morales Vega',
+    fechaUltimaMantencion: '2026-08-20',
+    fechaProximaMantencion: '2026-12-10',
+    observaciones: 'Para llenado ultra rápido del estanque de 2000L en caseta y trasvasije.'
+  }
+];
+
+export const initialRegistrosMantencion: RegistroMantencionMaquinaria[] = [
+  {
+    id: 'man-1',
+    maquinariaId: 'maq-1',
+    maquinariaNombre: 'Tractor John Deere 5075E 4WD',
+    fecha: '2026-08-15',
+    horometro: 2250.0,
+    tipoMantencion: 'Mantención preventiva 250 horas: Cambio aceite motor 15W40, filtro aceite y filtro combustible',
+    tallerOMecanico: 'Servicio Técnico Salfa Curicó',
+    costoCLP: 285000,
+    repuestosUtilizados: 'Filtro John Deere RE504836, 12L aceite Torq-Gard 15W40, grasa grafitada',
+    observaciones: 'Revisión de embrague y frenos conforme.'
+  },
+  {
+    id: 'man-2',
+    maquinariaId: 'maq-2',
+    maquinariaNombre: 'Turbo Pulverizador Jacto Arbus 2000L',
+    fecha: '2026-09-10',
+    horometro: 800.0,
+    tipoMantencion: 'Calibración oficial de pastillas y cambio membranas bomba JP-150',
+    tallerOMecanico: 'Mecánico de Fundo Juan Tapia',
+    costoCLP: 95000,
+    repuestosUtilizados: 'Kit membranas Jacto, 16 pastillas cerámicas Albuz ATR',
+    observaciones: 'Prueba de presión a 20 bar sin fugas.'
+  }
+];
+
+export const initialMuestreosMadurez: MuestreoMadurez[] = [
+  {
+    id: 'mm-01',
+    fecha: '2026-10-25',
+    parcelaId: 'cuartel-1',
+    parcelaNombre: 'Cuartel 1 - Parrón Norte (Sector 1)',
+    gradosBrixPromedio: 6.4,
+    solidoSolubleMin: 6.2,
+    solidoSolubleMax: 6.7,
+    firmezaPulpaLb: 15.2,
+    porcentajeMateriaSeca: 16.4,
+    numeroMuestras: 30,
+    aptoParaCosechaSAG: true,
+    muestreadoPor: 'Ing. Agr. Rodrigo Valenzuela',
+    laboratorio: 'Refractómetro Digital Atago PAL-1 (Calibrado)',
+    observaciones: 'Color de semilla pardo oscuro. Aprobado para corte selectivo.'
+  },
+  {
+    id: 'mm-02',
+    fecha: '2026-10-23',
+    parcelaId: 'cuartel-2',
+    parcelaNombre: 'Cuartel 2 - Parrón Centro (Sector 2)',
+    gradosBrixPromedio: 5.9,
+    solidoSolubleMin: 5.6,
+    solidoSolubleMax: 6.1,
+    firmezaPulpaLb: 15.8,
+    porcentajeMateriaSeca: 15.8,
+    numeroMuestras: 30,
+    aptoParaCosechaSAG: false,
+    muestreadoPor: 'Ing. Agr. Rodrigo Valenzuela',
+    laboratorio: 'Refractómetro Atago PAL-1',
+    observaciones: 'Aún bajo el umbral de 6.2° Brix. Re-muestrear en 4 días.'
+  },
+  {
+    id: 'mm-03',
+    fecha: '2026-10-24',
+    parcelaId: 'cuartel-3',
+    parcelaNombre: 'Cuartel 3 - Parrón Sur (Sector 3)',
+    gradosBrixPromedio: 5.8,
+    solidoSolubleMin: 5.5,
+    solidoSolubleMax: 6.0,
+    firmezaPulpaLb: 16.1,
+    porcentajeMateriaSeca: 15.5,
+    numeroMuestras: 30,
+    aptoParaCosechaSAG: false,
+    muestreadoPor: 'Ing. Agr. Rodrigo Valenzuela'
+  }
+];
+
+export const initialCosechasLote: RegistroCosechaLote[] = [
+  {
+    id: 'cos-01',
+    fecha: '2026-10-25',
+    parcelaId: 'cuartel-1',
+    parcelaNombre: 'Cuartel 1 - Parrón Norte (Sector 1)',
+    cantidadBins: 46,
+    pesoNetoKgEstimado: 17940,
+    cuadrilla: 'Cuadrilla 1 Los Niches (18 cosecheros)',
+    calibrePredominante: 'Calibre 30 (105-115g)',
+    packingDestino: 'Frusan Curicó - Planta Teno',
+    numeroGuiaDespacho: 'GD-89104',
+    choferCamion: 'Héctor Salgado Ríos',
+    patenteCamion: 'KJ-8912',
+    estado: 'despachado_packing',
+    observaciones: 'Fruta cosechada con guantes de hilo, sin golpes de uña ni heridas pedunculares.'
+  }
+];
+
+export const initialOrdenesTrabajo: OrdenTrabajoFitosanitaria[] = [
+  {
+    id: 'ot-2026-08',
+    codigoReceta: 'REC-AGR-2026-08',
+    fechaEmision: '2026-10-21',
+    fechaProgramada: '2026-10-22',
+    destinoAplicacion: 'kiwi',
+    parcelaIds: ['cuartel-2'],
+    parcelasNombres: ['Cuartel 2 - Parrón Centro (Sector 2)'],
+    superficieTotalHa: 6.2,
+    objetivoFitosanitario: 'Control preventivo Botrytis cinerea previo al cierre de racimos',
+    productos: [
+      {
+        insumoId: 'ins-2',
+        nombreInsumo: 'Luna Tranquility (Bayer)',
+        categoria: 'fungicida',
+        ingredienteActivoOComposicion: 'Fluopyram 12.5% + Pyrimethanil 37.5%',
+        numeroRegistroSAG: 'SAG 3560',
+        dosisPorHa: 1.2,
+        totalProductoRequerido: 7.44,
+        unidad: 'L',
+        carenciaDias: 7,
+        tiempoReingresoHoras: 12
+      }
+    ],
+    insumoId: 'ins-2',
+    nombreInsumo: 'Luna Tranquility (Bayer)',
+    ingredienteActivo: 'Fluopyram 12.5% + Pyrimethanil 37.5%',
+    numeroRegistroSAG: 'SAG 3560',
+    dosisPorHa: 1.2,
+    volumenCaldoLHa: 1200,
+    totalProductoRequerido: 7.44,
+    unidad: 'L',
+    eppRequerido: ['Traje impermeable Tyvek', 'Respirador media cara doble filtro', 'Guantes nitrilo manga larga', 'Botas PVC'],
+    tiempoReingresoHoras: 12,
+    carenciaDias: 7,
+    ingenieroAgronomoNombre: 'Ing. Agr. Rodrigo Valenzuela (Reg. 4912)',
+    estado: 'completada',
+    descontadoInventario: true,
+    fechaDescuentoBodega: '2026-10-21 09:30',
+    aplicadorNombre: 'Juan Tapia Gómez (Carnet SAG 88192)',
+    aplicadorFirma: 'J. Tapia G. (Firma digital registrada)',
+    fechaEjecucion: '2026-10-22'
+  },
+  {
+    id: 'ot-2026-09',
+    codigoReceta: 'REC-AGR-2026-09',
+    fechaEmision: '2026-10-25',
+    fechaProgramada: '2026-10-28',
+    destinoAplicacion: 'kiwi',
+    parcelaIds: ['cuartel-3', 'cuartel-4'],
+    parcelasNombres: ['Cuartel 3 - Parrón Sur (Sector 3)', 'Cuartel 4 - Espaldera T-Bar Este (Sector 4)'],
+    superficieTotalHa: 13.5,
+    objetivoFitosanitario: 'Aplicación protectora combinada post-cosecha: Oxicloruro de Cobre + Sulfato de Cobre para cicatrización Psa',
+    productos: [
+      {
+        insumoId: 'ins-3',
+        nombreInsumo: 'Cuprocol 70% SC',
+        categoria: 'bactericida',
+        ingredienteActivoOComposicion: 'Oxicloruro de Cobre 70% SC',
+        numeroRegistroSAG: 'SAG 1987',
+        dosisPorHa: 2.5,
+        totalProductoRequerido: 33.75,
+        unidad: 'L',
+        carenciaDias: 3,
+        tiempoReingresoHoras: 12
+      },
+      {
+        insumoId: 'ins-4',
+        nombreInsumo: 'Mastercop',
+        categoria: 'bactericida',
+        ingredienteActivoOComposicion: 'Sulfato de Cobre Pentahidratado 6.6% SL',
+        numeroRegistroSAG: 'SAG 2712',
+        dosisPorHa: 1.0,
+        totalProductoRequerido: 13.5,
+        unidad: 'L',
+        carenciaDias: 1,
+        tiempoReingresoHoras: 4
+      }
+    ],
+    insumoId: 'ins-3',
+    nombreInsumo: 'Cuprocol 70% SC + Mastercop',
+    ingredienteActivo: 'Oxicloruro de Cobre 70% SC + Sulfato de Cobre Pentahidratado 6.6%',
+    numeroRegistroSAG: 'SAG 1987 / SAG 2712',
+    dosisPorHa: 3.5,
+    volumenCaldoLHa: 1000,
+    totalProductoRequerido: 47.25,
+    unidad: 'L',
+    eppRequerido: ['Overol de protección', 'Mascarilla P100', 'Guantes de nitrilo', 'Antiparras herméticas'],
+    tiempoReingresoHoras: 12,
+    carenciaDias: 3,
+    ingenieroAgronomoNombre: 'Ing. Agr. Rodrigo Valenzuela',
+    estado: 'pendiente',
+    descontadoInventario: true, // Descontado automáticamente al emitir la orden
+    fechaDescuentoBodega: '2026-10-25 10:15',
+    observacionesTecnicas: 'Aplicar inmediatamente después de retirar los bins de cosecha para cicatrizar pedúnculos.'
+  }
+];
+
+export const initialCondicionHorasFrio: CondicionHorasFrio = {
+  fechaCorte: '2026-10-26',
+  totalAcumuladoHF: 815,
+  metaVariedadHF: 850,
+  modeloCalculo: 'Weinberger (< 7.2°C)',
+  porcentajeCumplimiento: 95.8,
+  estadoDormancia: 'Salida de receso',
+  recomendacionRompedor: 'Acumulación favorable de frío invernal. Se recomienda aplicación de Erger al 6% o Cianamida al 4% según pronóstico de brotación de machos Chieftain/Tomuri.'
+};
+
+export const initialFenologia: SeguimientoFenologico[] = [
+  {
+    id: 'fen-01',
+    fecha: '2026-10-20',
+    parcelaId: 'cuartel-1',
+    parcelaNombre: 'Cuartel 1 - Parrón Norte (Sector 1)',
+    escalaBBCH: 'BBCH 85',
+    estadoDescripcion: 'Maduración avanzada de fruta. Fruto alcanza color y tamaño típico, pulpa verde esmeralda translúcida.',
+    porcentajeAvance: 85,
+    observaciones: 'Frutos firmes y sanos, sin partiduras ni daño de granizo.'
+  },
+  {
+    id: 'fen-02',
+    fecha: '2026-10-18',
+    parcelaId: 'cuartel-2',
+    parcelaNombre: 'Cuartel 2 - Parrón Centro (Sector 2)',
+    escalaBBCH: 'BBCH 81',
+    estadoDescripcion: 'Inicio de maduración. Comienzo de síntesis acelerada de azúcares y degradación de almidón.',
+    porcentajeAvance: 75,
+    observaciones: 'Cargadores bien amarrados, ventilación adecuada en centro del parrón.'
+  }
+];
+
+export const initialPolinizacion: RegistroPolinizacion[] = [
+  {
+    id: 'pol-01',
+    fecha: '2026-10-15',
+    colmenasApisInstaladas: 196,
+    colmenasBombusInstaladas: 24,
+    porcentajeFloracionFemenina: 65,
+    porcentajeFloracionMasculina: 80,
+    actividadAbejasCalificacion: 'Óptima (> 25 abejas/m²)',
+    temperaturaMediaC: 22.4,
+    humedadRelativa: 55,
+    observaciones: 'Excelente sincronía con machos Tomuri y Chieftain. Buena recolección de polen.'
+  }
+];
+
+// USUARIOS DEL SISTEMA CON CLAVE PERSONAL
+export const initialUsuarios: UsuarioPredio[] = [
+  {
+    id: 'usr-1',
+    nombre: 'Diego Morales Silva',
+    rut: '15.892.410-K',
+    email: 'diego@fundolacabana.cl',
+    password: 'admin', // Clave administrador
+    rol: 'administrador',
+    carnetSAGVigente: true,
+    numeroCarnetSAG: 'SAG-ADM-1029',
+    fechaVencimientoCarnetSAG: '2028-12-31',
+    telefono: '+56 9 8412 9043',
+    cargo: 'Administrador General de Campo'
+  },
+  {
+    id: 'usr-2',
+    nombre: 'Rodrigo Valenzuela Castro',
+    rut: '12.441.802-3',
+    email: 'rodrigo.agronomo@fundolacabana.cl',
+    password: 'agro', // Clave personal agrónomo
+    rol: 'agronomo',
+    carnetSAGVigente: true,
+    numeroCarnetSAG: 'COL-AGR-4912',
+    fechaVencimientoCarnetSAG: '2029-06-30',
+    telefono: '+56 9 9231 4410',
+    cargo: 'Ingeniero Agrónomo Fitosanitario'
+  },
+  {
+    id: 'usr-3',
+    nombre: 'Juan Tapia Gómez',
+    rut: '14.238.901-2',
+    email: 'juan.tapia@fundolacabana.cl',
+    password: 'tapia', // Clave personal aplicador
+    rol: 'aplicador_sag',
+    carnetSAGVigente: true,
+    numeroCarnetSAG: 'SAG-MAULE-88192',
+    fechaVencimientoCarnetSAG: '2027-04-18',
+    telefono: '+56 9 7120 3381',
+    cargo: 'Tractorista y Aplicador Acreditado SAG'
+  },
+  {
+    id: 'usr-4',
+    nombre: 'Carlos Morales Vega',
+    rut: '16.719.204-5',
+    email: 'carlos.riego@fundolacabana.cl',
+    password: 'riego', // Clave personal operador riego
+    rol: 'operador_riego',
+    carnetSAGVigente: false,
+    telefono: '+56 9 6619 4021',
+    cargo: 'Encargado de Cabezal de Riego y Pozo'
+  }
+];
+
+export const initialClimaLaCabana: ClimaCondiciones = {
+  temperaturaActual: 21.8,
+  tempMinima: 6.4,
+  tempMaxima: 24.2,
+  humedadRelativa: 58,
+  velocidadVientoKmH: 5.6,
+  direccionViento: 'Suroeste (SO)',
+  probabilidadLluvia: 5,
+  alertaHelada: false,
+  riesgoPsa: 'Bajo',
+  riesgoBotrytis: 'Bajo',
+  evapotranspiracionEtoMmDia: 4.8,
+  estadoCielo: 'Soleado'
+};
+
+export const initialSectoresRiego: SectorRiego[] = [
+  { id: 1, nombre: 'Sector 1 - Cuartel 1 (Parrón Español Norte)', ha: 4.8, caudalDisenoLs: 22.0, descripcion: 'Goteo autocompensado 2.3 L/h por emisor' },
+  { id: 2, nombre: 'Sector 2 - Cuartel 2 (Parrón Español Centro)', ha: 6.2, caudalDisenoLs: 24.5, descripcion: 'Goteo autocompensado doble línea' },
+  { id: 3, nombre: 'Sector 3 - Cuartel 3 (Parrón Español Sur)', ha: 7.5, caudalDisenoLs: 26.0, descripcion: 'Microaspersión y goteo doble línea' },
+  { id: 4, nombre: 'Sector 4 - Cuartel 4 (Espaldera T-Bar Este)', ha: 6.0, caudalDisenoLs: 20.0, descripcion: 'Goteo autocompensado alta eficiencia' }
+];
